@@ -41,10 +41,20 @@ It also supports a few common aliases like `monthly_spend_gbp` and `revenue_gbp`
 ## How the test works
 
 The script reads the CSV, then:
-- **Analyst**: calculates CTR, CPC, CPA, ROAS, winners, losers
-- **Strategist**: turns the analysis into priority actions
-- **Critic**: flags risks, attribution caveats, and missing data
-- **Synthesizer**: writes the final markdown report
+- **Profile Interpreter**: converts the business profile into CPA/ROAS thresholds
+- **Analyst**: outputs data-only insights, benchmarks, and campaign-group segmentation
+- **Strategist**: proposes actions and budget moves only
+- **Critic**: challenges the strategist with data/risk concerns only
+- **Strategist (refinement)**: updates recommendations once after critique and explicitly addresses concerns
+- **Synthesizer**: resolves the disagreement and writes exactly 3 final decisions
+
+Flow is fixed:
+Analyst → Strategist → Critic → Strategist (refinement) → Synthesizer
+
+Limits:
+- one critique round
+- one refinement pass
+- no recursive loops or open discussion
 
 ## Run it
 

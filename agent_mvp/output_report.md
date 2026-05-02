@@ -1,102 +1,152 @@
-Source file: `global_ads_performance_dataset---64b0baf4-99af-4c4c-abbd-123801104e0a.csv`
+Source file: `sample_ads_data.csv`
 
 # Gnomeo Agent MVP Report
 
+## Profile Interpreter
+- Stage: balanced
+- Objective: efficient growth
+- Acceptable CPA: £59.63
+- Acceptable ROAS: 1.93x
+
 ## Analyst
-- Campaigns analyzed: 407
-- Total spend: £11,108,749.09
-- Total impressions: 185,254,234
-- Total clicks: 7,132,816
-- Total conversions: 326,812
-- CTR: 3.85%
-- CPC: £1.56
-- CPA: £33.99
-- CVR: 4.58%
-- Wasted spend (>2x avg CPA): £2,702,956.84
-- Wasted spend share: 24.33%
-- Revenue: £54,183,330.81
-- ROAS: 4.88x
+- Campaigns analyzed: 6
+- Total spend: £65,000.00
+- Total impressions: 1,294,000
+- Total clicks: 25,630
+- Total conversions: 1,090
+- CTR: 1.98%
+- CPC: £2.54
+- CPA: £59.63
+- CVR: 4.25%
+- Wasted spend (>2x acceptable CPA): £9,000.00
+- Wasted spend share: 13.85%
+- Revenue: £125,540.00
+- ROAS: 1.93x
 
-### Key flags
-- Best ROAS: TikTok Ads | Search | E-commerce | Germany (41.75x)
-- Weakest ROAS: Google Ads | Display | E-commerce | UK (0.22x)
-- Highest CPA: Google Ads | Video | E-commerce | Australia (£254.30)
-- Highest spend: Google Ads | Shopping | Fintech | Australia (£135,409.45)
-- Waste signal: 24.3% of spend sits in campaigns with CPA > 2x average
-- Top 10% performers by ROAS: Google Ads | Search | EdTech | UAE (1.10x)
-- Bottom 20% performers by ROAS: Google Ads | Display | E-commerce | UK (0.22x)
+### Campaign-group segmentation
+- Non-Brand Search: spend £18,000.00, CPA £69.23, ROAS 1.59x, campaigns 1
+- Meta Prospecting: spend £15,000.00, CPA £107.14, ROAS 1.03x, campaigns 1
+- Brand Search: spend £12,000.00, CPA £28.57, ROAS 3.90x, campaigns 1
+- LinkedIn ABM: spend £9,000.00, CPA £236.84, ROAS 0.84x, campaigns 1
+- Meta Retargeting: spend £6,000.00, CPA £33.33, ROAS 3.38x, campaigns 1
+- YouTube Remarketing: spend £5,000.00, CPA £96.15, ROAS 1.38x, campaigns 1
 
-## Decisions
-1. Decision: Reallocate £2,753.99 from Google Ads | Display | E-commerce | UK to Google Ads | Search | EdTech | UAE
-   Financial impact: £2,423.51
-   Reason: Within-platform move keeps the comparison like-for-like and uses a bottom cohort source versus a top cohort destination.
-   Risk: If the source campaign is temporarily weak, trimming may cut future recovery.
-   Confidence: Medium
-2. Decision: Reduce Google Ads | Video | E-commerce | Australia by £3,826.45
-   Financial impact: £1,913.22
-   Reason: That campaign is part of the 24.3% wasted-spend bucket (CPA > 2x average).
-   Risk: Cutting too quickly can suppress volume before the signal is fully understood.
-   Confidence: High
-3. Decision: Increase Meta Ads | Video | E-commerce | UK by £547.79
-   Financial impact: £21.91
-   Reason: Best-in-class efficiency: ROAS 1.04x and CVR 6.58% within the top performer set.
-   Risk: The winner may already be near saturation, so gains may taper.
-   Confidence: Medium
+### Analyst insights
+- Blended CPA: £59.63
+- Blended ROAS: 1.93x
+- Acceptable CPA threshold: £59.63
+- Acceptable ROAS threshold: 1.93x
+- Wasted spend: £9,000.00 (13.8%)
 
-## Guardrails
-- Prefer within-platform optimization before any cross-channel budget moves.
-- Cross-channel comparisons can be misleading because unit economics differ by platform, format, and funnel stage.
+### Top 10% performers
+- Brand Search | Exact (3.90x)
+
+### Bottom 20% performers
+- LinkedIn ABM (0.84x)
+
+## Strategist
+- Move £3,600.00 from Non-Brand Search | Core to Brand Search | Exact | Budget change: £3,600.00 | Reason: Shifts spend from the weaker campaign into the stronger one while staying within the same platform where possible. Addressing critique: The move assumes Non-Brand Search | Core is structurally weak rather than temporarily noisy.
+  - Addresses: Recent underperformance may not persist.
+  - Addresses: Campaign-level rollups can hide ad-level or audience-level pockets of strength.
+  - Addresses: Platform attribution windows may overstate the destination campaign's advantage.
+- Pause or cut LinkedIn ABM by £2,250.00 | Budget change: £2,250.00 | Reason: This campaign sits above the acceptable CPA threshold and should give up budget first. Addressing critique: The pause logic relies heavily on CPA alone and may miss upper-funnel value.
+  - Addresses: High CPA always means low value.
+  - Addresses: The dataset does not include margin, lag, or assisted conversion data.
+  - Addresses: Last-click bias could make the campaign look worse than it is.
+- Scale Brand Search | Exact by £1,800.00 | Budget change: £1,800.00 | Reason: This campaign clears the profile threshold on CPA and ROAS, so it is the best candidate for extra budget. Addressing critique: The scale decision assumes past efficiency will hold at a larger spend level.
+  - Addresses: Winning at current spend guarantees scaling efficiency.
+  - Addresses: The sample is small enough that one campaign can dominate the ranking.
+  - Addresses: ROAS may be inflated if conversion lag is unresolved.
 
 ## Critic
-- Attribution quality can distort the winner/loser ranking.
-- Budget shifts should stay measured if conversion volume is low or seasonal demand is changing.
-- A high-CPA campaign may still be strategically valuable if it drives the right customers.
-- Cross-channel comparisons can be misleading when platform mix, audience intent, and funnel stage differ.
+- Move £3,600.00 from Non-Brand Search | Core to Brand Search | Exact: The move assumes Non-Brand Search | Core is structurally weak rather than temporarily noisy.
+  - Flawed assumption: Recent underperformance may not persist.
+  - Weak signal: Campaign-level rollups can hide ad-level or audience-level pockets of strength.
+  - Attribution risk: Platform attribution windows may overstate the destination campaign's advantage.
+- Pause or cut LinkedIn ABM by £2,250.00: The pause logic relies heavily on CPA alone and may miss upper-funnel value.
+  - Flawed assumption: High CPA always means low value.
+  - Weak signal: The dataset does not include margin, lag, or assisted conversion data.
+  - Attribution risk: Last-click bias could make the campaign look worse than it is.
+- Scale Brand Search | Exact by £1,800.00: The scale decision assumes past efficiency will hold at a larger spend level.
+  - Flawed assumption: Winning at current spend guarantees scaling efficiency.
+  - Weak signal: The sample is small enough that one campaign can dominate the ranking.
+  - Attribution risk: ROAS may be inflated if conversion lag is unresolved.
 
-### Missing inputs
-- Need margin data to judge true profitability.
-- Need conversion lag and attribution window details before aggressive scaling.
-- Need creative-level breakdown to isolate why some campaigns underperform.
+## Decisions
+1. Action: Move £3,600.00 from Non-Brand Search | Core to Brand Search | Exact
+   Financial impact (£): £3,600.00
+   Reason: Shifts spend from the weaker campaign into the stronger one while staying within the same platform where possible. Addressing critique: The move assumes Non-Brand Search | Core is structurally weak rather than temporarily noisy.
+   Risk: Platform attribution windows may overstate the destination campaign's advantage.
+   Confidence: Medium
+2. Action: Pause or cut LinkedIn ABM by £2,250.00
+   Financial impact (£): £2,250.00
+   Reason: This campaign sits above the acceptable CPA threshold and should give up budget first. Addressing critique: The pause logic relies heavily on CPA alone and may miss upper-funnel value.
+   Risk: Last-click bias could make the campaign look worse than it is.
+   Confidence: Medium
+3. Action: Scale Brand Search | Exact by £1,800.00
+   Financial impact (£): £1,800.00
+   Reason: This campaign clears the profile threshold on CPA and ROAS, so it is the best candidate for extra budget. Addressing critique: The scale decision assumes past efficiency will hold at a larger spend level.
+   Risk: ROAS may be inflated if conversion lag is unresolved.
+   Confidence: Medium
+
+## Flow control
+- Required flow enforced: Analyst → Strategist → Critic → Strategist (refinement) → Synthesizer.
+- Only one critique round is used, and only one strategist refinement follows it.
+- Maximum total passes = 2 strategist passes; no recursive or open-ended loops.
+- Synthesizer is final authority; no post-output revision path exists.
 
 ---
 
 ## Quick summary
-- Campaigns: 407
-- Spend: £11,108,749.09
-- CTR: 3.85%
-- CPC: £1.56
-- CPA: £33.99
-- CVR: 4.58%
-- Wasted spend: £2,702,956.84
-- Wasted spend share: 24.33%
-- ROAS: 4.88x
+- Campaigns: 6
+- Spend: £65,000.00
+- CTR: 1.98%
+- CPC: £2.54
+- CPA: £59.63
+- CVR: 4.25%
+- Wasted spend: £9,000.00
+- Wasted spend share: 13.85%
+- ROAS: 1.93x
 
 ## Output trace
+### Profile Interpreter
+- profile stage: balanced
+
 ### Analyst
-- Best ROAS: TikTok Ads | Search | E-commerce | Germany (41.75x)
-- Weakest ROAS: Google Ads | Display | E-commerce | UK (0.22x)
-- Highest CPA: Google Ads | Video | E-commerce | Australia (£254.30)
-- Highest spend: Google Ads | Shopping | Fintech | Australia (£135,409.45)
-- Waste signal: 24.3% of spend sits in campaigns with CPA > 2x average
-- Top 10% performers by ROAS: Google Ads | Search | EdTech | UAE (1.10x)
-- Bottom 20% performers by ROAS: Google Ads | Display | E-commerce | UK (0.22x)
+- Blended CPA: £59.63
+- Blended ROAS: 1.93x
+- Acceptable CPA threshold: £59.63
+- Acceptable ROAS threshold: 1.93x
+- Wasted spend: £9,000.00 (13.8%)
 
-### Decisions
-1. Decision: Reallocate £2,753.99 from Google Ads | Display | E-commerce | UK to Google Ads | Search | EdTech | UAE | Financial impact: £2,423.51 | Reason: Within-platform move keeps the comparison like-for-like and uses a bottom cohort source versus a top cohort destination. | Risk: If the source campaign is temporarily weak, trimming may cut future recovery. | Confidence: Medium
-2. Decision: Reduce Google Ads | Video | E-commerce | Australia by £3,826.45 | Financial impact: £1,913.22 | Reason: That campaign is part of the 24.3% wasted-spend bucket (CPA > 2x average). | Risk: Cutting too quickly can suppress volume before the signal is fully understood. | Confidence: High
-3. Decision: Increase Meta Ads | Video | E-commerce | UK by £547.79 | Financial impact: £21.91 | Reason: Best-in-class efficiency: ROAS 1.04x and CVR 6.58% within the top performer set. | Risk: The winner may already be near saturation, so gains may taper. | Confidence: Medium
-
-### Guardrails
-- Prefer within-platform optimization before any cross-channel budget moves.
-- Cross-channel comparisons can be misleading because unit economics differ by platform, format, and funnel stage.
+### Strategist
+- Move £3,600.00 from Non-Brand Search | Core to Brand Search | Exact | Budget change: £3,600.00
+  - Addresses: Recent underperformance may not persist.
+  - Addresses: Campaign-level rollups can hide ad-level or audience-level pockets of strength.
+  - Addresses: Platform attribution windows may overstate the destination campaign's advantage.
+- Pause or cut LinkedIn ABM by £2,250.00 | Budget change: £2,250.00
+  - Addresses: High CPA always means low value.
+  - Addresses: The dataset does not include margin, lag, or assisted conversion data.
+  - Addresses: Last-click bias could make the campaign look worse than it is.
+- Scale Brand Search | Exact by £1,800.00 | Budget change: £1,800.00
+  - Addresses: Winning at current spend guarantees scaling efficiency.
+  - Addresses: The sample is small enough that one campaign can dominate the ranking.
+  - Addresses: ROAS may be inflated if conversion lag is unresolved.
 
 ### Critic
-- Attribution quality can distort the winner/loser ranking.
-- Budget shifts should stay measured if conversion volume is low or seasonal demand is changing.
-- A high-CPA campaign may still be strategically valuable if it drives the right customers.
-- Cross-channel comparisons can be misleading when platform mix, audience intent, and funnel stage differ.
+- Move £3,600.00 from Non-Brand Search | Core to Brand Search | Exact: The move assumes Non-Brand Search | Core is structurally weak rather than temporarily noisy.
+- Pause or cut LinkedIn ABM by £2,250.00: The pause logic relies heavily on CPA alone and may miss upper-funnel value.
+- Scale Brand Search | Exact by £1,800.00: The scale decision assumes past efficiency will hold at a larger spend level.
 
-### Missing inputs
-- Need margin data to judge true profitability.
-- Need conversion lag and attribution window details before aggressive scaling.
-- Need creative-level breakdown to isolate why some campaigns underperform.
+### Flow limits
+- One critique round only
+- One strategist refinement only
+- No open discussion or recursive loop
+- Synthesizer ends the flow
+
+## Evaluation
+- Actionability score: 5/5 — All 3 decisions are concrete actions with explicit implementation steps.
+- Financial clarity score: 5/5 — Each decision includes a numeric £ amount and visible budget direction.
+- Risk awareness score: 5/5 — The critic adds distinct risks to every decision.
+- Confidence quality score: 5/5 — Confidence is calibrated and not overstated.
+- Overall decision quality score: 5/5 — The output is structured, specific, and client-ready enough for a first-pass decision packet.
