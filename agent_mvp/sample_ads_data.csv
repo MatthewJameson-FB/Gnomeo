@@ -1,0 +1,7 @@
+campaign,platform,monthly_spend_gbp,impressions,clicks,conversions,revenue_gbp,notes
+Brand Search | Exact,Google Ads,12000,180000,5400,420,46800,High intent branded search
+Non-Brand Search | Core,Google Ads,18000,320000,6400,260,28600,Main acquisition campaign
+Meta Prospecting | Broad,Meta Ads,15000,410000,8200,140,15400,Upper-funnel prospecting
+Meta Retargeting,Meta Ads,6000,98000,2600,180,20250,Warm audience retargeting
+LinkedIn ABM,LinkedIn Ads,9000,76000,1140,38,7600,High CPC but strategic accounts
+YouTube Remarketing,YouTube Ads,5000,210000,1890,52,6890,Assists conversion journey
