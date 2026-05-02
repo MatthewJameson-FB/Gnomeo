@@ -642,7 +642,7 @@ def critic(analysis: Dict[str, Any], strategy: Dict[str, Any], context: Dict[str
 # Layer 5: SYNTHESIZER
 # -----------------------------
 
-def synthesizer(analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Dict[str, Any]) -> str:
+def synthesizer(analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Dict[str, Any], simulation: Dict[str, Any]) -> str:
     summary = analysis["summary"]
     perf = analysis["performance"]
     thresholds: Thresholds = analysis["thresholds"]
@@ -704,7 +704,7 @@ def synthesizer(analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Di
         lines.append(f"  - Attribution risk: {item['attribution_risk']}")
 
     lines.extend(["", "## Decisions"])
-    for idx, (action, challenge) in enumerate(zip(strategy["actions"][:3], critique["critiques"][:3]), 1):
+    for idx, (action, challenge, sim) in enumerate(zip(strategy["actions"][:3], critique["critiques"][:3], simulation["decisions"][:3]), 1):
         if action["type"] == "pause":
             risk = challenge["attribution_risk"]
             confidence = "Medium"
@@ -719,7 +719,7 @@ def synthesizer(analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Di
             confidence = "Low"
 
         lines.append(
-            f"{idx}. Action: {action['action']}\n   £ amount: {fmt_money(action.get('amount', 0.0))}\n   Reason: {action['reason']}\n   Expected impact: {action.get('expected_impact', 'n/a')}\n   Timeframe: {action.get('timeframe', 'n/a')}\n   Risk: {risk}\n   What to monitor: {action.get('monitor', 'n/a')}\n   Confidence: {confidence}"
+            f"{idx}. Action: {action['action']}\n   £ amount: {fmt_money(action.get('amount', 0.0))}\n   Reason: {action['reason']}\n   Expected impact: {action.get('expected_impact', 'n/a')}\n   Timeframe: {action.get('timeframe', 'n/a')}\n   Source ROAS: {fmt_x(sim['source_roas'])}\n   Target ROAS: {fmt_x(sim['target_roas'])}\n   Delta: {fmt_x(sim['delta'])}\n   Theoretical gain: {fmt_money(sim['theoretical_gain'])}\n   Adjusted expected gain: {fmt_money(sim['adjusted_expected_gain'])}\n   Assumptions: {', '.join(sim['assumptions'])}\n   Risk: {risk}\n   What to monitor: {action.get('monitor', 'n/a')}\n   Confidence: {confidence}"
         )
 
     lines.extend(["", "## Flow control"])
@@ -727,6 +727,24 @@ def synthesizer(analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Di
     lines.append("- Only one critique round is used, and only one strategist refinement follows it.")
     lines.append("- Maximum total passes = 2 strategist passes; no recursive or open-ended loops.")
     lines.append("- Synthesizer is final authority; no post-output revision path exists.")
+
+    lines.extend(["", "## Case study", "### Before"])
+    before = simulation["before"]
+    lines.append(f"- Revenue: {fmt_money(before['revenue'])}")
+    lines.append(f"- ROAS: {fmt_x(before['roas'])}")
+    lines.append(f"- CPA: {fmt_money(before['cpa'])}")
+    lines.extend(["", "### After (projected)"])
+    after = simulation["after"]
+    lines.append(f"- Revenue: {fmt_money(after['revenue'])}")
+    lines.append(f"- ROAS: {fmt_x(after['roas'])}")
+    lines.append(f"- CPA: {fmt_money(after['cpa'])}")
+    lines.append(f"- Total theoretical gain: {fmt_money(simulation['total_theoretical_gain'])}")
+    lines.append(f"- Total adjusted expected gain: {fmt_money(simulation['total_expected_gain'])}")
+    lines.extend(["", "### Assumptions"])
+    for item in simulation["decisions"][:3]:
+        lines.append(f"- {item['action']}")
+        for assumption in item["assumptions"]:
+            lines.append(f"  - {assumption}")
 
     return "\n".join(lines)
 
@@ -855,6 +873,120 @@ def enrich_decisions(strategy: Dict[str, Any], analysis: Dict[str, Any]) -> Dict
     return {**strategy, "actions": enriched_actions[:3]}
 
 
+def normalize_name(value: str) -> str:
+    return (value or "").strip().lower().replace("|", " ").replace("  ", " ")
+
+
+def build_campaign_lookup(campaigns: List[Campaign]) -> Dict[str, Campaign]:
+    lookup: Dict[str, Campaign] = {}
+    for campaign in campaigns:
+        keys = {
+            normalize_name(campaign.campaign),
+            normalize_name(campaign.campaign_group),
+            normalize_name(campaign.platform),
+        }
+        for key in keys:
+            if key and key not in lookup:
+                lookup[key] = campaign
+    return lookup
+
+
+def pick_best_target(campaigns: List[Campaign], exclude: Optional[Campaign] = None) -> Optional[Campaign]:
+    candidates = [c for c in campaigns if c is not exclude and c.roas is not None]
+    return max(candidates, key=lambda c: c.roas or -1.0, default=None)
+
+
+def simulate_decision(action: Dict[str, Any], analysis: Dict[str, Any], campaigns: List[Campaign]) -> Dict[str, Any]:
+    lookup = build_campaign_lookup(campaigns)
+    summary = analysis["summary"]
+    total_revenue = summary["total_revenue"] or 0.0
+    spend = float(action.get("amount", 0.0) or 0.0)
+
+    source = None
+    target = None
+    if action["type"] == "reallocate":
+        source = lookup.get(normalize_name(action.get("from", "")))
+        target = lookup.get(normalize_name(action.get("to", "")))
+    elif action["type"] == "pause":
+        source = lookup.get(normalize_name(action.get("campaign", "")))
+        target = pick_best_target(campaigns, exclude=source)
+    elif action["type"] == "scale":
+        source = None
+        target = lookup.get(normalize_name(action.get("campaign", "")))
+
+    source_roas = source.roas if source and source.roas is not None else summary.get("overall_roas") or 0.0
+    target_roas = target.roas if target and target.roas is not None else summary.get("overall_roas") or source_roas
+    if action["type"] == "scale" and source is None:
+        source_roas = summary.get("overall_roas") or 0.0
+
+    delta = target_roas - source_roas
+    theoretical_gain = spend * delta
+    expected_gain = theoretical_gain * 0.5
+
+    current_revenue = total_revenue
+    projected_revenue = max(0.0, current_revenue + expected_gain)
+    projected_roas = (projected_revenue / summary["total_spend"]) if summary["total_spend"] else None
+
+    if action["type"] == "pause":
+        assumptions = [
+            "Savings are redeployed or retained rather than fully lost.",
+            "The paused campaign is genuinely below the account average.",
+            "No major attribution lag hides the true value of the source campaign.",
+        ]
+    elif action["type"] == "scale":
+        assumptions = [
+            "The campaign keeps a similar efficiency profile when budget rises.",
+            "No saturation or audience fatigue appears inside the test window.",
+            "Extra spend converts at roughly the same ROAS as current spend, then is discounted by the realism factor.",
+        ]
+    else:
+        assumptions = [
+            "The destination campaign can absorb extra spend without a sharp ROAS drop.",
+            "The source campaign can lose spend without creating hidden downstream value loss.",
+            "The 50% realism factor covers normal execution slippage.",
+        ]
+
+    return {
+        **action,
+        "source_campaign": label(source) if source else action.get("from") or action.get("campaign") or "account baseline",
+        "target_campaign": label(target) if target else action.get("to") or action.get("campaign") or "account baseline",
+        "source_roas": source_roas,
+        "target_roas": target_roas,
+        "delta": delta,
+        "theoretical_gain": theoretical_gain,
+        "adjusted_expected_gain": expected_gain,
+        "current_revenue": current_revenue,
+        "projected_revenue": projected_revenue,
+        "projected_roas": projected_roas,
+        "assumptions": assumptions,
+    }
+
+
+def simulate_projections(strategy: Dict[str, Any], analysis: Dict[str, Any]) -> Dict[str, Any]:
+    decisions = [simulate_decision(action, analysis, analysis["campaigns"]) for action in strategy["actions"][:3]]
+    total_expected_gain = sum(item["adjusted_expected_gain"] for item in decisions)
+    summary = analysis["summary"]
+    projected_revenue = max(0.0, (summary["total_revenue"] or 0.0) + total_expected_gain)
+    projected_roas = (projected_revenue / summary["total_spend"]) if summary["total_spend"] else None
+    projected_cpa = (summary["total_spend"] / summary["total_conversions"]) if summary["total_conversions"] else None
+
+    return {
+        "decisions": decisions,
+        "before": {
+            "revenue": summary["total_revenue"] or 0.0,
+            "roas": summary["overall_roas"],
+            "cpa": summary["overall_cpa"],
+        },
+        "after": {
+            "revenue": projected_revenue,
+            "roas": projected_roas,
+            "cpa": projected_cpa,
+        },
+        "total_theoretical_gain": sum(item["theoretical_gain"] for item in decisions),
+        "total_expected_gain": total_expected_gain,
+    }
+
+
 def render_evaluation(evaluation: Dict[str, Any]) -> str:
     lines = ["## Evaluation"]
     labels = [
@@ -882,7 +1014,7 @@ def print_section(title: str, body: Any) -> None:
         print(body)
 
 
-def build_report_text(source: Path, analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Dict[str, Any], final: str, evaluation: Dict[str, Any]) -> str:
+def build_report_text(source: Path, analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Dict[str, Any], final: str, evaluation: Dict[str, Any], simulation: Dict[str, Any]) -> str:
     summary = analysis["summary"]
     perf = analysis["performance"]
     lines = [
@@ -925,6 +1057,23 @@ def build_report_text(source: Path, analysis: Dict[str, Any], strategy: Dict[str
     lines.append("- No open discussion or recursive loop")
     lines.append("- Synthesizer ends the flow")
     lines.extend(["", render_evaluation(evaluation)])
+    lines.extend(["", "## Case study", "### Before"])
+    before = simulation["before"]
+    lines.append(f"- Revenue: {fmt_money(before['revenue'])}")
+    lines.append(f"- ROAS: {fmt_x(before['roas'])}")
+    lines.append(f"- CPA: {fmt_money(before['cpa'])}")
+    lines.extend(["", "### After (projected)"])
+    after = simulation["after"]
+    lines.append(f"- Revenue: {fmt_money(after['revenue'])}")
+    lines.append(f"- ROAS: {fmt_x(after['roas'])}")
+    lines.append(f"- CPA: {fmt_money(after['cpa'])}")
+    lines.append(f"- Total theoretical gain: {fmt_money(simulation['total_theoretical_gain'])}")
+    lines.append(f"- Total adjusted expected gain: {fmt_money(simulation['total_expected_gain'])}")
+    lines.extend(["", "### Assumptions"])
+    for item in simulation["decisions"][:3]:
+        lines.append(f"- {item['action']}")
+        for assumption in item["assumptions"]:
+            lines.append(f"  - {assumption}")
     lines.append("")
     return "\n".join(lines)
 
@@ -949,9 +1098,10 @@ def main() -> None:
     critique = critic(analysis, strategy_initial, profile_context)
     strategy_refined = strategist_refinement(analysis, strategy_initial, critique, profile_context)
     enriched_strategy = enrich_decisions(strategy_refined, analysis)
-    final = synthesizer(analysis, enriched_strategy, critique)
+    simulation = simulate_projections(enriched_strategy, analysis)
+    final = synthesizer(analysis, enriched_strategy, critique, simulation)
     evaluation = evaluate_output(enriched_strategy, critique)
-    report = build_report_text(source, analysis, enriched_strategy, critique, final, evaluation)
+    report = build_report_text(source, analysis, enriched_strategy, critique, final, evaluation, simulation)
 
     OUTPUT_REPORT.write_text(report, encoding="utf-8")
 
