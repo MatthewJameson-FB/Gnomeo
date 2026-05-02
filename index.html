@@ -36,6 +36,7 @@
       }
 
       img { display: block; max-width: 100%; }
+      svg { display: block; }
       a { color: inherit; }
 
       .wrap {
@@ -69,7 +70,7 @@
         min-width: 0;
       }
 
-      img.logo {
+      .logo {
         object-fit: contain;
         width: 28px;
         height: 28px;
@@ -77,7 +78,7 @@
         flex: 0 0 auto;
       }
 
-      img.hero-logo {
+      .hero-logo {
         object-fit: contain;
         width: 96px;
         height: 96px;
@@ -86,14 +87,14 @@
         flex: 0 0 auto;
       }
 
-      .brand:hover img.logo,
-      .brand:hover img.hero-logo,
-      .footer-brand:hover img.logo {
+      .brand:hover .logo,
+      .brand:hover .hero-logo,
+      .footer-brand:hover .logo {
         transform: scale(1.02);
         opacity: 0.95;
       }
 
-      .footer-brand img.logo {
+      .footer-brand .logo {
         width: 20px;
         height: 20px;
         opacity: 0.8;
@@ -379,8 +380,8 @@
           border-radius: 18px;
           margin-inline: 0;
         }
-        img.logo { width: 24px; height: 24px; }
-        img.hero-logo { width: 80px; height: 80px; margin-left: 0; margin-right: 0; }
+        .logo { width: 24px; height: 24px; }
+        .hero-logo { width: 80px; height: 80px; margin-left: 0; margin-right: 0; }
         .brand-name { font-size: 0.98rem; }
         .nav-cta { min-height: 38px; padding-inline: 14px; font-size: 13px; }
 
@@ -396,9 +397,22 @@
   </head>
   <body>
     <div class="wrap">
+      <svg aria-hidden="true" focusable="false" width="0" height="0" style="position:absolute; left:-9999px; overflow:hidden">
+        <symbol id="gnomeo-mark" viewBox="0 0 512 512">
+          <path d="M118 182c14-64 63-108 138-124 40-9 100-9 140 0 75 16 124 60 138 124-35-24-75-37-119-37-48 0-78 14-99 38-21-24-51-38-99-38-44 0-84 13-119 37Z" fill="#111827"/>
+          <circle cx="256" cy="264" r="94" fill="#ffffff"/>
+          <circle cx="227" cy="253" r="13" fill="#111827"/>
+          <circle cx="285" cy="253" r="13" fill="#111827"/>
+          <path d="M216 301c12 10 26 15 40 15s28-5 40-15" stroke="#111827" stroke-width="16" stroke-linecap="round"/>
+          <path d="M154 358c22 45 57 70 102 70s80-25 102-70" fill="#111827"/>
+          <path d="M176 344c18 14 48 22 80 22s62-8 80-22" stroke="#ffffff" stroke-width="10" stroke-linecap="round" opacity="0.95"/>
+          <path d="M192 390c15 8 38 12 64 12s49-4 64-12" stroke="#ffffff" stroke-width="10" stroke-linecap="round" opacity="0.9"/>
+          <path d="M210 336c10 8 28 14 46 14s36-6 46-14" stroke="#111827" stroke-width="10" stroke-linecap="round" opacity="0.95"/>
+        </symbol>
+      </svg>
       <header class="site-nav">
         <a class="brand" href="#top" aria-label="Gnomeo home">
-          <img class="logo" src="./gnomeo-logo.png" alt="" aria-hidden="true" />
+          <svg class="logo" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><use href="#gnomeo-mark"></use></svg>
           <span class="brand-name">Gnomeo</span>
         </a>
         <a class="nav-cta" href="#contact">Request analysis</a>
@@ -406,7 +420,7 @@
 
       <main id="top">
         <section class="hero">
-          <img class="hero-logo" src="./gnomeo-logo.png" alt="" aria-hidden="true" />
+          <svg class="hero-logo" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><use href="#gnomeo-mark"></use></svg>
           <div class="eyebrow">AI campaign analysis</div>
           <h1>Stop wasting ad spend. Get better campaign decisions in 24 hours.</h1>
           <p class="subhead">
@@ -498,7 +512,7 @@
 
       <footer>
         <div class="footer-brand">
-          <img class="logo" src="./gnomeo-logo.png" alt="" aria-hidden="true" />
+          <svg class="logo" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><use href="#gnomeo-mark"></use></svg>
           <strong>Gnomeo</strong>
         </div>
         <p class="footer-note">© 2026 Gnomeo</p>
