@@ -1002,6 +1002,74 @@ def render_evaluation(evaluation: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def render_key_decisions(strategy: Dict[str, Any], critique: Dict[str, Any], simulation: Dict[str, Any]) -> str:
+    lines = ["## Key Decisions (3)"]
+    for idx, (action, challenge, sim) in enumerate(zip(strategy["actions"][:3], critique["critiques"][:3], simulation["decisions"][:3]), 1):
+        risk = challenge["attribution_risk"] if action["type"] in {"pause", "scale", "reallocate"} else challenge["weak_signal"]
+        lines.extend([
+            f"### {idx}. {action['action']}",
+            f"- £ amount: {fmt_money(action.get('amount', 0.0))}",
+            f"- Reason: {action['reason']}",
+            f"- Expected impact: {action.get('expected_impact', 'n/a')}",
+            f"- Timeframe: {action.get('timeframe', 'n/a')}",
+            f"- Theoretical gain: {fmt_money(sim['theoretical_gain'])}",
+            f"- Adjusted expected gain: {fmt_money(sim['adjusted_expected_gain'])}",
+            f"- Risk: {risk}",
+            f"- What to monitor: {action.get('monitor', 'n/a')}",
+            f"- Confidence: {action.get('confidence', 'Medium')}",
+        ])
+    return "\n".join(lines)
+
+
+def render_expected_impact(simulation: Dict[str, Any], perf: Dict[str, Any]) -> str:
+    before = simulation["before"]
+    after = simulation["after"]
+    lines = ["## Expected Impact"]
+    lines.extend([
+        f"- Wasted spend: {fmt_money(perf['wasted_spend'])} ({perf['wasted_share'] * 100:.1f}%)" if perf["wasted_share"] is not None else f"- Wasted spend: {fmt_money(perf['wasted_spend'])}",
+        f"- Projected uplift: {fmt_money(simulation['total_expected_gain'])} adjusted revenue gain",
+        f"- Revenue: {fmt_money(before['revenue'])} → {fmt_money(after['revenue'])}",
+        f"- ROAS: {fmt_x(before['roas'])} → {fmt_x(after['roas'])}",
+    ])
+    return "\n".join(lines)
+
+
+def render_key_insights(analysis: Dict[str, Any], simulation: Dict[str, Any]) -> str:
+    summary = analysis["summary"]
+    perf = analysis["performance"]
+    lines = ["## Key Insights"]
+    lines.extend([
+        f"- Wasted spend: {fmt_money(perf['wasted_spend'])} ({perf['wasted_share'] * 100:.1f}%)" if perf["wasted_share"] is not None else f"- Wasted spend: {fmt_money(perf['wasted_spend'])}",
+        f"- Account ROAS is {fmt_x(summary['overall_roas'])} before changes.",
+        f"- Projected uplift from the three decisions: {fmt_money(simulation['total_expected_gain'])} adjusted revenue gain.",
+    ])
+    return "\n".join(lines)
+
+
+def render_methodology(analysis: Dict[str, Any], simulation: Dict[str, Any]) -> str:
+    lines = ["## Methodology"]
+    lines.extend([
+        "- Analyst segments data by campaign group and benchmarks CPA / ROAS.",
+        "- Strategist proposes one reallocation, one pause, and one scale move.",
+        "- Critic challenges each move once; strategist refines once.",
+        "- Projections use ROAS deltas, budget shift size, and a 0.5 realism factor.",
+        "- Outputs are estimates, not guarantees.",
+    ])
+    return "\n".join(lines)
+
+
+def render_confidence_limitations(evaluation: Dict[str, Any], critique: Dict[str, Any], simulation: Dict[str, Any]) -> str:
+    lines = ["## Confidence & Limitations"]
+    lines.extend([
+        f"- Confidence quality: {evaluation['confidence_quality']['score']}/5.",
+        "- Brand scaling may face saturation, so ROAS gains may not scale linearly.",
+        "- Cross-channel moves are directional and can be distorted by attribution windows.",
+        "- Forecasts assume the source and target campaigns behave roughly like their current ROAS profile.",
+        "- The projection is a simplified estimate, not a guarantee of revenue uplift.",
+    ])
+    return "\n".join(lines)
+
+
 def print_section(title: str, body: Any) -> None:
     print(f"\n=== {title} ===")
     if isinstance(body, dict):
@@ -1018,63 +1086,40 @@ def build_report_text(source: Path, analysis: Dict[str, Any], strategy: Dict[str
     summary = analysis["summary"]
     perf = analysis["performance"]
     lines = [
-        f"Source file: `{source.name}`",
+        "# Gnomeo Agent MVP Report",
+        f"Source: `{source.name}`",
         "",
-        final,
-        "",
-        "---",
-        "",
-        "## Quick summary",
-        f"- Campaigns: {summary['campaign_count']}",
+        "## Executive Summary",
+        f"- Campaigns analyzed: {summary['campaign_count']}",
         f"- Spend: {fmt_money(summary['total_spend'])}",
-        f"- CTR: {fmt_rate(summary['overall_ctr'])}",
-        f"- CPC: {fmt_money(summary['overall_cpc'])}",
-        f"- CPA: {fmt_money(summary['overall_cpa'])}",
-        f"- CVR: {fmt_rate(summary['overall_cvr'])}",
-        f"- Wasted spend: {fmt_money(perf['wasted_spend'])}",
-        f"- Wasted spend share: {fmt_rate(perf['wasted_share']) if perf['wasted_share'] is not None else 'n/a'}",
+        f"- Wasted spend: {fmt_money(perf['wasted_spend'])} ({perf['wasted_share'] * 100:.1f}%)" if perf["wasted_share"] is not None else f"- Wasted spend: {fmt_money(perf['wasted_spend'])}",
+        f"- Current ROAS: {fmt_x(summary['overall_roas'])}",
+        f"- Projected uplift: {fmt_money(simulation['total_expected_gain'])} adjusted revenue gain",
+        "",
+        render_key_decisions(strategy, critique, simulation),
+        "",
+        render_expected_impact(simulation, perf),
+        "",
+        render_key_insights(analysis, simulation),
+        "",
+        render_methodology(analysis, simulation),
+        "",
+        render_confidence_limitations(evaluation, critique, simulation),
+        "",
+        "## Case Study",
+        "### Before",
+        f"- Revenue: {fmt_money(simulation['before']['revenue'])}",
+        f"- ROAS: {fmt_x(simulation['before']['roas'])}",
+        f"- CPA: {fmt_money(simulation['before']['cpa'])}",
+        "",
+        "### After (projected)",
+        f"- Revenue: {fmt_money(simulation['after']['revenue'])}",
+        f"- ROAS: {fmt_x(simulation['after']['roas'])}",
+        f"- CPA: {fmt_money(simulation['after']['cpa'])}",
+        f"- Total theoretical gain: {fmt_money(simulation['total_theoretical_gain'])}",
+        f"- Total adjusted expected gain: {fmt_money(simulation['total_expected_gain'])}",
+        "",
     ]
-    if summary.get("revenue_available"):
-        lines.append(f"- ROAS: {fmt_x(summary['overall_roas'])}")
-    else:
-        lines.append("- ROAS: n/a (revenue missing)")
-
-    lines.extend(["", "## Output trace", "### Profile Interpreter"])
-    lines.append(f"- {analysis['thresholds'].source}")
-    lines.extend(["", "### Analyst"])
-    lines.extend(f"- {item}" for item in analysis["insights"])
-    lines.extend(["", "### Strategist"])
-    for item in strategy["actions"][:3]:
-        lines.append(f"- {item['action']} | Budget change: {fmt_money(item.get('amount', 0.0))}")
-        if item.get("addressed_criticisms"):
-            lines.extend(f"  - Addresses: {crit}" for crit in item["addressed_criticisms"])
-    lines.extend(["", "### Critic"])
-    for item in critique["critiques"][:3]:
-        lines.append(f"- {item['action']}: {item['challenge']}")
-    lines.extend(["", "### Flow limits"])
-    lines.append("- One critique round only")
-    lines.append("- One strategist refinement only")
-    lines.append("- No open discussion or recursive loop")
-    lines.append("- Synthesizer ends the flow")
-    lines.extend(["", render_evaluation(evaluation)])
-    lines.extend(["", "## Case study", "### Before"])
-    before = simulation["before"]
-    lines.append(f"- Revenue: {fmt_money(before['revenue'])}")
-    lines.append(f"- ROAS: {fmt_x(before['roas'])}")
-    lines.append(f"- CPA: {fmt_money(before['cpa'])}")
-    lines.extend(["", "### After (projected)"])
-    after = simulation["after"]
-    lines.append(f"- Revenue: {fmt_money(after['revenue'])}")
-    lines.append(f"- ROAS: {fmt_x(after['roas'])}")
-    lines.append(f"- CPA: {fmt_money(after['cpa'])}")
-    lines.append(f"- Total theoretical gain: {fmt_money(simulation['total_theoretical_gain'])}")
-    lines.append(f"- Total adjusted expected gain: {fmt_money(simulation['total_expected_gain'])}")
-    lines.extend(["", "### Assumptions"])
-    for item in simulation["decisions"][:3]:
-        lines.append(f"- {item['action']}")
-        for assumption in item["assumptions"]:
-            lines.append(f"  - {assumption}")
-    lines.append("")
     return "\n".join(lines)
 
 

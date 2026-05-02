@@ -1,211 +1,71 @@
-Source file: `sample_ads_data.csv`
-
 # Gnomeo Agent MVP Report
+Source: `sample_ads_data.csv`
 
-## Profile Interpreter
-- Stage: balanced
-- Objective: efficient growth
-- Acceptable CPA: £59.63
-- Acceptable ROAS: 1.93x
-
-## Analyst
+## Executive Summary
 - Campaigns analyzed: 6
-- Total spend: £65,000.00
-- Total impressions: 1,294,000
-- Total clicks: 25,630
-- Total conversions: 1,090
-- CTR: 1.98%
-- CPC: £2.54
-- CPA: £59.63
-- CVR: 4.25%
-- Wasted spend (>2x acceptable CPA): £9,000.00
-- Wasted spend share: 13.85%
-- Revenue: £125,540.00
-- ROAS: 1.93x
-
-### Campaign-group segmentation
-- Non-Brand Search: spend £18,000.00, CPA £69.23, ROAS 1.59x, campaigns 1
-- Meta Prospecting: spend £15,000.00, CPA £107.14, ROAS 1.03x, campaigns 1
-- Brand Search: spend £12,000.00, CPA £28.57, ROAS 3.90x, campaigns 1
-- LinkedIn ABM: spend £9,000.00, CPA £236.84, ROAS 0.84x, campaigns 1
-- Meta Retargeting: spend £6,000.00, CPA £33.33, ROAS 3.38x, campaigns 1
-- YouTube Remarketing: spend £5,000.00, CPA £96.15, ROAS 1.38x, campaigns 1
-
-### Analyst insights
-- Blended CPA: £59.63
-- Blended ROAS: 1.93x
-- Acceptable CPA threshold: £59.63
-- Acceptable ROAS threshold: 1.93x
-- Wasted spend: £9,000.00 (13.8%)
-
-### Top 10% performers
-- Brand Search | Exact (3.90x)
-
-### Bottom 20% performers
-- LinkedIn ABM (0.84x)
-
-## Strategist
-- Move £3,600.00 from Non-Brand Search | Core to Brand Search | Exact | £ amount: £3,600.00 | Reason: Shifts spend from the weaker campaign into the stronger one while staying within the same platform where possible. Addressing critique: The move assumes Non-Brand Search | Core is structurally weak rather than temporarily noisy.
-  - Addresses: Recent underperformance may not persist.
-  - Addresses: Campaign-level rollups can hide ad-level or audience-level pockets of strength.
-  - Addresses: Platform attribution windows may overstate the destination campaign's advantage.
-- Pause or cut LinkedIn ABM by £2,250.00 | £ amount: £2,250.00 | Reason: This campaign sits above the acceptable CPA threshold and should give up budget first. Addressing critique: The pause logic relies heavily on CPA alone and may miss upper-funnel value.
-  - Addresses: High CPA always means low value.
-  - Addresses: The dataset does not include margin, lag, or assisted conversion data.
-  - Addresses: Last-click bias could make the campaign look worse than it is.
-- Scale Brand Search | Exact by £1,800.00 | £ amount: £1,800.00 | Reason: This campaign clears the profile threshold on CPA and ROAS, so it is the best candidate for extra budget. Addressing critique: The scale decision assumes past efficiency will hold at a larger spend level.
-  - Addresses: Winning at current spend guarantees scaling efficiency.
-  - Addresses: The sample is small enough that one campaign can dominate the ranking.
-  - Addresses: ROAS may be inflated if conversion lag is unresolved.
-
-## Critic
-- Move £3,600.00 from Non-Brand Search | Core to Brand Search | Exact: The move assumes Non-Brand Search | Core is structurally weak rather than temporarily noisy.
-  - Flawed assumption: Recent underperformance may not persist.
-  - Weak signal: Campaign-level rollups can hide ad-level or audience-level pockets of strength.
-  - Attribution risk: Platform attribution windows may overstate the destination campaign's advantage.
-- Pause or cut LinkedIn ABM by £2,250.00: The pause logic relies heavily on CPA alone and may miss upper-funnel value.
-  - Flawed assumption: High CPA always means low value.
-  - Weak signal: The dataset does not include margin, lag, or assisted conversion data.
-  - Attribution risk: Last-click bias could make the campaign look worse than it is.
-- Scale Brand Search | Exact by £1,800.00: The scale decision assumes past efficiency will hold at a larger spend level.
-  - Flawed assumption: Winning at current spend guarantees scaling efficiency.
-  - Weak signal: The sample is small enough that one campaign can dominate the ranking.
-  - Attribution risk: ROAS may be inflated if conversion lag is unresolved.
-
-## Decisions
-1. Action: Move £3,600.00 from Non-Brand Search | Core to Brand Search | Exact
-   £ amount: £3,600.00
-   Reason: Shifts spend from the weaker campaign into the stronger one while staying within the same platform where possible. Addressing critique: The move assumes Non-Brand Search | Core is structurally weak rather than temporarily noisy.
-   Expected impact: Expected to shift spend toward a stronger efficiency pocket, improving CPA modestly while keeping conversions broadly stable.
-   Timeframe: 7–14 days
-   Source ROAS: 1.59x
-   Target ROAS: 3.90x
-   Delta: 2.31x
-   Theoretical gain: £8,320.00
-   Adjusted expected gain: £4,160.00
-   Assumptions: The destination campaign can absorb extra spend without a sharp ROAS drop., The source campaign can lose spend without creating hidden downstream value loss., The 50% realism factor covers normal execution slippage.
-   Risk: Platform attribution windows may overstate the destination campaign's advantage.
-   What to monitor: Monitor CPA and ROAS on both source and destination campaigns, plus total conversions.
-   Confidence: Medium
-2. Action: Pause or cut LinkedIn ABM by £2,250.00
-   £ amount: £2,250.00
-   Reason: This campaign sits above the acceptable CPA threshold and should give up budget first. Addressing critique: The pause logic relies heavily on CPA alone and may miss upper-funnel value.
-   Expected impact: Expected to improve efficiency by removing a weak spend pocket, with a possible short-term dip in volume.
-   Timeframe: 3–7 days
-   Source ROAS: 0.84x
-   Target ROAS: 3.90x
-   Delta: 3.06x
-   Theoretical gain: £6,875.00
-   Adjusted expected gain: £3,437.50
-   Assumptions: Savings are redeployed or retained rather than fully lost., The paused campaign is genuinely below the account average., No major attribution lag hides the true value of the source campaign.
-   Risk: Last-click bias could make the campaign look worse than it is.
-   What to monitor: Monitor total conversions, blended CPA, and whether any lost volume shows up elsewhere.
-   Confidence: Medium
-3. Action: Scale Brand Search | Exact by £1,800.00
-   £ amount: £1,800.00
-   Reason: This campaign clears the profile threshold on CPA and ROAS, so it is the best candidate for extra budget. Addressing critique: The scale decision assumes past efficiency will hold at a larger spend level.
-   Expected impact: Expected to increase conversions by roughly 10–15% with CPA staying broadly stable if the additional budget absorbs cleanly.
-   Timeframe: 7–14 days
-   Source ROAS: 1.93x
-   Target ROAS: 3.90x
-   Delta: 1.97x
-   Theoretical gain: £3,543.51
-   Adjusted expected gain: £1,771.75
-   Assumptions: The campaign keeps a similar efficiency profile when budget rises., No saturation or audience fatigue appears inside the test window., Extra spend converts at roughly the same ROAS as current spend, then is discounted by the realism factor.
-   Risk: ROAS may be inflated if conversion lag is unresolved.
-   What to monitor: Monitor CPA, ROAS, conversion volume, and impression share for saturation.
-   Confidence: Medium
-
-## Flow control
-- Required flow enforced: Analyst → Strategist → Critic → Strategist (refinement) → Synthesizer.
-- Only one critique round is used, and only one strategist refinement follows it.
-- Maximum total passes = 2 strategist passes; no recursive or open-ended loops.
-- Synthesizer is final authority; no post-output revision path exists.
-
-## Case study
-### Before
-- Revenue: £125,540.00
-- ROAS: 1.93x
-- CPA: £59.63
-
-### After (projected)
-- Revenue: £134,909.25
-- ROAS: 2.08x
-- CPA: £59.63
-- Total theoretical gain: £18,738.51
-- Total adjusted expected gain: £9,369.25
-
-### Assumptions
-- Move £3,600.00 from Non-Brand Search | Core to Brand Search | Exact
-  - The destination campaign can absorb extra spend without a sharp ROAS drop.
-  - The source campaign can lose spend without creating hidden downstream value loss.
-  - The 50% realism factor covers normal execution slippage.
-- Pause or cut LinkedIn ABM by £2,250.00
-  - Savings are redeployed or retained rather than fully lost.
-  - The paused campaign is genuinely below the account average.
-  - No major attribution lag hides the true value of the source campaign.
-- Scale Brand Search | Exact by £1,800.00
-  - The campaign keeps a similar efficiency profile when budget rises.
-  - No saturation or audience fatigue appears inside the test window.
-  - Extra spend converts at roughly the same ROAS as current spend, then is discounted by the realism factor.
-
----
-
-## Quick summary
-- Campaigns: 6
 - Spend: £65,000.00
-- CTR: 1.98%
-- CPC: £2.54
-- CPA: £59.63
-- CVR: 4.25%
-- Wasted spend: £9,000.00
-- Wasted spend share: 13.85%
-- ROAS: 1.93x
-
-## Output trace
-### Profile Interpreter
-- profile stage: balanced
-
-### Analyst
-- Blended CPA: £59.63
-- Blended ROAS: 1.93x
-- Acceptable CPA threshold: £59.63
-- Acceptable ROAS threshold: 1.93x
 - Wasted spend: £9,000.00 (13.8%)
+- Current ROAS: 1.93x
+- Projected uplift: £9,369.25 adjusted revenue gain
 
-### Strategist
-- Move £3,600.00 from Non-Brand Search | Core to Brand Search | Exact | Budget change: £3,600.00
-  - Addresses: Recent underperformance may not persist.
-  - Addresses: Campaign-level rollups can hide ad-level or audience-level pockets of strength.
-  - Addresses: Platform attribution windows may overstate the destination campaign's advantage.
-- Pause or cut LinkedIn ABM by £2,250.00 | Budget change: £2,250.00
-  - Addresses: High CPA always means low value.
-  - Addresses: The dataset does not include margin, lag, or assisted conversion data.
-  - Addresses: Last-click bias could make the campaign look worse than it is.
-- Scale Brand Search | Exact by £1,800.00 | Budget change: £1,800.00
-  - Addresses: Winning at current spend guarantees scaling efficiency.
-  - Addresses: The sample is small enough that one campaign can dominate the ranking.
-  - Addresses: ROAS may be inflated if conversion lag is unresolved.
+## Key Decisions (3)
+### 1. Move £3,600.00 from Non-Brand Search | Core to Brand Search | Exact
+- £ amount: £3,600.00
+- Reason: Shifts spend from the weaker campaign into the stronger one while staying within the same platform where possible. Addressing critique: The move assumes Non-Brand Search | Core is structurally weak rather than temporarily noisy.
+- Expected impact: Expected to shift spend toward a stronger efficiency pocket, improving CPA modestly while keeping conversions broadly stable.
+- Timeframe: 7–14 days
+- Theoretical gain: £8,320.00
+- Adjusted expected gain: £4,160.00
+- Risk: Platform attribution windows may overstate the destination campaign's advantage.
+- What to monitor: Monitor CPA and ROAS on both source and destination campaigns, plus total conversions.
+- Confidence: Medium
+### 2. Pause or cut LinkedIn ABM by £2,250.00
+- £ amount: £2,250.00
+- Reason: This campaign sits above the acceptable CPA threshold and should give up budget first. Addressing critique: The pause logic relies heavily on CPA alone and may miss upper-funnel value.
+- Expected impact: Expected to improve efficiency by removing a weak spend pocket, with a possible short-term dip in volume.
+- Timeframe: 3–7 days
+- Theoretical gain: £6,875.00
+- Adjusted expected gain: £3,437.50
+- Risk: Last-click bias could make the campaign look worse than it is.
+- What to monitor: Monitor total conversions, blended CPA, and whether any lost volume shows up elsewhere.
+- Confidence: Medium
+### 3. Scale Brand Search | Exact by £1,800.00
+- £ amount: £1,800.00
+- Reason: This campaign clears the profile threshold on CPA and ROAS, so it is the best candidate for extra budget. Addressing critique: The scale decision assumes past efficiency will hold at a larger spend level.
+- Expected impact: Expected to increase conversions by roughly 10–15% with CPA staying broadly stable if the additional budget absorbs cleanly.
+- Timeframe: 7–14 days
+- Theoretical gain: £3,543.51
+- Adjusted expected gain: £1,771.75
+- Risk: ROAS may be inflated if conversion lag is unresolved.
+- What to monitor: Monitor CPA, ROAS, conversion volume, and impression share for saturation.
+- Confidence: Medium
 
-### Critic
-- Move £3,600.00 from Non-Brand Search | Core to Brand Search | Exact: The move assumes Non-Brand Search | Core is structurally weak rather than temporarily noisy.
-- Pause or cut LinkedIn ABM by £2,250.00: The pause logic relies heavily on CPA alone and may miss upper-funnel value.
-- Scale Brand Search | Exact by £1,800.00: The scale decision assumes past efficiency will hold at a larger spend level.
+## Expected Impact
+- Wasted spend: £9,000.00 (13.8%)
+- Projected uplift: £9,369.25 adjusted revenue gain
+- Revenue: £125,540.00 → £134,909.25
+- ROAS: 1.93x → 2.08x
 
-### Flow limits
-- One critique round only
-- One strategist refinement only
-- No open discussion or recursive loop
-- Synthesizer ends the flow
+## Key Insights
+- Wasted spend: £9,000.00 (13.8%)
+- Account ROAS is 1.93x before changes.
+- Projected uplift from the three decisions: £9,369.25 adjusted revenue gain.
 
-## Evaluation
-- Actionability score: 5/5 — All 3 decisions are concrete actions with explicit implementation steps.
-- Financial clarity score: 5/5 — Each decision includes a numeric £ amount and visible budget direction.
-- Risk awareness score: 5/5 — The critic adds distinct risks to every decision.
-- Confidence quality score: 5/5 — Confidence is calibrated and not overstated.
-- Overall decision quality score: 5/5 — The output is structured, specific, and client-ready enough for a first-pass decision packet.
+## Methodology
+- Analyst segments data by campaign group and benchmarks CPA / ROAS.
+- Strategist proposes one reallocation, one pause, and one scale move.
+- Critic challenges each move once; strategist refines once.
+- Projections use ROAS deltas, budget shift size, and a 0.5 realism factor.
+- Outputs are estimates, not guarantees.
 
-## Case study
+## Confidence & Limitations
+- Confidence quality: 5/5.
+- Brand scaling may face saturation, so ROAS gains may not scale linearly.
+- Cross-channel moves are directional and can be distorted by attribution windows.
+- Forecasts assume the source and target campaigns behave roughly like their current ROAS profile.
+- The projection is a simplified estimate, not a guarantee of revenue uplift.
+
+## Case Study
 ### Before
 - Revenue: £125,540.00
 - ROAS: 1.93x
@@ -217,17 +77,3 @@ Source file: `sample_ads_data.csv`
 - CPA: £59.63
 - Total theoretical gain: £18,738.51
 - Total adjusted expected gain: £9,369.25
-
-### Assumptions
-- Move £3,600.00 from Non-Brand Search | Core to Brand Search | Exact
-  - The destination campaign can absorb extra spend without a sharp ROAS drop.
-  - The source campaign can lose spend without creating hidden downstream value loss.
-  - The 50% realism factor covers normal execution slippage.
-- Pause or cut LinkedIn ABM by £2,250.00
-  - Savings are redeployed or retained rather than fully lost.
-  - The paused campaign is genuinely below the account average.
-  - No major attribution lag hides the true value of the source campaign.
-- Scale Brand Search | Exact by £1,800.00
-  - The campaign keeps a similar efficiency profile when budget rises.
-  - No saturation or audience fatigue appears inside the test window.
-  - Extra spend converts at roughly the same ROAS as current spend, then is discounted by the realism factor.
