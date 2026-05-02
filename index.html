@@ -9,17 +9,18 @@
       content="Free pilot campaign analysis for businesses spending £1k–£50k/month on ads."
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/logo.svg" />
+    <link rel="apple-touch-icon" href="/public/gnomeo-logo.png" />
     <style>
       :root {
-        --bg: #f8fafc;
-        --panel: #ffffff;
-        --text: #111827;
-        --muted: #4b5563;
-        --line: #e5e7eb;
-        --accent: #111827;
-        --accent-hover: #0f172a;
-        --shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        --bg: #f6f7fb;
+        --surface: #ffffff;
+        --surface-soft: rgba(255, 255, 255, 0.78);
+        --text: #0f172a;
+        --muted: #5b6474;
+        --line: #e6e8ef;
+        --accent: #0f172a;
+        --accent-soft: #1d4ed8;
+        --shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
         color-scheme: light;
       }
 
@@ -28,62 +29,107 @@
       body {
         margin: 0;
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: linear-gradient(180deg, #f8fafc 0%, #ffffff 32%);
         color: var(--text);
+        background:
+          radial-gradient(circle at top, rgba(29, 78, 216, 0.08), transparent 34%),
+          linear-gradient(180deg, #f8fafc 0%, #ffffff 36%, #f7f8fb 100%);
         line-height: 1.5;
       }
 
+      img { display: block; max-width: 100%; }
+      a { color: inherit; }
+
       .wrap {
-        max-width: 1120px;
+        max-width: 1160px;
         margin: 0 auto;
-        padding: 24px 20px 40px;
+        padding: 18px 20px 32px;
       }
 
-      header {
+      .site-nav {
+        position: sticky;
+        top: 0;
+        z-index: 20;
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        justify-content: space-between;
         gap: 16px;
-        padding: 10px 0 28px;
+        padding: 16px 18px;
+        margin: 0 -8px 18px;
+        border: 1px solid rgba(230, 232, 239, 0.85);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.78);
+        backdrop-filter: blur(14px);
+        box-shadow: 0 8px 30px rgba(15, 23, 42, 0.05);
       }
 
       .brand {
         display: inline-flex;
         align-items: center;
-        font-weight: 700;
-        letter-spacing: -0.03em;
+        gap: 12px;
+        text-decoration: none;
+        min-width: 0;
       }
 
-      .brand-mark {
-        width: 220px;
-        height: auto;
-        display: inline-block;
-        flex: 0 0 auto;
+      .brand-logo {
+        width: auto;
+        object-fit: contain;
+        transition: transform 160ms ease, opacity 160ms ease;
       }
 
-      .brand-mark,
-      .brand-mark svg {
-        display: block;
-        width: 100%;
-        height: auto;
+      .brand:hover .brand-logo {
+        transform: scale(1.02);
+        opacity: 0.95;
       }
 
-      .badge {
-        border: 1px solid var(--line);
+      .brand-logo--nav { height: 32px; width: 32px; }
+      .brand-logo--hero { height: 104px; width: 104px; }
+      .brand-logo--footer { height: 24px; width: 24px; opacity: 0.8; }
+
+      .brand-name {
+        font-weight: 750;
+        letter-spacing: -0.04em;
+        font-size: 1rem;
+        white-space: nowrap;
+      }
+
+      .nav-cta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        padding: 0 16px;
         border-radius: 999px;
-        padding: 10px 14px;
-        color: var(--muted);
-        background: rgba(255,255,255,0.85);
-        backdrop-filter: blur(6px);
-        box-shadow: var(--shadow);
+        text-decoration: none;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--text);
         font-size: 14px;
+        font-weight: 650;
+        transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+      }
+      .nav-cta:hover {
+        transform: translateY(-1px);
+        border-color: #cfd6e3;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
       }
 
       .hero {
-        text-align: center;
-        padding: 40px 0 28px;
-        max-width: 840px;
+        max-width: 920px;
         margin: 0 auto;
+        padding: 28px 0 16px;
+        text-align: center;
+      }
+
+      .hero-mark {
+        display: grid;
+        place-items: center;
+        width: 132px;
+        height: 132px;
+        margin: 0 auto 22px;
+        border-radius: 32px;
+        border: 1px solid rgba(230, 232, 239, 0.9);
+        background: rgba(255, 255, 255, 0.88);
+        box-shadow: var(--shadow);
       }
 
       .eyebrow {
@@ -93,18 +139,18 @@
         padding: 8px 12px;
         border-radius: 999px;
         border: 1px solid var(--line);
-        background: #fff;
-        color: #111827;
+        background: rgba(255, 255, 255, 0.88);
+        color: var(--accent-soft);
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 650;
         margin-bottom: 18px;
       }
 
       h1 {
         margin: 0;
-        font-size: clamp(2.4rem, 6vw, 4.8rem);
-        line-height: 0.98;
-        letter-spacing: -0.055em;
+        font-size: clamp(2.5rem, 7vw, 5rem);
+        line-height: 0.96;
+        letter-spacing: -0.06em;
       }
 
       .subhead {
@@ -137,10 +183,10 @@
         text-decoration: none;
         cursor: pointer;
         transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
-        box-shadow: 0 10px 18px rgba(37, 99, 235, 0.18);
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.14);
       }
-      .button:hover { background: var(--accent-hover); transform: translateY(-1px); }
-      .button:focus-visible { outline: 3px solid rgba(37,99,235,0.25); outline-offset: 3px; }
+      .button:hover { background: #111c31; transform: translateY(-1px); }
+      .button:focus-visible { outline: 3px solid rgba(29, 78, 216, 0.25); outline-offset: 3px; }
 
       .ghost {
         background: #fff;
@@ -189,9 +235,9 @@
       .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
       .card {
-        background: var(--panel);
+        background: var(--surface);
         border: 1px solid var(--line);
-        border-radius: 22px;
+        border-radius: 24px;
         padding: 22px;
         box-shadow: var(--shadow);
       }
@@ -211,7 +257,7 @@
       }
       .ordered .card {
         position: relative;
-        padding-top: 50px;
+        padding-top: 52px;
       }
       .ordered .card::before {
         counter-increment: step;
@@ -219,10 +265,10 @@
         position: absolute;
         top: 20px;
         left: 20px;
-        width: 28px;
-        height: 28px;
+        width: 30px;
+        height: 30px;
         border-radius: 999px;
-        background: #eff6ff;
+        background: #eef4ff;
         color: #1d4ed8;
         display: grid;
         place-items: center;
@@ -231,8 +277,7 @@
       }
 
       .offer {
-        text-align: center;
-        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+        background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
       }
 
       .offer strong {
@@ -280,7 +325,7 @@
       input:focus {
         outline: none;
         border-color: #93c5fd;
-        box-shadow: 0 0 0 4px rgba(59,130,246,0.10);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
       }
 
       .form-actions {
@@ -305,7 +350,17 @@
         padding: 28px 0 8px;
         color: var(--muted);
         font-size: 14px;
-        text-align: center;
+      }
+
+      .footer-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .footer-note {
+        margin: 0;
       }
 
       @media (max-width: 920px) {
@@ -316,39 +371,50 @@
       }
 
       @media (max-width: 640px) {
-        header {
-          flex-direction: column;
-          align-items: flex-start;
+        .wrap { padding-inline: 14px; }
+        .site-nav {
+          padding: 14px 14px;
+          border-radius: 18px;
+          margin-inline: 0;
         }
+        .brand-logo--nav { height: 24px; width: 24px; }
+        .brand-name { font-size: 0.98rem; }
+        .nav-cta { min-height: 38px; padding-inline: 14px; font-size: 13px; }
 
         .hero {
-          padding-top: 24px;
+          padding-top: 20px;
           text-align: left;
         }
-
-        .cta-row {
-          justify-content: flex-start;
+        .hero-mark {
+          width: 96px;
+          height: 96px;
+          margin-left: 0;
+          margin-right: 0;
+          margin-bottom: 18px;
+          border-radius: 24px;
         }
-
-        .trust {
-          text-align: left;
-        }
-
+        .brand-logo--hero { height: 78px; width: 78px; }
+        .cta-row { justify-content: flex-start; }
+        .trust { text-align: left; }
         .grid-4 { grid-template-columns: 1fr; }
       }
     </style>
   </head>
   <body>
     <div class="wrap">
-      <header>
-        <div class="brand" aria-label="Gnomeo">
-          <img class="brand-mark" src="/logo.svg" alt="Gnomeo" />
-        </div>
-        <div class="badge">Pilot landing page</div>
+      <header class="site-nav">
+        <a class="brand" href="#top" aria-label="Gnomeo home">
+          <img class="brand-logo brand-logo--nav" src="/public/gnomeo-logo.png" alt="" aria-hidden="true" />
+          <span class="brand-name">Gnomeo</span>
+        </a>
+        <a class="nav-cta" href="#contact">Request analysis</a>
       </header>
 
-      <main>
+      <main id="top">
         <section class="hero">
+          <div class="hero-mark" aria-hidden="true">
+            <img class="brand-logo brand-logo--hero" src="/public/gnomeo-logo.png" alt="" />
+          </div>
           <div class="eyebrow">AI campaign analysis</div>
           <h1>Stop wasting ad spend. Get better campaign decisions in 24 hours.</h1>
           <p class="subhead">
@@ -367,10 +433,10 @@
             <p>Simple, practical recommendations that help you spend smarter.</p>
           </div>
           <div class="grid-4">
-            <div class="card"><h3>Find where you're losing money</h3></div>
-            <div class="card"><h3>Identify what to scale</h3></div>
-            <div class="card"><h3>Get clear, actionable changes</h3></div>
-            <div class="card"><h3>Human-reviewed before anything is changed</h3></div>
+            <div class="card"><h3>Find where you're losing money</h3><p>Spot leakage fast and focus on the parts that actually move performance.</p></div>
+            <div class="card"><h3>Identify what to scale</h3><p>Get a clear view of which campaigns deserve more budget and attention.</p></div>
+            <div class="card"><h3>Get clear, actionable changes</h3><p>Every recommendation is written to be practical, not vague.</p></div>
+            <div class="card"><h3>Human-reviewed before anything changes</h3><p>No automation roulette — the final call stays with a person.</p></div>
           </div>
         </section>
 
@@ -379,9 +445,9 @@
             <h2>How it works</h2>
           </div>
           <div class="grid-3 ordered">
-            <div class="card"><h3>You share your campaign data</h3></div>
-            <div class="card"><h3>Our AI team analyzes and debates</h3></div>
-            <div class="card"><h3>You get a prioritized action plan</h3></div>
+            <div class="card"><h3>You share your campaign data</h3><p>We review the numbers and the structure, not just surface-level metrics.</p></div>
+            <div class="card"><h3>Our AI team analyzes and debates</h3><p>Different agents check the work so the output feels measured and useful.</p></div>
+            <div class="card"><h3>You get a prioritized action plan</h3><p>Clear next steps, ranked by likely impact and implementation effort.</p></div>
           </div>
         </section>
 
@@ -438,7 +504,13 @@
         </section>
       </main>
 
-      <footer>© 2026 Gnomeo</footer>
+      <footer>
+        <div class="footer-brand">
+          <img class="brand-logo brand-logo--footer" src="/public/gnomeo-logo.png" alt="" aria-hidden="true" />
+          <strong>Gnomeo</strong>
+        </div>
+        <p class="footer-note">© 2026 Gnomeo</p>
+      </footer>
     </div>
 
     <script>
