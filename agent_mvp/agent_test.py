@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import html
 from dataclasses import dataclass, field
 from pathlib import Path
 from statistics import median
@@ -11,6 +12,7 @@ from typing import Any, Dict, List, Optional
 ROOT = Path(__file__).resolve().parent
 DEFAULT_INPUT = ROOT / "sample_ads_data.csv"
 OUTPUT_REPORT = ROOT / "output_report.md"
+OUTPUT_HTML = ROOT / "output_report.html"
 
 COLUMN_ALIASES = {
     "campaign": ["campaign"],
@@ -1070,6 +1072,147 @@ def render_confidence_limitations(evaluation: Dict[str, Any], critique: Dict[str
     return "\n".join(lines)
 
 
+def esc(value: Any) -> str:
+    return html.escape(str(value), quote=True)
+
+
+def render_html_report(source: Path, analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Dict[str, Any], evaluation: Dict[str, Any], simulation: Dict[str, Any]) -> str:
+    summary = analysis["summary"]
+    perf = analysis["performance"]
+
+    decision_cards = []
+    for action, challenge, sim in zip(strategy["actions"][:3], critique["critiques"][:3], simulation["decisions"][:3]):
+        risk = challenge["attribution_risk"] if action["type"] in {"pause", "scale", "reallocate"} else challenge["weak_signal"]
+        decision_cards.append(f"""
+        <div class="card decision">
+          <div class="decision-title">{esc(action['action'])}</div>
+          <div class="meta"><span class="pill">{esc(fmt_money(action.get('amount', 0.0)))}</span> <span class="pill subtle">{esc(action.get('confidence', 'Medium'))}</span></div>
+          <p><strong>Expected impact:</strong> {esc(action.get('expected_impact', 'n/a'))}</p>
+          <p><strong>Reason:</strong> {esc(action['reason'])}</p>
+          <p><strong>Theoretical gain:</strong> {esc(fmt_money(sim['theoretical_gain']))} · <strong>Adjusted expected gain:</strong> {esc(fmt_money(sim['adjusted_expected_gain']))}</p>
+          <p><strong>Risk:</strong> {esc(risk)}</p>
+          <p><strong>Monitor:</strong> {esc(action.get('monitor', 'n/a'))}</p>
+        </div>
+        """)
+
+    eval_items = "".join(
+        f"<div class='eval-item'><span>{esc(label)}</span><strong>{evaluation[key]['score']}/5</strong><p>{esc(evaluation[key]['reason'])}</p></div>"
+        for label, key in [
+            ("Actionability", "actionability"),
+            ("Financial clarity", "financial_clarity"),
+            ("Risk awareness", "risk_awareness"),
+            ("Confidence quality", "confidence_quality"),
+            ("Overall decision quality", "overall"),
+        ]
+    )
+
+    html_doc = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gnomeo Agent MVP Report</title>
+  <style>
+    :root {{ --bg:#fff; --text:#101828; --muted:#667085; --line:#eaecf0; --soft:#f9fafb; --accent:#2563eb; }}
+    * {{ box-sizing:border-box; }}
+    body {{ margin:0; background:var(--bg); color:var(--text); font:15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
+    .wrap {{ max-width:800px; margin:0 auto; padding:40px 24px 72px; }}
+    .hero {{ margin-bottom:32px; }}
+    h1 {{ font-size:30px; line-height:1.15; margin:0 0 10px; }}
+    h2 {{ font-size:22px; margin:36px 0 16px; }}
+    h3 {{ font-size:18px; margin:0 0 10px; }}
+    p {{ margin:0 0 10px; }}
+    .muted {{ color:var(--muted); }}
+    .summary {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin:18px 0 0; }}
+    .stat, .card, .eval-item {{ border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 1px 2px rgba(16,24,40,.04); }}
+    .stat {{ padding:16px; }}
+    .stat .label {{ color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }}
+    .stat .value {{ font-size:22px; font-weight:700; margin-top:4px; }}
+    .section {{ margin-top:10px; }}
+    .cards {{ display:grid; gap:16px; }}
+    .card {{ padding:18px; }}
+    .decision-title {{ font-weight:700; font-size:16px; margin-bottom:10px; }}
+    .meta {{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }}
+    .pill {{ display:inline-block; padding:5px 10px; border-radius:999px; background:#eff6ff; color:#1d4ed8; font-weight:700; }}
+    .pill.subtle {{ background:var(--soft); color:var(--muted); font-weight:600; }}
+    .highlight {{ color:var(--accent); font-weight:800; }}
+    .grid-2 {{ display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); }}
+    .eval-grid {{ display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); }}
+    .eval-item {{ padding:14px; }}
+    .eval-item span {{ color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }}
+    .eval-item strong {{ display:block; font-size:20px; margin:4px 0 8px; }}
+    .section-block {{ margin-top:24px; }}
+    ul {{ margin:8px 0 0 20px; padding:0; }}
+    li {{ margin-bottom:6px; }}
+    hr {{ border:none; border-top:1px solid var(--line); margin:24px 0; }}
+    .kpi {{ color:var(--accent); font-weight:800; }}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1>Gnomeo Agent MVP Report</h1>
+      <p class="muted">Source file: {esc(source.name)}</p>
+      <div class="summary">
+        <div class="stat"><div class="label">Campaigns</div><div class="value">{summary['campaign_count']}</div></div>
+        <div class="stat"><div class="label">Spend</div><div class="value">{esc(fmt_money(summary['total_spend']))}</div></div>
+        <div class="stat"><div class="label">Wasted spend</div><div class="value kpi">{esc(fmt_money(perf['wasted_spend']))}</div><div class="muted">{esc(f'{perf["wasted_share"]*100:.1f}%') if perf['wasted_share'] is not None else 'n/a'}</div></div>
+        <div class="stat"><div class="label">Current ROAS</div><div class="value">{esc(fmt_x(summary['overall_roas']))}</div></div>
+        <div class="stat"><div class="label">Projected uplift</div><div class="value kpi">{esc(fmt_money(simulation['total_expected_gain']))}</div></div>
+      </div>
+    </div>
+
+    <section class="section-block">
+      <h2>Executive Summary</h2>
+      <p>Three budget moves are recommended. The current account is at {esc(fmt_x(summary['overall_roas']))} ROAS, with {esc(fmt_money(perf['wasted_spend']))} ({esc(f'{perf["wasted_share"]*100:.1f}%') if perf['wasted_share'] is not None else 'n/a'}) of spend sitting in CPA outliers.</p>
+      <p>The projected adjusted revenue uplift is <span class="highlight">{esc(fmt_money(simulation['total_expected_gain']))}</span>.</p>
+    </section>
+
+    <section class="section-block">
+      <h2>Key Decisions</h2>
+      <div class="cards">{''.join(decision_cards)}</div>
+    </section>
+
+    <section class="section-block">
+      <h2>Expected Impact</h2>
+      <div class="grid-2">
+        <div class="card"><p><strong class="highlight">Wasted spend:</strong> {esc(fmt_money(perf['wasted_spend']))} ({esc(f'{perf["wasted_share"]*100:.1f}%') if perf['wasted_share'] is not None else 'n/a'})</p><p><strong>Projected uplift:</strong> {esc(fmt_money(simulation['total_expected_gain']))}</p></div>
+        <div class="card"><p><strong>Before:</strong> revenue {esc(fmt_money(simulation['before']['revenue']))}, ROAS {esc(fmt_x(simulation['before']['roas']))}</p><p><strong>After (projected):</strong> revenue {esc(fmt_money(simulation['after']['revenue']))}, ROAS {esc(fmt_x(simulation['after']['roas']))}</p></div>
+      </div>
+    </section>
+
+    <section class="section-block">
+      <h2>Key Insights</h2>
+      <ul>
+        <li>Wasted spend is <span class="highlight">{esc(fmt_money(perf['wasted_spend']))}</span> ({esc(f'{perf["wasted_share"]*100:.1f}%') if perf['wasted_share'] is not None else 'n/a'}).</li>
+        <li>The account currently runs at {esc(fmt_x(summary['overall_roas']))} ROAS.</li>
+        <li>The projected uplift from the three decisions is <span class="highlight">{esc(fmt_money(simulation['total_expected_gain']))}</span>.</li>
+      </ul>
+    </section>
+
+    <section class="section-block">
+      <h2>Methodology</h2>
+      <ul>
+        <li>Analyst segments by campaign group and benchmarks CPA / ROAS.</li>
+        <li>Strategist proposes one reallocation, one pause, and one scale move.</li>
+        <li>Critic challenges each move once; strategist refines once.</li>
+        <li>Projection uses ROAS delta × budget shift × 0.5 realism factor.</li>
+      </ul>
+    </section>
+
+    <section class="section-block">
+      <h2>Confidence &amp; Limitations</h2>
+      <div class="eval-grid">{eval_items}</div>
+      <div class="card" style="margin-top:12px;">
+        <p>Forecasts assume current ROAS relationships hold approximately. Brand scaling can saturate, cross-channel moves can be distorted by attribution, and the projection is an estimate — not a guarantee.</p>
+      </div>
+    </section>
+  </div>
+</body>
+</html>"""
+    return html_doc
+
+
 def print_section(title: str, body: Any) -> None:
     print(f"\n=== {title} ===")
     if isinstance(body, dict):
@@ -1147,13 +1290,16 @@ def main() -> None:
     final = synthesizer(analysis, enriched_strategy, critique, simulation)
     evaluation = evaluate_output(enriched_strategy, critique)
     report = build_report_text(source, analysis, enriched_strategy, critique, final, evaluation, simulation)
+    html_report = render_html_report(source, analysis, enriched_strategy, critique, evaluation, simulation)
 
     OUTPUT_REPORT.write_text(report, encoding="utf-8")
+    OUTPUT_HTML.write_text(html_report, encoding="utf-8")
 
     print("Gnomeo agent MVP test")
     print("API mode: local mock (no remote calls)")
     print(f"Data source: {source}")
     print(f"Report written: {OUTPUT_REPORT}")
+    print(f"HTML written: {OUTPUT_HTML}")
     print_section("PROFILE INTERPRETER", profile_context)
     print_section("ANALYST", analysis)
     print_section("STRATEGIST (initial)", strategy_initial)

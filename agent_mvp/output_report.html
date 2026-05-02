@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gnomeo Agent MVP Report</title>
+  <style>
+    :root { --bg:#fff; --text:#101828; --muted:#667085; --line:#eaecf0; --soft:#f9fafb; --accent:#2563eb; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .wrap { max-width:800px; margin:0 auto; padding:40px 24px 72px; }
+    .hero { margin-bottom:32px; }
+    h1 { font-size:30px; line-height:1.15; margin:0 0 10px; }
+    h2 { font-size:22px; margin:36px 0 16px; }
+    h3 { font-size:18px; margin:0 0 10px; }
+    p { margin:0 0 10px; }
+    .muted { color:var(--muted); }
+    .summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin:18px 0 0; }
+    .stat, .card, .eval-item { border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 1px 2px rgba(16,24,40,.04); }
+    .stat { padding:16px; }
+    .stat .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+    .stat .value { font-size:22px; font-weight:700; margin-top:4px; }
+    .section { margin-top:10px; }
+    .cards { display:grid; gap:16px; }
+    .card { padding:18px; }
+    .decision-title { font-weight:700; font-size:16px; margin-bottom:10px; }
+    .meta { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+    .pill { display:inline-block; padding:5px 10px; border-radius:999px; background:#eff6ff; color:#1d4ed8; font-weight:700; }
+    .pill.subtle { background:var(--soft); color:var(--muted); font-weight:600; }
+    .highlight { color:var(--accent); font-weight:800; }
+    .grid-2 { display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); }
+    .eval-grid { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); }
+    .eval-item { padding:14px; }
+    .eval-item span { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+    .eval-item strong { display:block; font-size:20px; margin:4px 0 8px; }
+    .section-block { margin-top:24px; }
+    ul { margin:8px 0 0 20px; padding:0; }
+    li { margin-bottom:6px; }
+    hr { border:none; border-top:1px solid var(--line); margin:24px 0; }
+    .kpi { color:var(--accent); font-weight:800; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1>Gnomeo Agent MVP Report</h1>
+      <p class="muted">Source file: sample_ads_data.csv</p>
+      <div class="summary">
+        <div class="stat"><div class="label">Campaigns</div><div class="value">6</div></div>
+        <div class="stat"><div class="label">Spend</div><div class="value">£65,000.00</div></div>
+        <div class="stat"><div class="label">Wasted spend</div><div class="value kpi">£9,000.00</div><div class="muted">13.8%</div></div>
+        <div class="stat"><div class="label">Current ROAS</div><div class="value">1.93x</div></div>
+        <div class="stat"><div class="label">Projected uplift</div><div class="value kpi">£9,369.25</div></div>
+      </div>
+    </div>
+
+    <section class="section-block">
+      <h2>Executive Summary</h2>
+      <p>Three budget moves are recommended. The current account is at 1.93x ROAS, with £9,000.00 (13.8%) of spend sitting in CPA outliers.</p>
+      <p>The projected adjusted revenue uplift is <span class="highlight">£9,369.25</span>.</p>
+    </section>
+
+    <section class="section-block">
+      <h2>Key Decisions</h2>
+      <div class="cards">
+        <div class="card decision">
+          <div class="decision-title">Move £3,600.00 from Non-Brand Search | Core to Brand Search | Exact</div>
+          <div class="meta"><span class="pill">£3,600.00</span> <span class="pill subtle">Medium</span></div>
+          <p><strong>Expected impact:</strong> Expected to shift spend toward a stronger efficiency pocket, improving CPA modestly while keeping conversions broadly stable.</p>
+          <p><strong>Reason:</strong> Shifts spend from the weaker campaign into the stronger one while staying within the same platform where possible. Addressing critique: The move assumes Non-Brand Search | Core is structurally weak rather than temporarily noisy.</p>
+          <p><strong>Theoretical gain:</strong> £8,320.00 · <strong>Adjusted expected gain:</strong> £4,160.00</p>
+          <p><strong>Risk:</strong> Platform attribution windows may overstate the destination campaign&#x27;s advantage.</p>
+          <p><strong>Monitor:</strong> Monitor CPA and ROAS on both source and destination campaigns, plus total conversions.</p>
+        </div>
+        
+        <div class="card decision">
+          <div class="decision-title">Pause or cut LinkedIn ABM by £2,250.00</div>
+          <div class="meta"><span class="pill">£2,250.00</span> <span class="pill subtle">Medium</span></div>
+          <p><strong>Expected impact:</strong> Expected to improve efficiency by removing a weak spend pocket, with a possible short-term dip in volume.</p>
+          <p><strong>Reason:</strong> This campaign sits above the acceptable CPA threshold and should give up budget first. Addressing critique: The pause logic relies heavily on CPA alone and may miss upper-funnel value.</p>
+          <p><strong>Theoretical gain:</strong> £6,875.00 · <strong>Adjusted expected gain:</strong> £3,437.50</p>
+          <p><strong>Risk:</strong> Last-click bias could make the campaign look worse than it is.</p>
+          <p><strong>Monitor:</strong> Monitor total conversions, blended CPA, and whether any lost volume shows up elsewhere.</p>
+        </div>
+        
+        <div class="card decision">
+          <div class="decision-title">Scale Brand Search | Exact by £1,800.00</div>
+          <div class="meta"><span class="pill">£1,800.00</span> <span class="pill subtle">Medium</span></div>
+          <p><strong>Expected impact:</strong> Expected to increase conversions by roughly 10–15% with CPA staying broadly stable if the additional budget absorbs cleanly.</p>
+          <p><strong>Reason:</strong> This campaign clears the profile threshold on CPA and ROAS, so it is the best candidate for extra budget. Addressing critique: The scale decision assumes past efficiency will hold at a larger spend level.</p>
+          <p><strong>Theoretical gain:</strong> £3,543.51 · <strong>Adjusted expected gain:</strong> £1,771.75</p>
+          <p><strong>Risk:</strong> ROAS may be inflated if conversion lag is unresolved.</p>
+          <p><strong>Monitor:</strong> Monitor CPA, ROAS, conversion volume, and impression share for saturation.</p>
+        </div>
+        </div>
+    </section>
+
+    <section class="section-block">
+      <h2>Expected Impact</h2>
+      <div class="grid-2">
+        <div class="card"><p><strong class="highlight">Wasted spend:</strong> £9,000.00 (13.8%)</p><p><strong>Projected uplift:</strong> £9,369.25</p></div>
+        <div class="card"><p><strong>Before:</strong> revenue £125,540.00, ROAS 1.93x</p><p><strong>After (projected):</strong> revenue £134,909.25, ROAS 2.08x</p></div>
+      </div>
+    </section>
+
+    <section class="section-block">
+      <h2>Key Insights</h2>
+      <ul>
+        <li>Wasted spend is <span class="highlight">£9,000.00</span> (13.8%).</li>
+        <li>The account currently runs at 1.93x ROAS.</li>
+        <li>The projected uplift from the three decisions is <span class="highlight">£9,369.25</span>.</li>
+      </ul>
+    </section>
+
+    <section class="section-block">
+      <h2>Methodology</h2>
+      <ul>
+        <li>Analyst segments by campaign group and benchmarks CPA / ROAS.</li>
+        <li>Strategist proposes one reallocation, one pause, and one scale move.</li>
+        <li>Critic challenges each move once; strategist refines once.</li>
+        <li>Projection uses ROAS delta × budget shift × 0.5 realism factor.</li>
+      </ul>
+    </section>
+
+    <section class="section-block">
+      <h2>Confidence &amp; Limitations</h2>
+      <div class="eval-grid"><div class='eval-item'><span>Actionability</span><strong>5/5</strong><p>All 3 decisions are concrete actions with explicit implementation steps.</p></div><div class='eval-item'><span>Financial clarity</span><strong>5/5</strong><p>Each decision includes a numeric £ amount and visible budget direction.</p></div><div class='eval-item'><span>Risk awareness</span><strong>5/5</strong><p>The critic adds distinct risks to every decision.</p></div><div class='eval-item'><span>Confidence quality</span><strong>5/5</strong><p>Confidence is calibrated and not overstated.</p></div><div class='eval-item'><span>Overall decision quality</span><strong>5/5</strong><p>The output is structured, specific, and client-ready enough for a first-pass decision packet.</p></div></div>
+      <div class="card" style="margin-top:12px;">
+        <p>Forecasts assume current ROAS relationships hold approximately. Brand scaling can saturate, cross-channel moves can be distorted by attribution, and the projection is an estimate — not a guarantee.</p>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
