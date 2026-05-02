@@ -18,20 +18,46 @@ That maps cleanly to:
 
 - `sample_ads_data.csv` — realistic mock campaign data
 - `agent_test.py` — local Python script that runs the four-step mock workflow
-- `README.md` — this guide
+- `output_report.md` — generated report from the latest run
+
+## What the script accepts
+
+You can run it against:
+- the bundled sample file, or
+- any CSV path you pass in
+
+It reads available columns such as:
+- `campaign`
+- `ad_set`
+- `ad`
+- `spend`
+- `impressions`
+- `clicks`
+- `conversions`
+- `revenue`
+
+It also supports a few common aliases like `monthly_spend_gbp` and `revenue_gbp`.
 
 ## How the test works
 
 The script reads the CSV, then:
-- **Analyst**: calculates ROAS, CPA, CTR, CVR, winners, losers
+- **Analyst**: calculates CTR, CPC, CPA, ROAS, winners, losers
 - **Strategist**: turns the analysis into priority actions
 - **Critic**: flags risks, attribution caveats, and missing data
-- **Synthesizer**: merges it into a final recommendation summary
+- **Synthesizer**: writes the final markdown report
 
 ## Run it
 
+### Default sample file
+
 ```bash
 python3 agent_mvp/agent_test.py
+```
+
+### Custom CSV path
+
+```bash
+python3 agent_mvp/agent_test.py /path/to/your-file.csv
 ```
 
 ## API keys
@@ -43,6 +69,11 @@ If you later wire this into live model calls, use environment variables such as:
 - `ANTHROPIC_API_KEY`
 
 Keep secrets out of the repo.
+
+## Output
+
+The run writes:
+- `agent_mvp/output_report.md`
 
 ## Notes
 
