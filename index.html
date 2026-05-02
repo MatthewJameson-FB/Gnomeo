@@ -77,13 +77,6 @@
         flex: 0 0 auto;
       }
 
-      .brand:hover img.logo,
-      .brand:hover img.hero-logo,
-      .footer-brand:hover img.logo {
-        transform: scale(1.02);
-        opacity: 0.95;
-      }
-
       img.hero-logo {
         object-fit: contain;
         width: 96px;
@@ -93,12 +86,17 @@
         flex: 0 0 auto;
       }
 
-      img.footer-logo {
-        object-fit: contain;
+      .brand:hover img.logo,
+      .brand:hover img.hero-logo,
+      .footer-brand:hover img.logo {
+        transform: scale(1.02);
+        opacity: 0.95;
+      }
+
+      .footer-brand img.logo {
         width: 20px;
         height: 20px;
         opacity: 0.8;
-        flex: 0 0 auto;
       }
 
       .brand-name {
@@ -500,7 +498,7 @@
 
       <footer>
         <div class="footer-brand">
-          <img class="logo footer-logo" src="./gnomeo-logo.png" alt="" aria-hidden="true" />
+          <img class="logo" src="./gnomeo-logo.png" alt="" aria-hidden="true" />
           <strong>Gnomeo</strong>
         </div>
         <p class="footer-note">© 2026 Gnomeo</p>
