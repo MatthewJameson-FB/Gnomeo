@@ -211,6 +211,19 @@ def fmt_x(value: Optional[float]) -> str:
     return f"{value:.2f}x"
 
 
+def safe_ratio(numerator: float, denominator: float) -> Optional[float]:
+    if not denominator:
+        return None
+    return numerator / denominator
+
+
+def percentile(items: List[Campaign], pct: float, key_fn) -> List[Campaign]:
+    if not items:
+        return []
+    count = max(1, int(round(len(items) * pct)))
+    return sorted(items, key=key_fn)[:count]
+
+
 def build_overall_summary(campaigns: List[Campaign]) -> Dict[str, Any]:
     total_spend = sum(c.spend for c in campaigns)
     total_impressions = sum(c.impressions for c in campaigns)
@@ -218,22 +231,24 @@ def build_overall_summary(campaigns: List[Campaign]) -> Dict[str, Any]:
     total_conversions = sum(c.conversions for c in campaigns)
     revenue_values = [c.revenue for c in campaigns if c.revenue is not None]
     total_revenue = sum(revenue_values) if revenue_values else None
+    weighted_cpa = safe_ratio(total_spend, total_conversions)
+    avg_cpa = weighted_cpa
 
-    summary: Dict[str, Any] = {
+    return {
         "campaign_count": len(campaigns),
         "total_spend": total_spend,
         "total_impressions": total_impressions,
         "total_clicks": total_clicks,
         "total_conversions": total_conversions,
-        "overall_ctr": total_clicks / total_impressions if total_impressions else None,
-        "overall_cpc": total_spend / total_clicks if total_clicks else None,
-        "overall_cpa": total_spend / total_conversions if total_conversions else None,
-        "overall_cvr": total_conversions / total_clicks if total_clicks else None,
+        "overall_ctr": safe_ratio(total_clicks, total_impressions),
+        "overall_cpc": safe_ratio(total_spend, total_clicks),
+        "overall_cpa": weighted_cpa,
+        "overall_cvr": safe_ratio(total_conversions, total_clicks),
         "total_revenue": total_revenue,
-        "overall_roas": (total_revenue / total_spend) if (total_revenue is not None and total_spend) else None,
+        "overall_roas": safe_ratio(total_revenue, total_spend) if total_revenue is not None else None,
         "revenue_available": total_revenue is not None,
+        "avg_cpa": avg_cpa,
     }
-    return summary
 
 
 def rank_campaigns(campaigns: List[Campaign]) -> Dict[str, List[Campaign]]:
@@ -255,9 +270,30 @@ def rank_campaigns(campaigns: List[Campaign]) -> Dict[str, List[Campaign]]:
     }
 
 
+def split_by_performance(campaigns: List[Campaign], summary: Dict[str, Any]) -> Dict[str, Any]:
+    avg_cpa = summary.get("avg_cpa") or 0.0
+    wasted = [c for c in campaigns if c.cpa is not None and avg_cpa and c.cpa > 2 * avg_cpa]
+    wasted_spend = sum(c.spend for c in wasted)
+    wasted_share = safe_ratio(wasted_spend, summary["total_spend"]) if summary["total_spend"] else None
+
+    by_roas = [c for c in campaigns if c.roas is not None]
+    top_10 = percentile(by_roas, 0.10, lambda c: c.roas)
+    bottom_20 = sorted(by_roas, key=lambda c: c.roas)[:max(1, int(round(len(by_roas) * 0.20)))] if by_roas else []
+
+    return {
+        "wasted_campaigns": wasted,
+        "wasted_spend": wasted_spend,
+        "wasted_share": wasted_share,
+        "top_10": sorted(top_10, key=lambda c: c.roas, reverse=True),
+        "bottom_20": bottom_20,
+        "avg_cpa": avg_cpa,
+    }
+
+
 def analyst(campaigns: List[Campaign]) -> Dict[str, Any]:
     summary = build_overall_summary(campaigns)
     ranks = rank_campaigns(campaigns)
+    perf = split_by_performance(campaigns, summary)
     biggest_spend = sorted(campaigns, key=lambda c: c.spend, reverse=True)[:3]
 
     flags = []
@@ -269,61 +305,106 @@ def analyst(campaigns: List[Campaign]) -> Dict[str, Any]:
         flags.append(f"Highest CPA: {label(ranks['worst_cpa'][0])} ({fmt_money(ranks['worst_cpa'][0].cpa)})")
     if biggest_spend:
         flags.append(f"Highest spend: {label(biggest_spend[0])} ({fmt_money(biggest_spend[0].spend)})")
+    if perf["wasted_share"] is not None:
+        flags.append(f"Waste signal: {perf['wasted_share']*100:.1f}% of spend sits in campaigns with CPA > 2x average")
+    if perf["top_10"]:
+        flags.append(f"Top 10% performers by ROAS: {label(perf['top_10'][0])} ({fmt_x(perf['top_10'][0].roas)})")
+    if perf["bottom_20"]:
+        flags.append(f"Bottom 20% performers by ROAS: {label(perf['bottom_20'][0])} ({fmt_x(perf['bottom_20'][0].roas)})")
 
-    return {"summary": summary, "ranks": ranks, "flags": flags, "biggest_spend": biggest_spend}
+    return {"summary": summary, "ranks": ranks, "performance": perf, "flags": flags, "biggest_spend": biggest_spend}
 
 
 def strategist(analysis: Dict[str, Any]) -> Dict[str, Any]:
-    ranks = analysis["ranks"]
-    biggest_spend = analysis["biggest_spend"]
-
-    top_spend = biggest_spend[0] if biggest_spend else None
-    best_roas = ranks["best_roas"][0] if ranks["best_roas"] else None
-    worst_cpa = ranks["worst_cpa"][0] if ranks["worst_cpa"] else None
-    best_cvr = ranks["best_cvr"][0] if ranks["best_cvr"] else None
+    summary = analysis["summary"]
+    perf = analysis["performance"]
 
     actions = []
-    if top_spend and best_roas and top_spend is not best_roas:
-        actions.append({
-            "priority": "1",
-            "action": f"Shift 10–20% of budget from {label(top_spend)} into {label(best_roas)}",
-            "reason": f"Higher return signal: {fmt_x(best_roas.roas)} vs {fmt_x(top_spend.roas)}.",
-        })
-    if worst_cpa and worst_cpa.cpa is not None:
-        actions.append({
-            "priority": str(len(actions) + 1),
-            "action": f"Reduce spend on {label(worst_cpa)} until CPA improves",
-            "reason": f"Current CPA is {fmt_money(worst_cpa.cpa)}.",
-        })
-    if best_cvr:
-        actions.append({
-            "priority": str(len(actions) + 1),
-            "action": f"Use {label(best_cvr)} as the conversion-efficiency benchmark",
-            "reason": f"Best CVR in the dataset: {fmt_rate(best_cvr.cvr)}.",
-        })
-
-    if not actions:
-        actions = [{
-            "priority": "1",
-            "action": "Prioritize the strongest conversion-efficiency campaigns",
-            "reason": "The dataset is too small or incomplete for a more aggressive recommendation.",
-        }]
-
-    experiments = [
-        "Test 3 new hooks on the highest-spend prospecting campaign.",
-        "Split branded vs non-branded search reporting.",
-        "Track assisted-conversion value for retargeting and video.",
+    guardrails = [
+        "Prefer within-platform optimization before any cross-channel budget moves.",
+        "Cross-channel comparisons can be misleading because unit economics differ by platform, format, and funnel stage.",
     ]
 
-    return {"actions": actions, "experiments": experiments}
+    platforms = sorted({c.platform for c in perf["wasted_campaigns"] if c.platform})
+    within_platform = None
+    for platform in platforms:
+        wasted_pool = [c for c in perf["wasted_campaigns"] if c.platform == platform]
+        winners_pool = [c for c in perf["top_10"] if c.platform == platform]
+        losers_pool = [c for c in perf["bottom_20"] if c.platform == platform]
+        if wasted_pool and winners_pool and losers_pool:
+            source = sorted(losers_pool, key=lambda c: c.roas or -1)[0]
+            dest = sorted(winners_pool, key=lambda c: c.roas or -1, reverse=True)[0]
+            if source is not dest:
+                within_platform = (source, dest)
+                break
 
+    if within_platform:
+        source, dest = within_platform
+        move = min(source.spend * 0.15, source.spend)
+        impact = max(0.0, move * max((dest.roas or 0) - (source.roas or 0), 0))
+        actions.append({
+            "priority": "1",
+            "action": f"Reallocate {fmt_money(move)} from {label(source)} to {label(dest)}",
+            "reason": f"Within-platform move keeps the comparison like-for-like and uses a bottom cohort source versus a top cohort destination.",
+            "impact": fmt_money(impact),
+            "risk": "If the source campaign is temporarily weak, trimming may cut future recovery.",
+            "confidence": "Medium",
+        })
+    elif perf["wasted_campaigns"]:
+        source = sorted(perf["wasted_campaigns"], key=lambda c: c.cpa or float('inf'), reverse=True)[0]
+        trim = min(source.spend * 0.15, source.spend)
+        impact = max(0.0, trim * max((source.cpa or 0) - (perf['avg_cpa'] or 0), 0) / max(1.0, source.cpa or 1.0))
+        actions.append({
+            "priority": "1",
+            "action": f"Pause or trim {label(source)} by {fmt_money(trim)}",
+            "reason": f"CPA is {fmt_money(source.cpa)} versus an average of {fmt_money(perf['avg_cpa'])}.",
+            "impact": fmt_money(impact),
+            "risk": "This assumes CPA is a good proxy for efficiency; attribution noise could mislead the cut.",
+            "confidence": "High",
+        })
+    else:
+        actions.append({
+            "priority": "1",
+            "action": "Hold budget steady and inspect the weakest campaigns first",
+            "reason": "The dataset is too mixed to recommend a safe move without extra context.",
+            "impact": "£0",
+            "risk": "Noisy data makes a budget move unsafe.",
+            "confidence": "Low",
+        })
+
+    if perf["wasted_campaigns"]:
+        worst = sorted(perf["wasted_campaigns"], key=lambda c: c.cpa or float('inf'), reverse=True)[0]
+        actions.append({
+            "priority": str(len(actions) + 1),
+            "action": f"Reduce {label(worst)} by {fmt_money(min(worst.spend * 0.10, worst.spend))}",
+            "reason": f"That campaign is part of the {perf['wasted_share']*100:.1f}% wasted-spend bucket (CPA > 2x average).",
+            "impact": fmt_money(min(worst.spend * 0.10, worst.spend) * 0.5),
+            "risk": "Cutting too quickly can suppress volume before the signal is fully understood.",
+            "confidence": "High",
+        })
+
+    best_cvr = max((c for c in perf["top_10"]), key=lambda c: c.cvr or -1, default=None)
+    if best_cvr:
+        boost = min(best_cvr.spend * 0.10, best_cvr.spend)
+        actions.append({
+            "priority": str(len(actions) + 1),
+            "action": f"Increase {label(best_cvr)} by {fmt_money(boost)}",
+            "reason": f"Best-in-class efficiency: ROAS {fmt_x(best_cvr.roas)} and CVR {fmt_rate(best_cvr.cvr)} within the top performer set.",
+            "impact": fmt_money(max(0.0, boost * max((best_cvr.roas or 0) - 1.0, 0))),
+            "risk": "The winner may already be near saturation, so gains may taper.",
+            "confidence": "Medium",
+        })
+
+    return {"actions": actions[:3], "guardrails": guardrails}
 
 def critic(analysis: Dict[str, Any], strategy: Dict[str, Any]) -> Dict[str, Any]:
     summary = analysis["summary"]
+    perf = analysis["performance"]
     risks = [
         "Attribution quality can distort the winner/loser ranking.",
         "Budget shifts should stay measured if conversion volume is low or seasonal demand is changing.",
         "A high-CPA campaign may still be strategically valuable if it drives the right customers.",
+        "Cross-channel comparisons can be misleading when platform mix, audience intent, and funnel stage differ.",
     ]
     if not summary.get("revenue_available"):
         risks.insert(0, "Revenue is missing, so ROAS cannot be used for this file.")
@@ -340,11 +421,14 @@ def critic(analysis: Dict[str, Any], strategy: Dict[str, Any]) -> Dict[str, Any]
         "risks": risks,
         "gaps": gaps,
         "recommendation": "Proceed with a measured test-and-learn budget shift.",
+        "wasted_spend": perf["wasted_spend"],
+        "wasted_share": perf["wasted_share"],
     }
-
 
 def synthesizer(analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Dict[str, Any]) -> str:
     s = analysis["summary"]
+    perf = analysis["performance"]
+    decisions = strategy["actions"][:3]
     lines = [
         "# Gnomeo Agent MVP Report",
         "",
@@ -358,12 +442,11 @@ def synthesizer(analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Di
         f"- CPC: {fmt_money(s['overall_cpc'])}",
         f"- CPA: {fmt_money(s['overall_cpa'])}",
         f"- CVR: {fmt_rate(s['overall_cvr'])}",
+        f"- Wasted spend (>2x avg CPA): {fmt_money(perf['wasted_spend'])}",
+        f"- Wasted spend share: {fmt_rate(perf['wasted_share']) if perf['wasted_share'] is not None else 'n/a'}",
     ]
     if s.get("revenue_available"):
-        lines.extend([
-            f"- Revenue: {fmt_money(s['total_revenue'])}",
-            f"- ROAS: {fmt_x(s['overall_roas'])}",
-        ])
+        lines.extend([f"- Revenue: {fmt_money(s['total_revenue'])}", f"- ROAS: {fmt_x(s['overall_roas'])}"])
     else:
         lines.append("- ROAS: n/a (revenue missing)")
 
@@ -371,22 +454,19 @@ def synthesizer(analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Di
         lines.extend(["", "### Key flags"])
         lines.extend(f"- {flag}" for flag in analysis["flags"])
 
-    lines.extend(["", "## Strategist", "### Top actions"])
-    for item in strategy["actions"]:
-        lines.append(f"- {item['priority']}. {item['action']} — {item['reason']}")
+    lines.extend(["", "## Decisions"])
+    for idx, item in enumerate(decisions, 1):
+        lines.append(
+            f"{idx}. Decision: {item['action']}\n   Financial impact: {item.get('impact', 'n/a')}\n   Reason: {item['reason']}\n   Risk: {item.get('risk', 'n/a')}\n   Confidence: {item.get('confidence', 'Medium')}"
+        )
 
-    lines.extend(["", "### Experiments"])
-    lines.extend(f"- {item}" for item in strategy["experiments"])
-
-    lines.extend(["", "## Critic", "### Risks"])
+    lines.extend(["", "## Guardrails"])
+    lines.extend(f"- {item}" for item in strategy.get("guardrails", []))
+    lines.extend(["", "## Critic"])
     lines.extend(f"- {risk}" for risk in critique["risks"])
-    lines.extend(["", "### Gaps"])
+    lines.extend(["", "### Missing inputs"])
     lines.extend(f"- {gap}" for gap in critique["gaps"])
-
-    lines.extend(["", "## Final synthesis", critique["recommendation"]])
     return "\n".join(lines)
-
-
 def print_section(title: str, body: Any) -> None:
     print(f"\n=== {title} ===")
     if isinstance(body, dict):
@@ -401,6 +481,7 @@ def print_section(title: str, body: Any) -> None:
 
 def build_report_text(source: Path, analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Dict[str, Any], final: str) -> str:
     summary = analysis["summary"]
+    perf = analysis["performance"]
     lines = [
         f"Source file: `{source.name}`",
         "",
@@ -415,25 +496,27 @@ def build_report_text(source: Path, analysis: Dict[str, Any], strategy: Dict[str
         f"- CPC: {fmt_money(summary['overall_cpc'])}",
         f"- CPA: {fmt_money(summary['overall_cpa'])}",
         f"- CVR: {fmt_rate(summary['overall_cvr'])}",
+        f"- Wasted spend: {fmt_money(perf['wasted_spend'])}",
+        f"- Wasted spend share: {fmt_rate(perf['wasted_share']) if perf['wasted_share'] is not None else 'n/a'}",
     ]
     if summary.get("revenue_available"):
-        lines.extend([f"- ROAS: {fmt_x(summary['overall_roas'])}"])
+        lines.append(f"- ROAS: {fmt_x(summary['overall_roas'])}")
     else:
-        lines.extend(["- ROAS: n/a (revenue missing)"])
+        lines.append("- ROAS: n/a (revenue missing)")
 
     lines.extend(["", "## Output trace", "### Analyst"])
     lines.extend(f"- {flag}" for flag in analysis["flags"])
-    lines.extend(["", "### Strategist"])
-    for item in strategy["actions"]:
-        lines.append(f"- {item['priority']}. {item['action']} — {item['reason']}")
+    lines.extend(["", "### Decisions"])
+    for idx, item in enumerate(strategy["actions"][:3], 1):
+        lines.append(f"{idx}. Decision: {item['action']} | Financial impact: {item.get('impact', 'n/a')} | Reason: {item['reason']} | Risk: {item.get('risk', 'n/a')} | Confidence: {item.get('confidence', 'Medium')}")
+    lines.extend(["", "### Guardrails"])
+    lines.extend(f"- {item}" for item in strategy.get("guardrails", []))
     lines.extend(["", "### Critic"])
     lines.extend(f"- {risk}" for risk in critique["risks"])
     lines.extend(["", "### Missing inputs"])
     lines.extend(f"- {gap}" for gap in critique["gaps"])
     lines.append("")
     return "\n".join(lines)
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the local Gnomeo agent MVP workflow.")
     parser.add_argument("csv_path", nargs="?", default=str(DEFAULT_INPUT), help="Path to a CSV file")
