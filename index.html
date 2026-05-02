@@ -6,27 +6,27 @@
     <title>Flangie Pilot</title>
     <meta
       name="description"
-      content="AI marketing team pilot landing page for Flangie."
+      content="Free pilot campaign analysis for businesses spending £1k–£50k/month on ads."
     />
     <style>
       :root {
-        color-scheme: light;
-        --bg: #ffffff;
+        --bg: #f8fafc;
+        --panel: #ffffff;
         --text: #111827;
         --muted: #4b5563;
         --line: #e5e7eb;
-        --soft: #f9fafb;
-        --accent: #111827;
+        --accent: #2563eb;
+        --accent-hover: #1d4ed8;
+        --shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        color-scheme: light;
       }
 
-      * {
-        box-sizing: border-box;
-      }
-
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
       body {
         margin: 0;
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: var(--bg);
+        background: linear-gradient(180deg, #f8fafc 0%, #ffffff 32%);
         color: var(--text);
         line-height: 1.5;
       }
@@ -34,7 +34,7 @@
       .wrap {
         max-width: 1120px;
         margin: 0 auto;
-        padding: 32px 20px 24px;
+        padding: 24px 20px 40px;
       }
 
       header {
@@ -42,56 +42,203 @@
         justify-content: space-between;
         align-items: center;
         gap: 16px;
-        padding-bottom: 32px;
+        padding: 10px 0 28px;
       }
 
       .brand {
         font-weight: 700;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.03em;
       }
 
-      .pill {
+      .badge {
         border: 1px solid var(--line);
         border-radius: 999px;
         padding: 10px 14px;
-        font-size: 14px;
         color: var(--muted);
-        background: #fff;
+        background: rgba(255,255,255,0.85);
+        backdrop-filter: blur(6px);
+        box-shadow: var(--shadow);
+        font-size: 14px;
       }
 
       .hero {
-        display: grid;
-        grid-template-columns: 1.2fr 0.8fr;
-        gap: 32px;
-        align-items: start;
-        padding: 36px 0 28px;
+        text-align: center;
+        padding: 40px 0 28px;
+        max-width: 840px;
+        margin: 0 auto;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid #dbeafe;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 18px;
       }
 
       h1 {
-        margin: 0 0 16px;
-        font-size: clamp(2.6rem, 6vw, 5rem);
+        margin: 0;
+        font-size: clamp(2.4rem, 6vw, 4.8rem);
         line-height: 0.98;
-        letter-spacing: -0.05em;
+        letter-spacing: -0.055em;
       }
 
       .subhead {
-        font-size: clamp(1.05rem, 2vw, 1.25rem);
+        max-width: 760px;
+        margin: 18px auto 0;
+        font-size: clamp(1.05rem, 2vw, 1.22rem);
         color: var(--muted);
-        max-width: 48rem;
-        margin: 0;
       }
 
-      .card {
+      .cta-row {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 28px;
+        flex-wrap: wrap;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 52px;
+        padding: 0 20px;
+        border: 0;
+        border-radius: 14px;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 700;
+        font-size: 15px;
+        text-decoration: none;
+        cursor: pointer;
+        transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+        box-shadow: 0 10px 18px rgba(37, 99, 235, 0.18);
+      }
+      .button:hover { background: var(--accent-hover); transform: translateY(-1px); }
+      .button:focus-visible { outline: 3px solid rgba(37,99,235,0.25); outline-offset: 3px; }
+
+      .ghost {
+        background: #fff;
+        color: var(--text);
         border: 1px solid var(--line);
-        border-radius: 24px;
-        background: var(--soft);
-        padding: 24px;
+        box-shadow: none;
+      }
+      .ghost:hover { background: #f9fafb; }
+
+      .trust {
+        text-align: center;
+        color: var(--muted);
+        font-size: 14px;
+        margin-top: 18px;
+      }
+
+      section {
+        padding: 28px 0;
+      }
+
+      .section-head {
+        text-align: center;
+        margin-bottom: 18px;
+      }
+
+      .section-head h2 {
+        margin: 0;
+        font-size: clamp(1.5rem, 3vw, 2.2rem);
+        letter-spacing: -0.04em;
+      }
+
+      .section-head p {
+        margin: 10px auto 0;
+        color: var(--muted);
+        max-width: 720px;
+      }
+
+      .grid-4,
+      .grid-3,
+      .grid-2 {
+        display: grid;
+        gap: 16px;
+      }
+      .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 22px;
+        box-shadow: var(--shadow);
+      }
+
+      .card h3 {
+        margin: 0 0 8px;
+        font-size: 1.02rem;
+      }
+
+      .card p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .ordered {
+        counter-reset: step;
+      }
+      .ordered .card {
+        position: relative;
+        padding-top: 50px;
+      }
+      .ordered .card::before {
+        counter-increment: step;
+        content: counter(step);
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        display: grid;
+        place-items: center;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .offer {
+        text-align: center;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      }
+
+      .offer strong {
+        display: inline-block;
+        font-size: 1.05rem;
+        margin-bottom: 8px;
+      }
+
+      .bullets {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--muted);
+      }
+      .bullets li + li { margin-top: 10px; }
+
+      form {
+        display: grid;
+        gap: 12px;
       }
 
       .form-grid {
         display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 12px;
-        margin-top: 16px;
       }
 
       label {
@@ -99,234 +246,188 @@
         gap: 8px;
         font-size: 14px;
         color: var(--muted);
+        text-align: left;
       }
 
-      input,
-      select,
-      button {
-        font: inherit;
-      }
-
-      input,
-      select {
+      input {
         width: 100%;
         border: 1px solid var(--line);
         border-radius: 14px;
-        padding: 14px 16px;
+        padding: 14px 15px;
         background: #fff;
         color: var(--text);
+        font: inherit;
+        transition: border-color 160ms ease, box-shadow 160ms ease;
+      }
+      input:focus {
+        outline: none;
+        border-color: #93c5fd;
+        box-shadow: 0 0 0 4px rgba(59,130,246,0.10);
       }
 
-      button {
-        border: 0;
-        border-radius: 14px;
-        padding: 14px 18px;
-        background: var(--accent);
-        color: #fff;
-        font-weight: 600;
-        cursor: pointer;
-      }
-
-      section {
-        padding: 22px 0;
-      }
-
-      .grid-3 {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 16px;
-      }
-
-      .grid-2 {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 16px;
-      }
-
-      .feature,
-      .step {
-        border: 1px solid var(--line);
-        border-radius: 20px;
-        padding: 20px;
-        background: #fff;
-      }
-
-      .eyebrow {
-        font-size: 13px;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: var(--muted);
-        margin-bottom: 10px;
-      }
-
-      h2 {
-        margin: 0 0 14px;
-        font-size: clamp(1.4rem, 3vw, 2rem);
-        letter-spacing: -0.03em;
-      }
-
-      h3 {
-        margin: 0 0 8px;
-        font-size: 1.05rem;
-      }
-
-      p {
-        margin: 0;
-      }
-
-      ul,
-      ol {
-        margin: 0;
-        padding-left: 18px;
-        color: var(--muted);
-      }
-
-      li + li {
-        margin-top: 10px;
-      }
-
-      .offer {
+      .form-actions {
         display: flex;
-        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
         align-items: center;
-        gap: 18px;
-        border-top: 1px solid var(--line);
-        border-bottom: 1px solid var(--line);
-        padding: 24px 0;
-        margin: 8px 0;
+        margin-top: 4px;
+      }
+
+      .success {
+        display: none;
+        padding: 14px 16px;
+        border-radius: 14px;
+        background: #ecfdf5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+        font-size: 14px;
       }
 
       footer {
         padding: 28px 0 8px;
         color: var(--muted);
         font-size: 14px;
+        text-align: center;
       }
 
-      @media (max-width: 880px) {
-        .hero,
+      @media (max-width: 920px) {
+        .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .grid-3,
         .grid-2,
-        .offer {
-          grid-template-columns: 1fr;
-          display: grid;
-        }
+        .form-grid { grid-template-columns: 1fr; }
+      }
 
+      @media (max-width: 640px) {
         header {
           flex-direction: column;
           align-items: flex-start;
         }
+
+        .hero {
+          padding-top: 24px;
+          text-align: left;
+        }
+
+        .cta-row {
+          justify-content: flex-start;
+        }
+
+        .trust {
+          text-align: left;
+        }
+
+        .grid-4 { grid-template-columns: 1fr; }
       }
     </style>
   </head>
   <body>
     <div class="wrap">
       <header>
-        <div class="brand">Flangie Pilot</div>
-        <div class="pill">Free AI campaign analysis</div>
+        <div class="brand">Flangie</div>
+        <div class="badge">Pilot landing page</div>
       </header>
 
       <main>
         <section class="hero">
-          <div>
-            <div class="eyebrow">Pilot landing page</div>
-            <h1>Improve your ad performance with an AI marketing team</h1>
-            <p class="subhead">
-              We use a team of AI agents — analyst, strategist, critic, and synthesizer — to analyze campaigns and recommend better decisions.
-            </p>
+          <div class="eyebrow">AI campaign analysis</div>
+          <h1>Stop wasting ad spend. Get better campaign decisions in 24 hours.</h1>
+          <p class="subhead">
+            We use a team of AI agents — analyst, strategist, and critic — to review your campaigns like a real performance team.
+          </p>
+          <div class="cta-row">
+            <a class="button" href="#contact">Get a free analysis</a>
+            <a class="button ghost" href="#how-it-works">See how it works</a>
           </div>
+          <div class="trust">Built for businesses spending £1k–£50k/month on ads.</div>
+        </section>
 
-          <aside class="card" aria-label="Contact form">
-            <h2 style="font-size: 1.35rem; margin-bottom: 8px;">Request your pilot analysis</h2>
-            <p style="color: var(--muted);">We’re accepting 3 pilot companies for a free campaign analysis.</p>
-            <form class="form-grid">
-              <label>
-                Name
-                <input type="text" name="name" autocomplete="name" />
-              </label>
-              <label>
-                Email
-                <input type="email" name="email" autocomplete="email" />
-              </label>
-              <label>
-                Website
-                <input type="url" name="website" placeholder="https://" />
-              </label>
-              <label>
-                Ad platform
-                <select name="platform">
-                  <option value="">Select one</option>
-                  <option>Google Ads</option>
-                  <option>Meta Ads</option>
-                  <option>LinkedIn Ads</option>
-                  <option>TikTok Ads</option>
-                  <option>Other</option>
-                </select>
-              </label>
-              <label>
-                Monthly ad spend
-                <input type="text" name="spend" placeholder="$10,000" />
-              </label>
-              <button type="submit">Book a pilot review</button>
+        <section>
+          <div class="section-head">
+            <h2>What you get</h2>
+            <p>Simple, practical recommendations that help you spend smarter.</p>
+          </div>
+          <div class="grid-4">
+            <div class="card"><h3>Find where you're losing money</h3></div>
+            <div class="card"><h3>Identify what to scale</h3></div>
+            <div class="card"><h3>Get clear, actionable changes</h3></div>
+            <div class="card"><h3>Human-reviewed before anything is changed</h3></div>
+          </div>
+        </section>
+
+        <section id="how-it-works">
+          <div class="section-head">
+            <h2>How it works</h2>
+          </div>
+          <div class="grid-3 ordered">
+            <div class="card"><h3>You share your campaign data</h3></div>
+            <div class="card"><h3>Our AI team analyzes and debates</h3></div>
+            <div class="card"><h3>You get a prioritized action plan</h3></div>
+          </div>
+        </section>
+
+        <section>
+          <div class="grid-2">
+            <div class="card offer">
+              <strong>Free pilot (limited to 3 companies)</strong>
+              <p>We’ll analyze your campaigns and show you exactly where you're wasting budget — at no cost.</p>
+            </div>
+            <div class="card">
+              <div class="section-head" style="text-align:left; margin-bottom:14px;">
+                <h2 style="font-size:1.45rem;">What you get</h2>
+              </div>
+              <ul class="bullets">
+                <li>Clear recommendations (not generic advice)</li>
+                <li>Budget reallocation suggestions</li>
+                <li>Expected impact + risks</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section id="contact">
+          <div class="section-head">
+            <h2>Request your free analysis</h2>
+            <p>Send a few details and we’ll take it from there.</p>
+          </div>
+          <div class="card" style="max-width: 820px; margin: 0 auto;">
+            <form id="lead-form" action="mailto:hello@flangie.co.uk" method="post" enctype="text/plain">
+              <div class="form-grid">
+                <label>
+                  Name
+                  <input type="text" name="name" autocomplete="name" required />
+                </label>
+                <label>
+                  Email
+                  <input type="email" name="email" autocomplete="email" required />
+                </label>
+                <label>
+                  Website
+                  <input type="url" name="website" placeholder="https://" required />
+                </label>
+                <label>
+                  Monthly ad spend
+                  <input type="text" name="monthly-ad-spend" placeholder="£10,000" required />
+                </label>
+              </div>
+              <div class="form-actions">
+                <button class="button" type="submit">Request your free analysis</button>
+              </div>
+              <div class="success" id="success-message">Thanks — your request is ready. If your email app doesn’t open, send the details to hello@flangie.co.uk.</div>
             </form>
-          </aside>
-        </section>
-
-        <section>
-          <div class="eyebrow">Features</div>
-          <h2>What the pilot helps you do</h2>
-          <div class="grid-3">
-            <div class="feature">
-              <h3>Identify wasted ad spend</h3>
-              <p style="color: var(--muted);">Spot inefficiencies and low-value patterns before budget slips away.</p>
-            </div>
-            <div class="feature">
-              <h3>Improve ROAS and CPA decisions</h3>
-              <p style="color: var(--muted);">Focus spend where the numbers support better returns.</p>
-            </div>
-            <div class="feature">
-              <h3>Get clear, actionable recommendations</h3>
-              <p style="color: var(--muted);">Turn campaign noise into a prioritized action list.</p>
-            </div>
-          </div>
-          <div style="margin-top: 16px;" class="feature">
-            <h3>Human-reviewed before anything is changed</h3>
-            <p style="color: var(--muted);">Every recommendation stays reviewable by a person before any account changes happen.</p>
-          </div>
-        </section>
-
-        <section>
-          <div class="eyebrow">How it works</div>
-          <h2>Simple, structured, and human-friendly</h2>
-          <div class="grid-3">
-            <div class="step">
-              <h3>1. Share your campaign data</h3>
-              <p style="color: var(--muted);">Send the metrics, assets, and context you already have.</p>
-            </div>
-            <div class="step">
-              <h3>2. The AI agent team analyzes and debates the findings</h3>
-              <p style="color: var(--muted);">Each agent plays a different role so the analysis stays sharp.</p>
-            </div>
-            <div class="step">
-              <h3>3. You receive a prioritized action plan</h3>
-              <p style="color: var(--muted);">Get the next best moves in a clear, ordered summary.</p>
-            </div>
-          </div>
-        </section>
-
-        <section class="offer">
-          <div>
-            <div class="eyebrow">Offer</div>
-            <h2 style="margin-bottom: 8px;">We’re accepting 3 pilot companies for a free campaign analysis.</h2>
-            <p style="color: var(--muted);">Minimal setup. Fast feedback. No complexity.</p>
-          </div>
-          <div class="card" style="min-width: 260px; text-align: center;">
-            <strong>Limited pilot spots</strong><br />
-            <span style="color: var(--muted);">Apply now</span>
           </div>
         </section>
       </main>
 
       <footer>© 2026 Flangie</footer>
     </div>
+
+    <script>
+      const form = document.getElementById('lead-form');
+      const success = document.getElementById('success-message');
+      form?.addEventListener('submit', () => {
+        success.style.display = 'block';
+        success.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    </script>
   </body>
 </html>
