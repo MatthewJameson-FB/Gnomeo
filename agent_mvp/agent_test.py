@@ -13,19 +13,31 @@ OUTPUT_REPORT = ROOT / "output_report.md"
 
 COLUMN_ALIASES = {
     "campaign": ["campaign"],
+    "platform": ["platform"],
+    "campaign_type": ["campaign_type"],
+    "industry": ["industry"],
+    "country": ["country"],
     "ad_set": ["ad_set", "adset", "ad set"],
     "ad": ["ad", "creative", "ad_name"],
-    "spend": ["spend", "monthly_spend_gbp", "cost", "amount_spent"],
+    "spend": ["spend", "ad_spend", "monthly_spend_gbp", "cost", "amount_spent"],
     "impressions": ["impressions"],
     "clicks": ["clicks"],
     "conversions": ["conversions", "purchases", "leads"],
     "revenue": ["revenue", "revenue_gbp", "value", "sales"],
+    "ctr": ["ctr"],
+    "cpc": ["cpc"],
+    "cpa": ["cpa"],
+    "roas": ["roas"],
 }
 
 
 @dataclass
 class Campaign:
     campaign: str = ""
+    platform: str = ""
+    campaign_type: str = ""
+    industry: str = ""
+    country: str = ""
     ad_set: str = ""
     ad: str = ""
     spend: float = 0.0
@@ -33,22 +45,34 @@ class Campaign:
     clicks: int = 0
     conversions: int = 0
     revenue: Optional[float] = None
+    raw_ctr: Optional[float] = None
+    raw_cpc: Optional[float] = None
+    raw_cpa: Optional[float] = None
+    raw_roas: Optional[float] = None
     raw: Dict[str, str] = field(default_factory=dict)
 
     @property
     def ctr(self) -> Optional[float]:
+        if self.raw_ctr is not None:
+            return self.raw_ctr
         return self.clicks / self.impressions if self.impressions else None
 
     @property
     def cpc(self) -> Optional[float]:
+        if self.raw_cpc is not None:
+            return self.raw_cpc
         return self.spend / self.clicks if self.clicks else None
 
     @property
     def cpa(self) -> Optional[float]:
+        if self.raw_cpa is not None:
+            return self.raw_cpa
         return self.spend / self.conversions if self.conversions else None
 
     @property
     def roas(self) -> Optional[float]:
+        if self.raw_roas is not None:
+            return self.raw_roas
         if self.revenue is None or not self.spend:
             return None
         return self.revenue / self.spend
@@ -94,6 +118,12 @@ def _find_column(fieldnames: List[str], aliases: List[str]) -> Optional[str]:
     return None
 
 
+def _row_text(row: Dict[str, str], column: Optional[str]) -> str:
+    if not column:
+        return ""
+    return (row.get(column, "") or "").strip()
+
+
 def load_campaigns(path: Path) -> List[Campaign]:
     with path.open(newline="", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
@@ -104,27 +134,63 @@ def load_campaigns(path: Path) -> List[Campaign]:
             for logical, aliases in COLUMN_ALIASES.items()
         }
 
-        campaigns: List[Campaign] = []
+        grouped: Dict[str, Campaign] = {}
         for row in reader:
-            campaigns.append(
-                Campaign(
-                    campaign=(row.get(columns["campaign"], "") if columns["campaign"] else "").strip(),
-                    ad_set=(row.get(columns["ad_set"], "") if columns["ad_set"] else "").strip(),
-                    ad=(row.get(columns["ad"], "") if columns["ad"] else "").strip(),
-                    spend=_parse_float(row.get(columns["spend"], "0") if columns["spend"] else "0") or 0.0,
-                    impressions=_parse_int(row.get(columns["impressions"], "0") if columns["impressions"] else "0"),
-                    clicks=_parse_int(row.get(columns["clicks"], "0") if columns["clicks"] else "0"),
-                    conversions=_parse_int(row.get(columns["conversions"], "0") if columns["conversions"] else "0"),
-                    revenue=_parse_float(row.get(columns["revenue"], "") if columns["revenue"] else ""),
-                    raw=row,
-                )
+            platform = _row_text(row, columns["platform"])
+            campaign_type = _row_text(row, columns["campaign_type"])
+            industry = _row_text(row, columns["industry"])
+            country = _row_text(row, columns["country"])
+            campaign_name = _row_text(row, columns["campaign"]) or " | ".join([platform, campaign_type, industry, country])
+
+            entry = Campaign(
+                campaign=campaign_name,
+                platform=platform,
+                campaign_type=campaign_type,
+                industry=industry,
+                country=country,
+                ad_set=_row_text(row, columns["ad_set"]),
+                ad=_row_text(row, columns["ad"]),
+                spend=_parse_float(row.get(columns["spend"], "0") if columns["spend"] else "0") or 0.0,
+                impressions=_parse_int(row.get(columns["impressions"], "0") if columns["impressions"] else "0"),
+                clicks=_parse_int(row.get(columns["clicks"], "0") if columns["clicks"] else "0"),
+                conversions=_parse_int(row.get(columns["conversions"], "0") if columns["conversions"] else "0"),
+                revenue=_parse_float(row.get(columns["revenue"], "") if columns["revenue"] else ""),
+                raw_ctr=_parse_float(row.get(columns["ctr"], "") if columns["ctr"] else ""),
+                raw_cpc=_parse_float(row.get(columns["cpc"], "") if columns["cpc"] else ""),
+                raw_cpa=_parse_float(row.get(columns["cpa"], "") if columns["cpa"] else ""),
+                raw_roas=_parse_float(row.get(columns["roas"], "") if columns["roas"] else ""),
+                raw=row,
             )
-    return campaigns
+
+            existing = grouped.get(campaign_name)
+            if existing is None:
+                grouped[campaign_name] = entry
+            else:
+                existing.spend += entry.spend
+                existing.impressions += entry.impressions
+                existing.clicks += entry.clicks
+                existing.conversions += entry.conversions
+                if entry.revenue is not None:
+                    existing.revenue = (existing.revenue or 0.0) + entry.revenue
+                if not existing.platform:
+                    existing.platform = entry.platform
+                if not existing.campaign_type:
+                    existing.campaign_type = entry.campaign_type
+                if not existing.industry:
+                    existing.industry = entry.industry
+                if not existing.country:
+                    existing.country = entry.country
+                if not existing.ad_set:
+                    existing.ad_set = entry.ad_set
+                if not existing.ad:
+                    existing.ad = entry.ad
+                existing.raw.update({k: v for k, v in row.items() if v is not None})
+
+        return list(grouped.values())
 
 
 def label(c: Campaign) -> str:
-    bits = [c.campaign, c.ad_set, c.ad]
-    return " / ".join(bit for bit in bits if bit) or "Unnamed row"
+    return c.campaign or "Unnamed row"
 
 
 def fmt_money(value: Optional[float]) -> str:
