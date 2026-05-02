@@ -45,15 +45,15 @@ Source file: `sample_ads_data.csv`
 - LinkedIn ABM (0.84x)
 
 ## Strategist
-- Move £3,600.00 from Non-Brand Search | Core to Brand Search | Exact | Budget change: £3,600.00 | Reason: Shifts spend from the weaker campaign into the stronger one while staying within the same platform where possible. Addressing critique: The move assumes Non-Brand Search | Core is structurally weak rather than temporarily noisy.
+- Move £3,600.00 from Non-Brand Search | Core to Brand Search | Exact | £ amount: £3,600.00 | Reason: Shifts spend from the weaker campaign into the stronger one while staying within the same platform where possible. Addressing critique: The move assumes Non-Brand Search | Core is structurally weak rather than temporarily noisy.
   - Addresses: Recent underperformance may not persist.
   - Addresses: Campaign-level rollups can hide ad-level or audience-level pockets of strength.
   - Addresses: Platform attribution windows may overstate the destination campaign's advantage.
-- Pause or cut LinkedIn ABM by £2,250.00 | Budget change: £2,250.00 | Reason: This campaign sits above the acceptable CPA threshold and should give up budget first. Addressing critique: The pause logic relies heavily on CPA alone and may miss upper-funnel value.
+- Pause or cut LinkedIn ABM by £2,250.00 | £ amount: £2,250.00 | Reason: This campaign sits above the acceptable CPA threshold and should give up budget first. Addressing critique: The pause logic relies heavily on CPA alone and may miss upper-funnel value.
   - Addresses: High CPA always means low value.
   - Addresses: The dataset does not include margin, lag, or assisted conversion data.
   - Addresses: Last-click bias could make the campaign look worse than it is.
-- Scale Brand Search | Exact by £1,800.00 | Budget change: £1,800.00 | Reason: This campaign clears the profile threshold on CPA and ROAS, so it is the best candidate for extra budget. Addressing critique: The scale decision assumes past efficiency will hold at a larger spend level.
+- Scale Brand Search | Exact by £1,800.00 | £ amount: £1,800.00 | Reason: This campaign clears the profile threshold on CPA and ROAS, so it is the best candidate for extra budget. Addressing critique: The scale decision assumes past efficiency will hold at a larger spend level.
   - Addresses: Winning at current spend guarantees scaling efficiency.
   - Addresses: The sample is small enough that one campaign can dominate the ranking.
   - Addresses: ROAS may be inflated if conversion lag is unresolved.
@@ -74,19 +74,28 @@ Source file: `sample_ads_data.csv`
 
 ## Decisions
 1. Action: Move £3,600.00 from Non-Brand Search | Core to Brand Search | Exact
-   Financial impact (£): £3,600.00
+   £ amount: £3,600.00
    Reason: Shifts spend from the weaker campaign into the stronger one while staying within the same platform where possible. Addressing critique: The move assumes Non-Brand Search | Core is structurally weak rather than temporarily noisy.
+   Expected impact: Expected to shift spend toward a stronger efficiency pocket, improving CPA modestly while keeping conversions broadly stable.
+   Timeframe: 7–14 days
    Risk: Platform attribution windows may overstate the destination campaign's advantage.
+   What to monitor: Monitor CPA and ROAS on both source and destination campaigns, plus total conversions.
    Confidence: Medium
 2. Action: Pause or cut LinkedIn ABM by £2,250.00
-   Financial impact (£): £2,250.00
+   £ amount: £2,250.00
    Reason: This campaign sits above the acceptable CPA threshold and should give up budget first. Addressing critique: The pause logic relies heavily on CPA alone and may miss upper-funnel value.
+   Expected impact: Expected to improve efficiency by removing a weak spend pocket, with a possible short-term dip in volume.
+   Timeframe: 3–7 days
    Risk: Last-click bias could make the campaign look worse than it is.
+   What to monitor: Monitor total conversions, blended CPA, and whether any lost volume shows up elsewhere.
    Confidence: Medium
 3. Action: Scale Brand Search | Exact by £1,800.00
-   Financial impact (£): £1,800.00
+   £ amount: £1,800.00
    Reason: This campaign clears the profile threshold on CPA and ROAS, so it is the best candidate for extra budget. Addressing critique: The scale decision assumes past efficiency will hold at a larger spend level.
+   Expected impact: Expected to increase conversions by roughly 10–15% with CPA staying broadly stable if the additional budget absorbs cleanly.
+   Timeframe: 7–14 days
    Risk: ROAS may be inflated if conversion lag is unresolved.
+   What to monitor: Monitor CPA, ROAS, conversion volume, and impression share for saturation.
    Confidence: Medium
 
 ## Flow control

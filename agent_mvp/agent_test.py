@@ -691,7 +691,7 @@ def synthesizer(analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Di
 
     lines.extend(["", "## Strategist"])
     for item in strategy["actions"][:3]:
-        lines.append(f"- {item['action']} | Budget change: {fmt_money(item.get('amount', 0.0))} | Reason: {item['reason']}")
+        lines.append(f"- {item['action']} | £ amount: {fmt_money(item.get('amount', 0.0))} | Reason: {item['reason']}")
         if item.get("addressed_criticisms"):
             for criticism in item["addressed_criticisms"]:
                 lines.append(f"  - Addresses: {criticism}")
@@ -719,7 +719,7 @@ def synthesizer(analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Di
             confidence = "Low"
 
         lines.append(
-            f"{idx}. Action: {action['action']}\n   Financial impact (£): {fmt_money(action.get('amount', 0.0))}\n   Reason: {action['reason']}\n   Risk: {risk}\n   Confidence: {confidence}"
+            f"{idx}. Action: {action['action']}\n   £ amount: {fmt_money(action.get('amount', 0.0))}\n   Reason: {action['reason']}\n   Expected impact: {action.get('expected_impact', 'n/a')}\n   Timeframe: {action.get('timeframe', 'n/a')}\n   Risk: {risk}\n   What to monitor: {action.get('monitor', 'n/a')}\n   Confidence: {confidence}"
         )
 
     lines.extend(["", "## Flow control"])
@@ -782,6 +782,77 @@ def evaluate_output(strategy: Dict[str, Any], critique: Dict[str, Any]) -> Dict[
             "reason": "The output is structured, specific, and client-ready enough for a first-pass decision packet." if overall >= 4 else "The output still needs more refinement before client use.",
         },
     }
+
+
+def format_expected_impact(action: Dict[str, Any], summary: Dict[str, Any]) -> str:
+    total_spend = summary["total_spend"] or 0.0
+    cpa = action.get("cpa")
+    roas = action.get("roas")
+    cvr = action.get("cvr")
+    base_cpa = summary.get("overall_cpa")
+    base_roas = summary.get("overall_roas")
+
+    if action["type"] == "scale":
+        if roas is not None and base_roas is not None:
+            return f"Expected to lift ROAS from {fmt_x(base_roas)} to around {fmt_x(min(roas * 1.05, roas * 1.15))} if efficiency holds; CPA should stay near {fmt_money(cpa)} and conversions should rise by roughly 10–15%."
+        return "Expected to increase conversions by roughly 10–15% with CPA staying broadly stable if the additional budget absorbs cleanly."
+
+    if action["type"] == "pause":
+        if cpa is not None and base_cpa is not None:
+            return f"Expected to reduce blended CPA by trimming a weak spender, with ROAS improving modestly as spend shifts away from {fmt_money(cpa)} CPA traffic; conversions may fall slightly in the short term."
+        return "Expected to improve efficiency by removing a weak spend pocket, with a possible short-term dip in volume."
+
+    if action["type"] == "reallocate":
+        if roas is not None and base_roas is not None:
+            return f"Expected to improve ROAS from {fmt_x(base_roas)} toward {fmt_x(min(base_roas * 1.08, (roas or base_roas) * 1.05))}, with CPA drifting down or holding steady and conversions staying broadly flat to slightly up."
+        return "Expected to shift spend toward a stronger efficiency pocket, improving CPA modestly while keeping conversions broadly stable."
+
+    return "Expected impact is limited; this is a hold decision rather than a budget move."
+
+
+def expected_timeframe(action: Dict[str, Any]) -> str:
+    if action["type"] == "scale":
+        return "7–14 days"
+    if action["type"] == "pause":
+        return "3–7 days"
+    if action["type"] == "reallocate":
+        return "7–14 days"
+    return "7 days"
+
+
+def basis_for_amount(action: Dict[str, Any], summary: Dict[str, Any]) -> str:
+    total_spend = summary["total_spend"] or 0.0
+    pct = (action.get("amount", 0.0) / total_spend * 100) if total_spend else 0.0
+    if action["type"] == "reallocate":
+        return f"Chosen as a {pct:.0f}% account-level move from the weaker campaign, staying inside a 10–20% test band."
+    if action["type"] == "pause":
+        return f"Chosen as a {pct:.0f}% cut of the weak campaign, which is a safe test threshold for reducing waste without overcorrecting."
+    if action["type"] == "scale":
+        return f"Chosen as a {pct:.0f}% budget lift, keeping the test in the 10–20% range so scaling does not outrun the signal."
+    return "Chosen as a zero-change hold because the signal is not strong enough to justify a budget move."
+
+
+def post_action_monitor(action: Dict[str, Any]) -> str:
+    if action["type"] == "scale":
+        return "Monitor CPA, ROAS, conversion volume, and impression share for saturation."
+    if action["type"] == "pause":
+        return "Monitor total conversions, blended CPA, and whether any lost volume shows up elsewhere."
+    if action["type"] == "reallocate":
+        return "Monitor CPA and ROAS on both source and destination campaigns, plus total conversions."
+    return "Monitor whether performance stabilises without further budget movement."
+
+
+def enrich_decisions(strategy: Dict[str, Any], analysis: Dict[str, Any]) -> Dict[str, Any]:
+    summary = analysis["summary"]
+    enriched_actions: List[Dict[str, Any]] = []
+    for action in strategy["actions"][:3]:
+        updated = dict(action)
+        updated["expected_impact"] = format_expected_impact(action, summary)
+        updated["timeframe"] = expected_timeframe(action)
+        updated["basis_for_amount"] = basis_for_amount(action, summary)
+        updated["monitor"] = post_action_monitor(action)
+        enriched_actions.append(updated)
+    return {**strategy, "actions": enriched_actions[:3]}
 
 
 def render_evaluation(evaluation: Dict[str, Any]) -> str:
@@ -877,9 +948,10 @@ def main() -> None:
     strategy_initial = strategist_initial(analysis, profile_context)
     critique = critic(analysis, strategy_initial, profile_context)
     strategy_refined = strategist_refinement(analysis, strategy_initial, critique, profile_context)
-    final = synthesizer(analysis, strategy_refined, critique)
-    evaluation = evaluate_output(strategy_refined, critique)
-    report = build_report_text(source, analysis, strategy_refined, critique, final, evaluation)
+    enriched_strategy = enrich_decisions(strategy_refined, analysis)
+    final = synthesizer(analysis, enriched_strategy, critique)
+    evaluation = evaluate_output(enriched_strategy, critique)
+    report = build_report_text(source, analysis, enriched_strategy, critique, final, evaluation)
 
     OUTPUT_REPORT.write_text(report, encoding="utf-8")
 
@@ -891,7 +963,7 @@ def main() -> None:
     print_section("ANALYST", analysis)
     print_section("STRATEGIST (initial)", strategy_initial)
     print_section("CRITIC", critique)
-    print_section("STRATEGIST (refined)", strategy_refined)
+    print_section("STRATEGIST (refined)", enriched_strategy)
     print("\n=== SYNTHESIZER ===")
     print(final)
     print("\n=== EVALUATION ===")
