@@ -8,7 +8,7 @@
       name="description"
       content="Free pilot campaign analysis for businesses spending £1k–£50k/month on ads."
     />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='white'/%3E%3Cpath d='M14 20C16 11 23 7 32 7C41 7 48 11 50 20C46 18 41 16 35 16C30 16 27 17 24 20C21 17 18 16 13 16C12 16 13 18 14 20Z' fill='%23111827'/%3E%3Cpath d='M15 36C15 28 20 23 28 22C29 22 30 22 30 23C30 24 29 25 28 25C23 25 19 28 19 33C19 38 24 42 31 44C32 44 33 45 33 46C33 47 32 48 31 48C21 48 15 42 15 36Z' fill='%23111827'/%3E%3Cpath d='M49 36C49 42 43 48 33 48C32 48 31 47 31 46C31 45 32 44 33 44C40 42 45 38 45 33C45 28 41 25 36 25C35 25 34 24 34 23C34 22 35 22 36 22C44 23 49 28 49 36Z' fill='%23111827'/%3E%3Ccircle cx='27' cy='30' r='3' fill='%23111827'/%3E%3Ccircle cx='37' cy='30' r='3' fill='%23111827'/%3E%3Cpath d='M28 39C30 40 31 42 31 44' stroke='%23111827' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M31 41L40 36' stroke='%23111827' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M24 46H40' stroke='%23111827' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E" />
+
     <style>
       :root {
         --bg: #f6f7fb;
@@ -69,20 +69,37 @@
         min-width: 0;
       }
 
-      .brand-logo {
-        width: auto;
+      img.logo {
         object-fit: contain;
+        width: 28px;
+        height: 28px;
         transition: transform 160ms ease, opacity 160ms ease;
+        flex: 0 0 auto;
       }
 
-      .brand:hover .brand-logo {
+      .brand:hover img.logo,
+      .brand:hover img.hero-logo,
+      .footer-brand:hover img.logo {
         transform: scale(1.02);
         opacity: 0.95;
       }
 
-      .brand-logo--nav { height: 32px; width: 32px; }
-      .brand-logo--hero { height: 104px; width: 104px; }
-      .brand-logo--footer { height: 24px; width: 24px; opacity: 0.8; }
+      img.hero-logo {
+        object-fit: contain;
+        width: 96px;
+        height: 96px;
+        display: block;
+        margin: 0 auto 18px;
+        flex: 0 0 auto;
+      }
+
+      img.footer-logo {
+        object-fit: contain;
+        width: 20px;
+        height: 20px;
+        opacity: 0.8;
+        flex: 0 0 auto;
+      }
 
       .brand-name {
         font-weight: 750;
@@ -117,18 +134,6 @@
         margin: 0 auto;
         padding: 28px 0 16px;
         text-align: center;
-      }
-
-      .hero-mark {
-        display: grid;
-        place-items: center;
-        width: 132px;
-        height: 132px;
-        margin: 0 auto 22px;
-        border-radius: 32px;
-        border: 1px solid rgba(230, 232, 239, 0.9);
-        background: rgba(255, 255, 255, 0.88);
-        box-shadow: var(--shadow);
       }
 
       .eyebrow {
@@ -376,7 +381,8 @@
           border-radius: 18px;
           margin-inline: 0;
         }
-        .brand-logo--nav { height: 24px; width: 24px; }
+        img.logo { width: 24px; height: 24px; }
+        img.hero-logo { width: 80px; height: 80px; margin-left: 0; margin-right: 0; }
         .brand-name { font-size: 0.98rem; }
         .nav-cta { min-height: 38px; padding-inline: 14px; font-size: 13px; }
 
@@ -384,15 +390,6 @@
           padding-top: 20px;
           text-align: left;
         }
-        .hero-mark {
-          width: 96px;
-          height: 96px;
-          margin-left: 0;
-          margin-right: 0;
-          margin-bottom: 18px;
-          border-radius: 24px;
-        }
-        .brand-logo--hero { height: 78px; width: 78px; }
         .cta-row { justify-content: flex-start; }
         .trust { text-align: left; }
         .grid-4 { grid-template-columns: 1fr; }
@@ -403,17 +400,7 @@
     <div class="wrap">
       <header class="site-nav">
         <a class="brand" href="#top" aria-label="Gnomeo home">
-          <svg class="brand-logo brand-logo--nav" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-            <rect width="64" height="64" fill="white"/>
-            <path d="M14 20C16 11 23 7 32 7C41 7 48 11 50 20C46 18 41 16 35 16C30 16 27 17 24 20C21 17 18 16 13 16C12 16 13 18 14 20Z" fill="#111827"/>
-            <path d="M15 36C15 28 20 23 28 22C29 22 30 22 30 23C30 24 29 25 28 25C23 25 19 28 19 33C19 38 24 42 31 44C32 44 33 45 33 46C33 47 32 48 31 48C21 48 15 42 15 36Z" fill="#111827"/>
-            <path d="M49 36C49 42 43 48 33 48C32 48 31 47 31 46C31 45 32 44 33 44C40 42 45 38 45 33C45 28 41 25 36 25C35 25 34 24 34 23C34 22 35 22 36 22C44 23 49 28 49 36Z" fill="#111827"/>
-            <circle cx="27" cy="30" r="3" fill="#111827"/>
-            <circle cx="37" cy="30" r="3" fill="#111827"/>
-            <path d="M28 39C30 40 31 42 31 44" stroke="#111827" stroke-width="3" stroke-linecap="round"/>
-            <path d="M31 41L40 36" stroke="#111827" stroke-width="3" stroke-linecap="round"/>
-            <path d="M24 46H40" stroke="#111827" stroke-width="3" stroke-linecap="round"/>
-          </svg>
+          <img class="logo" src="./gnomeo-logo.png" alt="" aria-hidden="true" />
           <span class="brand-name">Gnomeo</span>
         </a>
         <a class="nav-cta" href="#contact">Request analysis</a>
@@ -421,19 +408,7 @@
 
       <main id="top">
         <section class="hero">
-          <div class="hero-mark" aria-hidden="true">
-            <svg class="brand-logo brand-logo--hero" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-              <rect width="64" height="64" fill="white"/>
-              <path d="M14 20C16 11 23 7 32 7C41 7 48 11 50 20C46 18 41 16 35 16C30 16 27 17 24 20C21 17 18 16 13 16C12 16 13 18 14 20Z" fill="#111827"/>
-              <path d="M15 36C15 28 20 23 28 22C29 22 30 22 30 23C30 24 29 25 28 25C23 25 19 28 19 33C19 38 24 42 31 44C32 44 33 45 33 46C33 47 32 48 31 48C21 48 15 42 15 36Z" fill="#111827"/>
-              <path d="M49 36C49 42 43 48 33 48C32 48 31 47 31 46C31 45 32 44 33 44C40 42 45 38 45 33C45 28 41 25 36 25C35 25 34 24 34 23C34 22 35 22 36 22C44 23 49 28 49 36Z" fill="#111827"/>
-              <circle cx="27" cy="30" r="3" fill="#111827"/>
-              <circle cx="37" cy="30" r="3" fill="#111827"/>
-              <path d="M28 39C30 40 31 42 31 44" stroke="#111827" stroke-width="3" stroke-linecap="round"/>
-              <path d="M31 41L40 36" stroke="#111827" stroke-width="3" stroke-linecap="round"/>
-              <path d="M24 46H40" stroke="#111827" stroke-width="3" stroke-linecap="round"/>
-            </svg>
-          </div>
+          <img class="hero-logo" src="./gnomeo-logo.png" alt="" aria-hidden="true" />
           <div class="eyebrow">AI campaign analysis</div>
           <h1>Stop wasting ad spend. Get better campaign decisions in 24 hours.</h1>
           <p class="subhead">
@@ -525,17 +500,7 @@
 
       <footer>
         <div class="footer-brand">
-          <svg class="brand-logo brand-logo--footer" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-            <rect width="64" height="64" fill="white"/>
-            <path d="M14 20C16 11 23 7 32 7C41 7 48 11 50 20C46 18 41 16 35 16C30 16 27 17 24 20C21 17 18 16 13 16C12 16 13 18 14 20Z" fill="#111827"/>
-            <path d="M15 36C15 28 20 23 28 22C29 22 30 22 30 23C30 24 29 25 28 25C23 25 19 28 19 33C19 38 24 42 31 44C32 44 33 45 33 46C33 47 32 48 31 48C21 48 15 42 15 36Z" fill="#111827"/>
-            <path d="M49 36C49 42 43 48 33 48C32 48 31 47 31 46C31 45 32 44 33 44C40 42 45 38 45 33C45 28 41 25 36 25C35 25 34 24 34 23C34 22 35 22 36 22C44 23 49 28 49 36Z" fill="#111827"/>
-            <circle cx="27" cy="30" r="3" fill="#111827"/>
-            <circle cx="37" cy="30" r="3" fill="#111827"/>
-            <path d="M28 39C30 40 31 42 31 44" stroke="#111827" stroke-width="3" stroke-linecap="round"/>
-            <path d="M31 41L40 36" stroke="#111827" stroke-width="3" stroke-linecap="round"/>
-            <path d="M24 46H40" stroke="#111827" stroke-width="3" stroke-linecap="round"/>
-          </svg>
+          <img class="logo footer-logo" src="./gnomeo-logo.png" alt="" aria-hidden="true" />
           <strong>Gnomeo</strong>
         </div>
         <p class="footer-note">© 2026 Gnomeo</p>
