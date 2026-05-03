@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gnomeo Outreach Admin</title>
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Gnomeo</p>
+          <h1>Outreach Admin</h1>
+          <p class="subtle">CSV-driven review only. Human approval required before anything is sent.</p>
+        </div>
+        <div class="actions">
+          <label class="file-btn">
+            Load candidates.csv
+            <input id="fileInput" type="file" accept=".csv" />
+          </label>
+          <button id="reloadBtn" type="button">Reload sample CSV</button>
+        </div>
+      </header>
+
+      <section class="toolbar card">
+        <div class="field">
+          <label for="searchInput">Search</label>
+          <input id="searchInput" type="search" placeholder="name, role, company" />
+        </div>
+        <div class="field">
+          <label for="categoryFilter">Category</label>
+          <select id="categoryFilter">
+            <option value="all">All</option>
+            <option value="data_partner">Data partner</option>
+            <option value="report_validator">Report validator</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="priorityFilter">Priority</label>
+          <select id="priorityFilter">
+            <option value="all">All</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="statusFilter">Approval</label>
+          <select id="statusFilter">
+            <option value="all">All</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="meta">
+        <span id="summary">Loading…</span>
+      </section>
+
+      <section id="cards" class="grid" aria-live="polite"></section>
+    </main>
+
+    <template id="cardTemplate">
+      <article class="card candidate">
+        <div class="topline">
+          <div>
+            <h2 class="name"></h2>
+            <p class="role-company"></p>
+          </div>
+          <div class="badges">
+            <span class="badge category"></span>
+            <span class="badge priority"></span>
+            <span class="badge status"></span>
+          </div>
+        </div>
+        <p class="reason"></p>
+        <p class="source"><a target="_blank" rel="noreferrer noopener">Source</a></p>
+        <details class="message-wrap">
+          <summary>Suggested message</summary>
+          <pre class="message"></pre>
+          <button class="copy-btn" type="button">Copy message</button>
+        </details>
+      </article>
+    </template>
+
+    <script src="admin.js"></script>
+  </body>
+</html>
