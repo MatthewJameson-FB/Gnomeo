@@ -5,8 +5,26 @@ Manual CSV → message draft → admin review flow.
 ## Files
 
 - `candidates.csv` — manually curated source of truth
+- `discovery_agent.py` — public-search candidate discovery into the CSV
 - `outreach_agent.py` — loads candidates, classifies them, and fills `suggested_message`
 - `admin.html` / `admin.js` / `admin.css` — read-only review UI
+
+## Discover candidates from public search
+
+Set:
+
+- `SEARCH_API_KEY`
+- `SEARCH_ENGINE_ID`
+
+Then run:
+
+```bash
+python3 discovery_agent.py --category report_validator --limit 20
+python3 discovery_agent.py --category data_partner --limit 20
+python3 discovery_agent.py --all --limit 40
+```
+
+If the env vars are missing, the script prints the exact public search queries to run manually.
 
 ## Run message generation
 
@@ -37,4 +55,5 @@ If the browser blocks local CSV loading, use the **Load candidates.csv** button 
 - No backend
 - No external APIs
 - No sample/fake candidates
+- Discovery only uses public search results
 - CSV stays the source of truth
