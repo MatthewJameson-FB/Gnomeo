@@ -307,6 +307,24 @@
         margin-top: 4px;
       }
 
+      .helper {
+        margin: -2px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .inline-note {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+      }
+
+      .inline-note h3 {
+        margin: 0 0 8px;
+        font-size: 1rem;
+        letter-spacing: -0.03em;
+      }
+
       .success {
         display: none;
         padding: 14px 16px;
@@ -431,33 +449,40 @@
 
         <section id="contact">
           <div class="section-head">
-            <h2>Request your free analysis</h2>
-            <p>Send a few details and we’ll take it from there.</p>
+            <h2>Get 3 data-driven budget decisions from your ad account</h2>
+            <p>Upload your Google Ads or Meta Ads export and we’ll show you what we’d change.</p>
           </div>
           <div class="card" style="max-width: 820px; margin: 0 auto;">
-            <form id="lead-form" action="mailto:hello@gnomeo.nl" method="post" enctype="text/plain">
+            <form id="lead-form" novalidate>
               <div class="form-grid">
                 <label>
-                  Name
-                  <input type="text" name="name" autocomplete="name" required />
+                  CSV export
+                  <input type="file" id="csv-file" name="csv-file" accept=".csv,text/csv" required />
                 </label>
                 <label>
                   Email
-                  <input type="email" name="email" autocomplete="email" required />
-                </label>
-                <label>
-                  Website
-                  <input type="url" name="website" placeholder="https://" required />
-                </label>
-                <label>
-                  Monthly ad spend
-                  <input type="text" name="monthly-ad-spend" placeholder="£10,000" required />
+                  <input type="email" id="email" name="email" autocomplete="email" required />
                 </label>
               </div>
               <div class="form-actions">
-                <button class="button" type="submit">Request your free analysis</button>
+                <button class="button" type="submit">Get my free analysis</button>
               </div>
-              <div class="success" id="success-message">Thanks — your request is ready. If your email app doesn’t open, send the details to hello@gnomeo.nl.</div>
+              <p class="helper">Your data is not stored long-term. We use it only to generate your analysis.</p>
+              <div class="inline-note">
+                <h3>Why this works better over time</h3>
+                <ul class="bullets">
+                  <li>Decisions improve with context</li>
+                  <li>Performance changes week to week</li>
+                  <li>What worked last month may not work now</li>
+                </ul>
+              </div>
+              <div class="success" id="success-message">
+                Thanks — we’re generating your report now.
+                <br /><br />
+                This will give you a snapshot of what we’d change today.
+                <br /><br />
+                The real value comes from tracking these decisions weekly and learning what actually works in your account.
+              </div>
             </form>
           </div>
         </section>
@@ -473,8 +498,34 @@
 
     <script>
       const form = document.getElementById('lead-form');
+      const csvFile = document.getElementById('csv-file');
+      const email = document.getElementById('email');
       const success = document.getElementById('success-message');
-      form?.addEventListener('submit', () => {
+      form?.addEventListener('submit', (event) => {
+        event.preventDefault();
+
+        const file = csvFile?.files?.[0];
+        const emailValue = email?.value.trim();
+
+        if (!file) {
+          alert('Please upload a CSV file.');
+          return;
+        }
+
+        if (!emailValue) {
+          alert('Please add your email address.');
+          return;
+        }
+
+        // TODO: connect this payload to agent_test.py.
+        // TODO: pass the uploaded CSV path into agent_test.py and generate output_report.html.
+        // TODO: trigger email delivery after the report is generated.
+        console.log('Free Analysis Option A submission', {
+          email: emailValue,
+          fileName: file.name,
+          timestamp: new Date().toISOString(),
+        });
+
         success.style.display = 'block';
         success.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       });
