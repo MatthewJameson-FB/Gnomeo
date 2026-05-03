@@ -77,3 +77,8 @@ Source: `sample_ads_data.csv`
 - CPA: £59.63
 - Total theoretical gain: £18,738.51
 - Total adjusted expected gain: £9,369.25
+
+## Graph Mode Trace
+- Flow: Profile Interpreter → Analyst → Strategist Initial → Critic → Strategist Refinement → Synthesizer → Evaluation
+- Confidence: high
+- Steps executed: Profile Interpreter > Analyst > Strategist Initial > Critic > Strategist Refinement > Synthesizer > Evaluation

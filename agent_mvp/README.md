@@ -47,14 +47,32 @@ The script reads the CSV, then:
 - **Critic**: challenges the strategist with data/risk concerns only
 - **Strategist (refinement)**: updates recommendations once after critique and explicitly addresses concerns
 - **Synthesizer**: resolves the disagreement and writes exactly 3 final decisions
+- **Evaluation**: scores the output quality and confidence
 
 Flow is fixed:
-Analyst → Strategist → Critic → Strategist (refinement) → Synthesizer
+Profile Interpreter → Analyst → Strategist → Critic → Strategist (refinement) → Synthesizer → Evaluation
 
 Limits:
 - one critique round
 - one refinement pass
 - no recursive loops or open discussion
+
+## Graph Mode vs Simple Mode
+
+### Simple Mode
+
+Default behavior. It runs the existing pipeline exactly as-is and keeps the current output shape unchanged.
+
+### Graph Mode
+
+Enabled with `--graph`. It uses a small explicit state/orchestration layer in `decision_graph.py` so each step writes to state in order.
+
+Why use it:
+- better traceability
+- clearer control over each step
+- easier to inspect confidence / warning handling
+
+Use graph mode when you want the same analysis with more structure. Use simple mode when you want the original behavior unchanged.
 
 ## Run it
 

@@ -9,6 +9,8 @@ from pathlib import Path
 from statistics import median
 from typing import Any, Dict, List, Optional
 
+from decision_graph import DecisionGraph
+
 ROOT = Path(__file__).resolve().parent
 DEFAULT_INPUT = ROOT / "sample_ads_data.csv"
 OUTPUT_REPORT = ROOT / "output_report.md"
@@ -1266,6 +1268,44 @@ def build_report_text(source: Path, analysis: Dict[str, Any], strategy: Dict[str
     return "\n".join(lines)
 
 
+def render_graph_mode_appendix(state: Any) -> str:
+    warnings = getattr(state, "warnings", []) or []
+    confidence = getattr(state, "confidence", "high")
+    trace = getattr(state, "trace", []) or []
+
+    lines = [
+        "## Graph Mode Trace",
+        "- Flow: Profile Interpreter → Analyst → Strategist Initial → Critic → Strategist Refinement → Synthesizer → Evaluation",
+        f"- Confidence: {confidence}",
+    ]
+    if trace:
+        lines.append(f"- Steps executed: {' > '.join(trace)}")
+    if warnings:
+        lines.append("")
+        lines.append("## Graph Mode Warnings")
+        lines.extend(f"- {warning}" for warning in warnings)
+    return "\n".join(lines).strip() + "\n"
+
+
+def render_graph_mode_html_appendix(state: Any) -> str:
+    warnings = getattr(state, "warnings", []) or []
+    confidence = getattr(state, "confidence", "high")
+    trace = getattr(state, "trace", []) or []
+    trace_html = " > ".join(esc(step) for step in trace) if trace else "n/a"
+    warning_html = "".join(f"<li>{esc(warning)}</li>" for warning in warnings)
+    return f"""
+    <section class=\"section-block\">
+      <h2>Graph Mode Trace</h2>
+      <div class=\"card\">
+        <p><strong>Flow:</strong> Profile Interpreter → Analyst → Strategist Initial → Critic → Strategist Refinement → Synthesizer → Evaluation</p>
+        <p><strong>Confidence:</strong> {esc(confidence)}</p>
+        <p><strong>Steps executed:</strong> {trace_html}</p>
+        {f'<p><strong>Warnings:</strong></p><ul>{warning_html}</ul>' if warnings else ''}
+      </div>
+    </section>
+"""
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the local Gnomeo agent MVP workflow.")
     parser.add_argument("csv_path", nargs="?", default=str(DEFAULT_INPUT), help="Path to a CSV file")
@@ -1273,6 +1313,7 @@ def main() -> None:
     parser.add_argument("--objective", default="efficient growth", help="Business objective used by the profile interpreter")
     parser.add_argument("--acceptable-cpa", type=float, default=None, help="Override acceptable CPA")
     parser.add_argument("--acceptable-roas", type=float, default=None, help="Override acceptable ROAS")
+    parser.add_argument("--graph", action="store_true", help="Use the lightweight graph orchestration layer")
     args = parser.parse_args()
 
     source = Path(args.csv_path).expanduser().resolve()
@@ -1280,17 +1321,45 @@ def main() -> None:
         raise SystemExit(f"Missing data file: {source}")
 
     campaigns = load_campaigns(source)
-    profile_context = run_profile_interpreter(campaigns, args)
-    analysis = analyst(campaigns, profile_context)
-    strategy_initial = strategist_initial(analysis, profile_context)
-    critique = critic(analysis, strategy_initial, profile_context)
-    strategy_refined = strategist_refinement(analysis, strategy_initial, critique, profile_context)
-    enriched_strategy = enrich_decisions(strategy_refined, analysis)
-    simulation = simulate_projections(enriched_strategy, analysis)
-    final = synthesizer(analysis, enriched_strategy, critique, simulation)
-    evaluation = evaluate_output(enriched_strategy, critique)
-    report = build_report_text(source, analysis, enriched_strategy, critique, final, evaluation, simulation)
-    html_report = render_html_report(source, analysis, enriched_strategy, critique, evaluation, simulation)
+
+    if args.graph:
+        graph = DecisionGraph(
+            profile_interpreter=run_profile_interpreter,
+            analyst=analyst,
+            strategist_initial=strategist_initial,
+            critic=critic,
+            strategist_refinement=strategist_refinement,
+            enrich_decisions=enrich_decisions,
+            simulate_projections=simulate_projections,
+            synthesizer=synthesizer,
+            evaluate_output=evaluate_output,
+        )
+        graph_state = graph.run(campaigns, args)
+        profile_context = graph_state.profile or {}
+        analysis = graph_state.analyst_output or {}
+        strategy_initial = graph_state.strategist_initial_output or {}
+        strategy_refined = graph_state.strategist_refined_output or {}
+        enriched_strategy = graph_state.enriched_strategy or {}
+        critique = graph_state.critic_output or {}
+        simulation = graph_state.simulation or {}
+        final = graph_state.synthesizer_output or ""
+        evaluation = graph_state.evaluation_output or {}
+        report = build_report_text(source, analysis, enriched_strategy, critique, final, evaluation, simulation)
+        report += "\n" + render_graph_mode_appendix(graph_state)
+        html_report = render_html_report(source, analysis, enriched_strategy, critique, evaluation, simulation)
+        html_report = html_report.replace("</div>\n  </body>", render_graph_mode_html_appendix(graph_state) + "  </div>\n  </body>")
+    else:
+        profile_context = run_profile_interpreter(campaigns, args)
+        analysis = analyst(campaigns, profile_context)
+        strategy_initial = strategist_initial(analysis, profile_context)
+        critique = critic(analysis, strategy_initial, profile_context)
+        strategy_refined = strategist_refinement(analysis, strategy_initial, critique, profile_context)
+        enriched_strategy = enrich_decisions(strategy_refined, analysis)
+        simulation = simulate_projections(enriched_strategy, analysis)
+        final = synthesizer(analysis, enriched_strategy, critique, simulation)
+        evaluation = evaluate_output(enriched_strategy, critique)
+        report = build_report_text(source, analysis, enriched_strategy, critique, final, evaluation, simulation)
+        html_report = render_html_report(source, analysis, enriched_strategy, critique, evaluation, simulation)
 
     OUTPUT_REPORT.write_text(report, encoding="utf-8")
     OUTPUT_HTML.write_text(html_report, encoding="utf-8")
