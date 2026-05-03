@@ -46,6 +46,7 @@ VAGUE_REASON_PHRASES = {
     "works in cars",
     "auto",
 }
+ROLE_REQUIRED_TERMS = {"marketing", "ads", "performance"}
 
 
 def load_candidates(path: Path = CSV_PATH) -> List[Dict[str, str]]:
@@ -80,12 +81,23 @@ def classify_candidate(candidate: Dict[str, str]) -> Dict[str, str]:
     if not (candidate.get("approval_status") or "").strip():
         candidate["approval_status"] = "pending"
     candidate["source_url"] = (candidate.get("source_url") or "").strip()
-    candidate["validation_status"] = "flagged" if is_vague_reason(candidate.get("reason_they_fit") or "") else "valid"
+    candidate["validation_status"] = "valid"
     notes = []
     if not candidate["source_url"]:
         notes.append("missing_source_url")
+        candidate["validation_status"] = "ignored"
+    elif "linkedin.com" not in candidate["source_url"].lower():
+        notes.append("non_linkedin_source_url")
+        candidate["validation_status"] = "ignored"
+    if not any(term in role for term in ROLE_REQUIRED_TERMS):
+        notes.append("role_missing_marketing_ads_performance")
+        if candidate["validation_status"] == "valid":
+            candidate["validation_status"] = "flagged"
     if candidate["validation_status"] == "flagged":
         notes.append("vague_reason_they_fit")
+    elif candidate["validation_status"] == "valid" and is_vague_reason(candidate.get("reason_they_fit") or ""):
+        notes.append("vague_reason_they_fit")
+        candidate["validation_status"] = "flagged"
     candidate["validation_notes"] = ";".join(notes)
     return candidate
 
@@ -117,8 +129,8 @@ def generate_message(candidate: Dict[str, str]) -> str:
     lines = [
         f"Hi {name},",
         f"I came across {reference} and it seemed relevant.",
-        "I’m putting together a small list of real outreach candidates and checking if the fit is actually there.",
-        "If you’re open to it, could you sanity-check this and share a blunt thought?",
+        "I’m checking a small set of outreach fits by hand.",
+        "If you’re open to it, could you share a blunt thought?",
         "No pressure if not.",
     ]
     return "\n".join(lines)
