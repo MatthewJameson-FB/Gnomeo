@@ -501,6 +501,32 @@
       const csvFile = document.getElementById('csv-file');
       const email = document.getElementById('email');
       const success = document.getElementById('success-message');
+
+      const track = (eventName, payload = {}) => {
+        // Lightweight tracking for now; wire this into analytics/event capture later.
+        console.log(`[track] ${eventName}`, {
+          ...payload,
+          timestamp: new Date().toISOString(),
+        });
+      };
+
+      document.querySelectorAll('a[href="#contact"]').forEach((cta) => {
+        cta.addEventListener('click', () => {
+          track('free_analysis_cta_click', {
+            text: cta.textContent.trim(),
+          });
+        });
+      });
+
+      csvFile?.addEventListener('change', () => {
+        const file = csvFile.files?.[0];
+        if (!file) return;
+
+        track('free_analysis_csv_selected', {
+          fileName: file.name,
+        });
+      });
+
       form?.addEventListener('submit', (event) => {
         event.preventDefault();
 
@@ -508,11 +534,19 @@
         const emailValue = email?.value.trim();
 
         if (!file) {
+          track('free_analysis_validation_error', {
+            reason: 'missing_csv',
+            email: emailValue || '',
+          });
           alert('Please upload a CSV file.');
           return;
         }
 
         if (!emailValue) {
+          track('free_analysis_validation_error', {
+            reason: 'missing_email',
+            fileName: file.name,
+          });
           alert('Please add your email address.');
           return;
         }
@@ -524,6 +558,10 @@
           email: emailValue,
           fileName: file.name,
           timestamp: new Date().toISOString(),
+        });
+        track('free_analysis_form_submitted_successfully', {
+          email: emailValue,
+          fileName: file.name,
         });
 
         success.style.display = 'block';
