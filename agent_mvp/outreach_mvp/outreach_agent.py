@@ -24,8 +24,28 @@ FIELDNAMES = [
     "category",
     "priority",
     "approval_status",
+    "validation_status",
+    "validation_notes",
     "suggested_message",
 ]
+
+ALLOWED_CATEGORIES = {"data_partner", "report_validator"}
+ALLOWED_PRIORITIES = {"high", "medium", "low"}
+VAGUE_REASON_PHRASES = {
+    "various",
+    "something",
+    "something like",
+    "etc",
+    "etc.",
+    "general",
+    "vague",
+    "maybe relevant",
+    "some work",
+    "any work",
+    "works in auto",
+    "works in cars",
+    "auto",
+}
 
 
 def load_candidates(path: Path = CSV_PATH) -> List[Dict[str, str]]:
@@ -41,13 +61,13 @@ def classify_candidate(candidate: Dict[str, str]) -> Dict[str, str]:
     company = (candidate.get("company") or "").lower()
     reason = (candidate.get("reason_they_fit") or "").lower()
 
-    if category not in {"data_partner", "report_validator"}:
+    if category not in ALLOWED_CATEGORIES:
         if any(k in role for k in ["buyer", "lead", "founder", "coordinator", "specialist", "manager"]):
             category = "data_partner"
         else:
             category = "report_validator"
 
-    if priority not in {"high", "medium", "low"}:
+    if priority not in ALLOWED_PRIORITIES:
         if any(k in reason for k in ["discontinued", "older vehicles", "fitment", "sourcing", "supplier"]):
             priority = "high"
         elif any(k in company for k in ["forum", "club", "notes", "community"]):
@@ -59,20 +79,47 @@ def classify_candidate(candidate: Dict[str, str]) -> Dict[str, str]:
     candidate["priority"] = priority
     if not (candidate.get("approval_status") or "").strip():
         candidate["approval_status"] = "pending"
+    candidate["source_url"] = (candidate.get("source_url") or "").strip()
+    candidate["validation_status"] = "flagged" if is_vague_reason(candidate.get("reason_they_fit") or "") else "valid"
+    notes = []
+    if not candidate["source_url"]:
+        notes.append("missing_source_url")
+    if candidate["validation_status"] == "flagged":
+        notes.append("vague_reason_they_fit")
+    candidate["validation_notes"] = ";".join(notes)
     return candidate
+
+
+def is_vague_reason(reason: str) -> bool:
+    text = (reason or "").strip().lower()
+    if not text:
+        return True
+    if len(text) < 18:
+        return True
+    return any(phrase in text for phrase in VAGUE_REASON_PHRASES)
 
 
 def generate_message(candidate: Dict[str, str]) -> str:
     name = (candidate.get("name") or "there").strip()
-    company = (candidate.get("company") or "your team").strip()
-    reason = (candidate.get("reason_they_fit") or "your work").strip()
+    role = (candidate.get("role") or "").strip()
+    company = (candidate.get("company") or "").strip()
+    work_ref = candidate.get("reason_they_fit") or "your work"
+
+    if role and company:
+        reference = f"your {role.lower()} work at {company}"
+    elif company:
+        reference = f"what you do at {company}"
+    elif role:
+        reference = f"your {role.lower()} work"
+    else:
+        reference = work_ref.lower().strip()
 
     lines = [
         f"Hi {name},",
-        f"I came across {company} and thought of you because {reason.lower() if reason else 'your work seems relevant'}.",
-        "I'm collecting a few real-world opinions on a lightweight outreach / part-review workflow.",
-        "Would you be open to sharing a quick thought or a small data point?",
-        "No rush either way — just thought I'd ask.",
+        f"I came across {reference} and it seemed relevant.",
+        "I’m putting together a small list of real outreach candidates and checking if the fit is actually there.",
+        "If you’re open to it, could you sanity-check this and share a blunt thought?",
+        "No pressure if not.",
     ]
     return "\n".join(lines)
 
@@ -80,7 +127,12 @@ def generate_message(candidate: Dict[str, str]) -> str:
 def update_messages(path: Path = CSV_PATH) -> List[Dict[str, str]]:
     candidates = [classify_candidate(row) for row in load_candidates(path)]
     for candidate in candidates:
-        candidate["suggested_message"] = generate_message(candidate)
+        should_generate = (
+            candidate.get("approval_status") == "pending"
+            and bool(candidate.get("source_url"))
+            and candidate.get("validation_status") == "valid"
+        )
+        candidate["suggested_message"] = generate_message(candidate) if should_generate else ""
 
     clean_rows = [{field: candidate.get(field, "") for field in FIELDNAMES} for candidate in candidates]
 
