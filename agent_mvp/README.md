@@ -88,6 +88,23 @@ python3 agent_mvp/agent_test.py
 python3 agent_mvp/agent_test.py /path/to/your-file.csv
 ```
 
+## Free-tier local report workflow
+
+Use `run_report.py` when you want a repeatable local flow from your machine:
+
+```bash
+python3 agent_mvp/run_report.py --csv ~/Gnomeo/free_reports/inbox/file.csv --email customer@example.com
+```
+
+It will:
+- validate the CSV
+- copy it into `~/Gnomeo/free_reports/processed_inputs/`
+- run graph mode through `agent_test.py`
+- save HTML and MD reports into `~/Gnomeo/free_reports/output/`
+- print the next steps for uploading the HTML to the admin portal
+
+If macOS permissions block file access, move the CSV into `~/Gnomeo/free_reports/inbox` first.
+
 ## API keys
 
 No API keys are required for this local mock.
