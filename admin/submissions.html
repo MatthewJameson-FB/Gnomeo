@@ -29,12 +29,17 @@
         <div class="actions">
           <a class="pill-link" href="/admin/">Admin Home</a>
           <a class="pill-link active" href="/admin/submissions.html">Submissions</a>
-          <button id="reloadBtn" type="button">Reload from Supabase</button>
-          <button id="openManualBtn" class="primary" type="button">Add manual submission</button>
+          <button id="reloadBtn" class="secondary" type="button">Reload from Supabase</button>
+          <button id="openManualBtn" class="secondary" type="button">Add manual submission</button>
         </div>
       </header>
 
       <section id="banner" class="banner hidden" aria-live="polite"></section>
+
+      <section class="card explainer-card">
+        <h2>How to use this dashboard</h2>
+        <p>Use this dashboard to track submissions and send finished reports. CSV files arrive in your admin email as attachments. Generate the report locally, then upload the finished HTML/PDF here and send it to the customer.</p>
+      </section>
 
       <section class="workflow-strip card">
         <span class="workflow-label">Workflow</span>
@@ -70,7 +75,7 @@
         <div class="card table-card">
           <div id="emptyState" class="empty-state hidden">
             <h2>No submissions yet.</h2>
-            <p>Submit a test CSV from the homepage or add one manually.</p>
+            <p>Submit a CSV from the homepage to test the full flow.</p>
           </div>
           <table class="table">
             <thead>

@@ -119,6 +119,13 @@ button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
 .banner.good { background: #ecfdf3; color: #166534; }
 .banner.error { background: #fef2f2; color: #b42318; }
 
+.explainer-card {
+  margin-top: 14px;
+  padding: 14px 16px;
+}
+.explainer-card h2 { font-size: 18px; margin-bottom: 6px; }
+.explainer-card p { margin: 0; color: var(--muted); }
+
 .workflow-strip {
   display: flex;
   gap: 10px;
@@ -263,6 +270,14 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); box-sha
 .detail-grid .full { grid-column: 1 / -1; }
 .detail-grid.compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .report-panel { display: grid; gap: 12px; }
+.workflow-panel {
+  padding: 12px 14px;
+  border: 1px solid #e4e7ec;
+  border-radius: 14px;
+  background: #fff;
+}
+.workflow-panel h3 { margin: 0 0 8px; font-size: 15px; }
+.workflow-panel ol { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
 .report-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
 .report-head h3 { margin: 2px 0 0; font-size: 18px; }
 .report-badges { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -320,4 +335,11 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); box-sha
   .hero { align-items: stretch; }
   .section-head { flex-direction: column; }
   .workflow-strip { flex-direction: column; align-items: flex-start; }
+  h1 { font-size: 28px; }
+  .actions { width: 100%; }
+  .actions > * { width: 100%; }
+  .actions-row { flex-direction: column; }
+  .actions-row > * { width: 100%; }
+  .detail-grid.compact, .detail-grid { grid-template-columns: 1fr; }
+  .report-head { flex-direction: column; }
 }
