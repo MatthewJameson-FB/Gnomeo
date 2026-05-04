@@ -190,46 +190,70 @@ function detailTemplate(detail) {
         <div>${esc(customer.company || '—')}</div>
       </div>
       <div>
-        <label>Submission status</label>
-        <select id="submissionStatus">${submissionStatuses.map((value) => `<option value="${value}" ${submission.status === value ? 'selected' : ''}>${esc(value)}</option>`).join('')}</select>
-      </div>
-      <div>
-        <label>Customer status</label>
-        <select id="customerStatus">${customerStatuses.map((value) => `<option value="${value}" ${customer.status === value ? 'selected' : ''}>${esc(value)}</option>`).join('')}</select>
-      </div>
-      <div class="full">
-        <label>Submission notes</label>
-        <textarea id="submissionNotes" placeholder="Internal submission notes">${esc(submission.notes || '')}</textarea>
-      </div>
-      <div class="full">
-        <label>Customer notes</label>
-        <textarea id="customerNotes" placeholder="Notes about the customer">${esc(customer.notes || '')}</textarea>
-      </div>
-      <div>
         <label>CSV download</label>
         <div class="actions-row">
           <button id="downloadCsvBtn" class="secondary" type="button" ${submission.csv_file_url ? '' : 'disabled'}>Download CSV</button>
         </div>
         ${submission.csv_file_url ? '' : '<p class="small">CSV not available here — use admin email attachment.</p>'}
       </div>
-      <div>
-        <label>Report preview</label>
-        <div class="actions-row"><button id="previewReportBtn" class="secondary" type="button" ${latestReport ? '' : 'disabled'}>Preview latest report</button></div>
+
+      <div class="full report-panel">
+        <div class="report-head">
+          <div>
+            <label>Report</label>
+            <h3>${latestReport ? esc(latestReport.report_file_url.split('/').pop() || 'Uploaded report') : 'Upload a finished report'}</h3>
+          </div>
+          <div class="report-badges">
+            ${latestReport ? '<span class="badge report_ready">Uploaded</span>' : '<span class="badge received">Missing</span>'}
+          </div>
+        </div>
+
+        <div id="reportDropzone" class="dropzone ${latestReport ? 'has-report' : ''}">
+          <input id="reportFile" type="file" accept=".html,.pdf" hidden />
+          <p class="dropzone-copy">${latestReport ? 'Replace the current report file below.' : 'Drag & drop report here'}</p>
+          <p class="small">or</p>
+          <button id="chooseReportBtn" class="secondary" type="button">Choose file</button>
+          <p id="chosenReportName" class="small">${latestReport ? `Current file: ${esc(latestReport.report_file_url.split('/').pop() || '')}` : 'HTML or PDF only.'}</p>
+          <div class="actions-row">
+            <button id="uploadReportBtn" class="primary" type="button">${latestReport ? 'Replace report' : 'Upload report'}</button>
+            <button id="viewReportBtn" class="secondary" type="button" ${latestReport ? '' : 'disabled'}>View report</button>
+          </div>
+          <p id="reportFeedback" class="small"></p>
+        </div>
       </div>
+
       <div class="full">
-        <label>Upload generated report</label>
-        <input id="reportFile" type="file" accept=".html,.pdf" />
+        <label>Send report</label>
+        <div class="actions-row">
+          <button id="sendReportBtn" class="primary" type="button" ${latestReport ? '' : 'disabled'}>Send report email</button>
+        </div>
       </div>
+
       <div class="full">
-        <label>Report summary</label>
-        <textarea id="reportSummary" placeholder="Short summary for the report record">${esc(latestReport?.summary || '')}</textarea>
-      </div>
-      <div class="full actions-row">
-        <button id="saveStatusBtn" class="secondary" type="button">Save</button>
-        <button id="followUpBtn" class="secondary" type="button">Mark follow-up needed</button>
-        <button id="convertedBtn" class="secondary" type="button">Mark converted</button>
-        <button id="uploadReportBtn" class="primary" type="button">Upload report</button>
-        <button id="sendReportBtn" class="primary" type="button" ${latestReport ? '' : 'disabled'}>Send report email</button>
+        <label>Status & notes</label>
+        <div class="detail-grid compact">
+          <div>
+            <label>Submission status</label>
+            <select id="submissionStatus">${submissionStatuses.map((value) => `<option value="${value}" ${submission.status === value ? 'selected' : ''}>${esc(value)}</option>`).join('')}</select>
+          </div>
+          <div>
+            <label>Customer status</label>
+            <select id="customerStatus">${customerStatuses.map((value) => `<option value="${value}" ${customer.status === value ? 'selected' : ''}>${esc(value)}</option>`).join('')}</select>
+          </div>
+          <div class="full">
+            <label>Submission notes</label>
+            <textarea id="submissionNotes" placeholder="Internal submission notes">${esc(submission.notes || '')}</textarea>
+          </div>
+          <div class="full">
+            <label>Customer notes</label>
+            <textarea id="customerNotes" placeholder="Notes about the customer">${esc(customer.notes || '')}</textarea>
+          </div>
+          <div class="full actions-row">
+            <button id="saveStatusBtn" class="secondary" type="button">Save notes</button>
+            <button id="followUpBtn" class="secondary" type="button">Mark follow-up needed</button>
+            <button id="convertedBtn" class="secondary" type="button">Mark converted</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -269,13 +293,17 @@ async function openDetail(id) {
 
   const latestReport = data.reports?.[0] || null;
   const downloadCsvBtn = document.getElementById('downloadCsvBtn');
-  const previewReportBtn = document.getElementById('previewReportBtn');
+  const chooseReportBtn = document.getElementById('chooseReportBtn');
+  const viewReportBtn = document.getElementById('viewReportBtn');
   const saveStatusBtn = document.getElementById('saveStatusBtn');
   const followUpBtn = document.getElementById('followUpBtn');
   const convertedBtn = document.getElementById('convertedBtn');
   const uploadReportBtn = document.getElementById('uploadReportBtn');
   const sendReportBtn = document.getElementById('sendReportBtn');
   const reportFile = document.getElementById('reportFile');
+  const reportDropzone = document.getElementById('reportDropzone');
+  const reportFeedback = document.getElementById('reportFeedback');
+  const chosenReportName = document.getElementById('chosenReportName');
 
   downloadCsvBtn?.addEventListener('click', async () => {
     const res = await fetch(`/api/admin/file?kind=csv&submission_id=${encodeURIComponent(id)}`, { headers: authHeaders() });
@@ -289,13 +317,69 @@ async function openDetail(id) {
     URL.revokeObjectURL(url);
   });
 
-  previewReportBtn?.addEventListener('click', async () => {
+  viewReportBtn?.addEventListener('click', async () => {
     if (!latestReport) return;
     const res = await fetch(`/api/admin/file?kind=report&report_id=${encodeURIComponent(latestReport.id)}`, { headers: authHeaders() });
     if (!res.ok) throw new Error('Report preview failed');
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank', 'noopener,noreferrer');
+  });
+
+  const uploadReport = async (file) => {
+    if (!file) throw new Error('Choose a report file first.');
+    if (!/\.(html?|pdf)$/i.test(file.name)) throw new Error('Report must be HTML or PDF.');
+    reportFeedback.textContent = 'Uploading...';
+    const form = new FormData();
+    form.append('submission_id', id);
+    form.append('report_file', file, file.name);
+    const response = await fetch('/api/admin/upload-report', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: form,
+    });
+    const text = await response.text();
+    let payload = null;
+    try { payload = text ? JSON.parse(text) : null; } catch { payload = null; }
+    if (!response.ok) {
+      throw new Error(payload?.error || text || 'Upload failed');
+    }
+    reportFile.value = '';
+    if (chosenReportName) chosenReportName.textContent = payload?.report?.report_file_url?.split('/').pop() || file.name;
+    await loadRows();
+    await openDetail(id);
+    const freshFeedback = document.getElementById('reportFeedback');
+    if (freshFeedback) freshFeedback.textContent = 'Upload complete';
+  };
+
+  const handleDroppedFile = (file) => {
+    if (!file) return;
+    if (chosenReportName) chosenReportName.textContent = file.name;
+    uploadReport(file).catch((error) => {
+      reportFeedback.textContent = error.message;
+    });
+  };
+
+  chooseReportBtn?.addEventListener('click', () => reportFile?.click());
+  reportFile?.addEventListener('change', () => {
+    const file = reportFile.files?.[0];
+    if (chosenReportName) chosenReportName.textContent = file ? file.name : 'HTML or PDF only.';
+  });
+  reportDropzone?.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    reportDropzone.classList.add('dragover');
+  });
+  reportDropzone?.addEventListener('dragleave', () => reportDropzone.classList.remove('dragover'));
+  reportDropzone?.addEventListener('drop', (event) => {
+    event.preventDefault();
+    reportDropzone.classList.remove('dragover');
+    const file = event.dataTransfer?.files?.[0];
+    if (file) {
+      if (chosenReportName) chosenReportName.textContent = file.name;
+      uploadReport(file).catch((error) => {
+        reportFeedback.textContent = error.message;
+      });
+    }
   });
 
   const saveCurrent = async () => {
@@ -323,16 +407,9 @@ async function openDetail(id) {
   });
 
   uploadReportBtn?.addEventListener('click', async () => {
-    const file = reportFile?.files?.[0];
-    if (!file) throw new Error('Choose a report file first.');
-    const form = new FormData();
-    form.append('action', 'upload-report');
-    form.append('submission_id', id);
-    form.append('summary', document.getElementById('reportSummary').value || '');
-    form.append('report_file', file, file.name);
-    await apiFetch('/api/admin/crm', { method: 'POST', body: form });
-    await loadRows();
-    await openDetail(id);
+    await uploadReport(reportFile?.files?.[0]).catch((error) => {
+      reportFeedback.textContent = error.message;
+    });
   });
 
   sendReportBtn?.addEventListener('click', async () => {

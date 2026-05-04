@@ -257,6 +257,22 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); box-sha
 .detail-card .detail-grid textarea { width: 100%; }
 .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .detail-grid .full { grid-column: 1 / -1; }
+.detail-grid.compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.report-panel { display: grid; gap: 12px; }
+.report-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.report-head h3 { margin: 2px 0 0; font-size: 18px; }
+.report-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.dropzone {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px dashed #bfd0f5;
+  background: #f8fbff;
+}
+.dropzone.dragover { border-color: var(--accent); background: #eef4ff; box-shadow: 0 0 0 4px var(--accent-soft); }
+.dropzone.has-report { background: #f5fff7; border-color: #a7f3d0; }
+.dropzone-copy { margin: 0; font-weight: 700; }
 .command, pre {
   white-space: pre-wrap;
   word-break: break-word;
