@@ -15,6 +15,7 @@ const els = {
   tableBody: document.getElementById('tableBody'),
   emptyState: document.getElementById('emptyState'),
   detailHint: document.getElementById('detailHint'),
+  detailPlaceholder: document.getElementById('detailPlaceholder'),
   detailContent: document.getElementById('detailContent'),
   manualModal: document.getElementById('manualModal'),
   closeManualBtn: document.getElementById('closeManualBtn'),
@@ -321,6 +322,7 @@ async function openDetail(id) {
   const data = await apiFetch(`/api/admin/crm?view=detail&id=${encodeURIComponent(id)}`);
   state.detail = data;
   els.detailHint.classList.add('hidden');
+  els.detailPlaceholder?.classList.add('hidden');
   els.detailContent.classList.remove('hidden');
   els.detailContent.innerHTML = detailTemplate(data);
 
@@ -475,6 +477,7 @@ async function loadRows() {
     if (!state.rows.length) {
       els.detailHint.classList.remove('hidden');
       els.detailHint.textContent = 'Select a submission to manage report delivery.';
+      els.detailPlaceholder?.classList.remove('hidden');
       els.detailContent.classList.add('hidden');
     }
   } catch (error) {

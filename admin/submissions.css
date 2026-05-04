@@ -195,6 +195,15 @@ button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
   background: #fbfdff;
   margin-bottom: 14px;
 }
+.empty-detail {
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px dashed #b8c5e6;
+  background: #f8fbff;
+  color: var(--text);
+}
+.empty-detail strong { display: block; margin-bottom: 6px; }
+.empty-detail p { margin: 0; color: var(--muted); }
 .field { display: flex; flex-direction: column; gap: 6px; }
 label { font-size: 13px; color: var(--muted); }
 input, select, textarea {
