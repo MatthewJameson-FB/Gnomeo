@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gnomeo Free Report Runner</title>
+    <style>
+      :root { color-scheme: light; --bg: #f5f7fb; --panel: #fff; --text: #172033; --muted: #667085; --border: #d9e0ea; --accent: #4b74ff; --soft: #eaf0ff; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+      .shell { max-width: 860px; margin: 0 auto; padding: 24px; }
+      .card { background: var(--panel); border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 10px 30px rgba(23, 32, 51, 0.08); padding: 18px; }
+      .stack { display: grid; gap: 16px; }
+      .hero h1 { margin: 0 0 8px; font-size: 34px; }
+      .hero p { margin: 0; color: var(--muted); }
+      .row { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
+      label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px; }
+      input[type="email"], input[type="file"] { width: 100%; }
+      input, button, a.link { border-radius: 12px; border: 1px solid var(--border); background: #fff; font: inherit; }
+      input { width: 100%; padding: 12px 14px; }
+      button, a.link { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 16px; cursor: pointer; text-decoration: none; color: var(--text); }
+      .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+      .muted { color: var(--muted); }
+      .notice { padding: 12px 14px; border-radius: 14px; background: #fff8e7; color: #92400e; border: 1px solid #fde68a; }
+      .ok { background: #ecfdf3; color: #166534; border-color: #bbf7d0; }
+      .error { background: #fef2f2; color: #b42318; border-color: #fecaca; }
+      pre { white-space: pre-wrap; word-break: break-word; background: #f8fafc; border: 1px solid var(--border); padding: 12px; border-radius: 14px; margin: 0; }
+      .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+      @media (max-width: 720px) { .row { grid-template-columns: 1fr; } .actions > * { width: 100%; } }
+    </style>
+  </head>
+  <body>
+    <div class="shell stack">
+      <section class="card hero">
+        <h1>Free-tier report runner</h1>
+        <p>Upload a CSV, save it locally, and generate HTML + MD reports from this machine.</p>
+      </section>
+
+      <section class="card stack">
+        <form method="post" enctype="multipart/form-data" class="stack">
+          <div class="row">
+            <div>
+              <label for="email">Customer email</label>
+              <input id="email" type="email" name="email" value="{{ form.email }}" placeholder="customer@example.com" required />
+            </div>
+            <div>
+              <label for="csv_file">CSV file</label>
+              <input id="csv_file" type="file" name="csv_file" accept=".csv,text/csv" required />
+            </div>
+          </div>
+          <div class="actions">
+            <button class="primary" type="submit">Generate report</button>
+          </div>
+        </form>
+      </section>
+
+      {% if error %}
+        <section class="card error">{{ error }}</section>
+      {% endif %}
+
+      {% if result %}
+        <section class="card stack">
+          <div class="notice ok">Report generated successfully.</div>
+          <div>
+            <strong>HTML report path</strong>
+            <pre>{{ result.html_path }}</pre>
+          </div>
+          <div>
+            <strong>MD report path</strong>
+            <pre>{{ result.md_path }}</pre>
+          </div>
+          <div class="actions">
+            <a class="link primary" href="{{ result.report_link }}" target="_blank" rel="noreferrer">Open report</a>
+          </div>
+          <div class="notice">Next steps: upload the HTML report to the admin portal and send the report email.</div>
+        </section>
+      {% endif %}
+    </div>
+  </body>
+</html>
