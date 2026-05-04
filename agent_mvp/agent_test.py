@@ -1284,15 +1284,129 @@ def esc(value: Any) -> str:
     return html.escape(str(value), quote=True)
 
 
-def _decision_confidence(action: Dict[str, Any], analysis: Dict[str, Any]) -> tuple[str, str]:
-    campaign_count = analysis["summary"].get("campaign_count", 0)
-    source_spend = float(action.get("source_spend") or 0.0)
-    target_spend = float(action.get("target_spend") or 0.0)
-    if campaign_count >= 5 and source_spend >= 500 and target_spend >= 500:
-        return "High", "Good volume, consistent signal, and enough spend on both sides of the move."
-    if campaign_count >= 3:
-        return "Medium", "Enough data to act, but attribution and margin context are still missing."
-    return "Low", "Thin data makes this directionally useful, not definitive."
+def _decision_confidence(action: Dict[str, Any], analysis: Dict[str, Any], sim: Dict[str, Any]) -> tuple[str, str]:
+    campaigns = analysis.get("campaigns", [])
+    lookup = build_campaign_lookup(campaigns)
+    summary = analysis.get("summary", {})
+    total_spend = float(summary.get("total_spend") or 0.0)
+
+    def metric_value(campaign: Optional[Campaign]) -> Optional[float]:
+        if campaign is None:
+            return None
+        if campaign.cpa is not None:
+            return campaign.cpa
+        if campaign.roas is not None:
+            return campaign.roas
+        return None
+
+    source = lookup.get(normalize_name(str(action.get("from") or action.get("campaign") or sim.get("source_campaign") or "")))
+    target = lookup.get(normalize_name(str(action.get("to") or action.get("campaign") or sim.get("target_campaign") or "")))
+    is_pause = action.get("type") == "pause"
+    is_scale = action.get("type") == "scale"
+    is_reallocate = action.get("type") == "reallocate"
+
+    decision_spend = float(action.get("amount") or 0.0)
+    if is_reallocate and source is not None:
+        decision_spend = float(source.spend or decision_spend)
+    elif is_pause and source is not None:
+        decision_spend = float(source.spend or decision_spend)
+    elif is_scale and target is not None:
+        decision_spend = float(target.spend or decision_spend)
+
+    score = 0
+    reasons: List[str] = []
+
+    # 1) Data volume
+    if decision_spend >= max(10000.0, total_spend * 0.15):
+        score += 1
+        reasons.append("Strong spend volume")
+    elif decision_spend <= max(1000.0, total_spend * 0.03):
+        score -= 1
+        reasons.append("Low spend volume")
+    else:
+        reasons.append("Moderate spend")
+
+    # 2) Performance gap
+    gap = None
+    if is_reallocate and source and target:
+        source_metric = metric_value(source)
+        target_metric = metric_value(target)
+        if source_metric is not None and target_metric is not None:
+            gap = abs(source_metric - target_metric) / max(abs(source_metric), abs(target_metric), 0.0001)
+    elif is_pause and source:
+        source_metric = metric_value(source)
+        baseline = summary.get("overall_cpa") if source.cpa is not None else summary.get("overall_roas")
+        if source_metric is not None and baseline is not None:
+            gap = abs(source_metric - baseline) / max(abs(source_metric), abs(baseline), 0.0001)
+    elif is_scale and target:
+        target_metric = metric_value(target)
+        baseline = summary.get("overall_cpa") if target.cpa is not None else summary.get("overall_roas")
+        if target_metric is not None and baseline is not None:
+            gap = abs(target_metric - baseline) / max(abs(target_metric), abs(baseline), 0.0001)
+
+    if gap is not None and gap > 0.5:
+        score += 1
+        reasons.append("Strong performance gap")
+    elif gap is not None and gap < 0.2:
+        score -= 1
+        reasons.append("Weak performance gap")
+    elif gap is not None:
+        reasons.append("Moderate performance gap")
+    else:
+        score -= 1
+        reasons.append("Missing performance comparison")
+
+    # 3) Consistency
+    if source and target:
+        consistent = source.conversions >= 50 and target.conversions >= 50 and source.spend >= 8000 and target.spend >= 8000
+    elif source:
+        consistent = source.conversions >= 50 and source.spend >= 8000 and source.roas is not None
+    elif target:
+        consistent = target.conversions >= 50 and target.spend >= 8000 and target.roas is not None
+    else:
+        consistent = False
+
+    if consistent:
+        score += 1
+        reasons.append("Consistent performance")
+    else:
+        score -= 1
+        reasons.append("Volatile or thin data")
+
+    # 4) Context risk
+    same_channel = True
+    if source and target:
+        same_channel = (source.platform or "").strip().lower() == (target.platform or "").strip().lower()
+    elif source:
+        same_channel = bool(source.platform)
+    elif target:
+        same_channel = bool(target.platform)
+
+    if same_channel:
+        score += 1
+        reasons.append("Same channel context")
+    else:
+        score -= 1
+        reasons.append("Cross-channel risk")
+
+    label = "Low"
+    if 3 <= score <= 4:
+        label = "High"
+    elif 1 <= score <= 2:
+        label = "Medium"
+
+    reason = ", ".join(reasons[:3])
+    if len(reasons) > 3:
+        reason = f"{reason}; {reasons[3]}"
+
+    if label == "High":
+        reason = reason or "Strong spend, clear performance gap, stable data, and same-channel context."
+    elif label == "Medium":
+        reason = reason or "Mixed signal with some supporting evidence, but meaningful risk remains."
+    else:
+        reason = reason or "Thin or mixed signal; treat as directional only."
+
+    return label, reason
 
 
 def _priority_from_rank(rank: int) -> str:
@@ -1312,7 +1426,7 @@ def _build_decision_rows(strategy: Dict[str, Any], analysis: Dict[str, Any], sim
         metric_value = sim.get("source_cpa") if metric_name == "CPA" else sim.get("source_roas")
         target_metric_value = sim.get("target_cpa") if metric_name == "CPA" else sim.get("target_roas")
         current_spend = sim.get("source_spend") if action.get("type") in {"reallocate", "pause"} else sim.get("target_spend")
-        confidence, confidence_reason = _decision_confidence(sim, analysis)
+        confidence, confidence_reason = _decision_confidence(action, analysis, sim)
         impact_low_value = abs(float(sim.get("adjusted_expected_gain", 0.0) or 0.0)) * 0.75
         impact_high_value = abs(float(sim.get("adjusted_expected_gain", 0.0) or 0.0)) * 1.25
         if action.get("type") == "reallocate":
@@ -1342,6 +1456,7 @@ def _build_decision_rows(strategy: Dict[str, Any], analysis: Dict[str, Any], sim
             "priority": None,
             "confidence": confidence,
             "confidence_reason": confidence_reason,
+            "confidence_reason_detailed": confidence_reason,
             "impact_range": _estimated_impact_range(abs(float(sim.get("adjusted_expected_gain", 0.0) or 0.0))),
             "impact_low_value": impact_low_value,
             "impact_high_value": impact_high_value,
@@ -1400,7 +1515,8 @@ def render_html_report(source_label: str, content: Dict[str, Any]) -> str:
           <p><strong>Current spend:</strong> {esc(current_spend_text)}</p>
           <p><strong>Key metric:</strong> {esc(decision['metric_text'])}</p>
           <p><strong>Estimated impact:</strong> {esc(decision['impact_range'])}</p>
-          <p><strong>Confidence:</strong> {esc(decision['confidence'])} — {esc(decision['confidence_reason'])}</p>
+          <p><strong>Confidence:</strong> {esc(decision['confidence'])}</p>
+          <p><strong>Reason:</strong> {esc(decision['confidence_reason'])}</p>
         </div>
         """)
 
@@ -1489,7 +1605,8 @@ def build_report_text(source_label: str, content: Dict[str, Any]) -> str:
             f"- Current spend: {fmt_money(decision['current_spend']) if isinstance(decision['current_spend'], (int, float)) else 'n/a'}",
             f"- Key metric: {decision['metric_text']}",
             f"- Estimated impact: {decision['impact_range']}",
-            f"- Confidence: {decision['confidence']} — {decision['confidence_reason']}",
+            f"- Confidence: {decision['confidence']}",
+            f"- Reason: {decision['confidence_reason']}",
         ])
     lines.extend([
         "",
