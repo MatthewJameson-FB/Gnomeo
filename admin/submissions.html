@@ -35,29 +35,20 @@
 
       <section id="banner" class="banner hidden" aria-live="polite"></section>
 
-      <section class="card checklist-card">
-        <div>
-          <p class="eyebrow">Workflow checklist</p>
-          <h2>Keep the report flow moving</h2>
-        </div>
-        <ol class="workflow-list">
-          <li>Download CSV</li>
-          <li>Generate report locally</li>
-          <li>Upload report</li>
-          <li>Send report email</li>
-          <li>Mark follow-up / converted</li>
-        </ol>
-      </section>
+      <section class="controls-row">
+        <details class="card compact-panel">
+          <summary>How this works</summary>
+          <ol class="workflow-list compact">
+            <li>Download CSV</li>
+            <li>Generate report locally</li>
+            <li>Upload report</li>
+            <li>Send report email</li>
+          </ol>
+        </details>
 
-      <section class="manual-card card">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Manual entry</p>
-            <h2>Add manual submission</h2>
-          </div>
-          <p class="subtle">Use this when you want to create a customer and submission directly in Supabase.</p>
-        </div>
-        <form id="manualSubmissionForm" class="manual-form">
+        <details class="card compact-panel">
+          <summary>Add manual submission</summary>
+          <form id="manualSubmissionForm" class="manual-form compact">
           <div class="field">
             <label for="manualEmail">Customer email</label>
             <input id="manualEmail" name="email" type="email" required placeholder="customer@example.com" />
@@ -88,9 +79,10 @@
           </div>
           <div class="field actions-field">
             <label>&nbsp;</label>
-            <button type="submit">Create manual submission</button>
+            <button class="primary" type="submit">Create manual submission</button>
           </div>
-        </form>
+          </form>
+        </details>
       </section>
 
       <section class="summary card" id="summary"></section>
@@ -122,7 +114,7 @@
         <div class="card table-card">
           <div id="emptyState" class="empty-state hidden">
             <h2>No submissions yet.</h2>
-            <p>Submit a test CSV from the homepage or add a manual submission below.</p>
+            <p>Submit a test CSV from the homepage or add one manually.</p>
           </div>
           <table class="table">
             <thead>

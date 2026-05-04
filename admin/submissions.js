@@ -207,11 +207,14 @@ function detailTemplate(detail) {
       </div>
       <div>
         <label>CSV download</label>
-        <div class="actions-row"><button id="downloadCsvBtn" type="button">Download CSV</button></div>
+        <div class="actions-row">
+          <button id="downloadCsvBtn" class="secondary" type="button" ${submission.csv_file_url ? '' : 'disabled'}>Download CSV</button>
+        </div>
+        ${submission.csv_file_url ? '' : '<p class="small">CSV not available here — use admin email attachment.</p>'}
       </div>
       <div>
         <label>Report preview</label>
-        <div class="actions-row"><button id="previewReportBtn" type="button" ${latestReport ? '' : 'disabled'}>Preview latest report</button></div>
+        <div class="actions-row"><button id="previewReportBtn" class="secondary" type="button" ${latestReport ? '' : 'disabled'}>Preview latest report</button></div>
       </div>
       <div class="full">
         <label>Upload generated report</label>
@@ -222,11 +225,11 @@ function detailTemplate(detail) {
         <textarea id="reportSummary" placeholder="Short summary for the report record">${esc(latestReport?.summary || '')}</textarea>
       </div>
       <div class="full actions-row">
-        <button id="saveStatusBtn" type="button">Save status</button>
-        <button id="followUpBtn" type="button">Mark follow-up needed</button>
-        <button id="convertedBtn" type="button">Mark converted</button>
-        <button id="uploadReportBtn" type="button">Upload report</button>
-        <button id="sendReportBtn" type="button">Send report email</button>
+        <button id="saveStatusBtn" class="secondary" type="button">Save</button>
+        <button id="followUpBtn" class="secondary" type="button">Mark follow-up needed</button>
+        <button id="convertedBtn" class="secondary" type="button">Mark converted</button>
+        <button id="uploadReportBtn" class="primary" type="button">Upload report</button>
+        <button id="sendReportBtn" class="primary" type="button" ${latestReport ? '' : 'disabled'}>Send report email</button>
       </div>
     </div>
 
@@ -361,7 +364,7 @@ async function loadRows() {
     }
     if (!state.rows.length) {
       els.detailHint.classList.remove('hidden');
-      els.detailHint.textContent = 'No submissions yet — create one manually or submit a CSV from the homepage.';
+      els.detailHint.textContent = 'No submissions yet. Submit a test CSV from the homepage or add one manually.';
       els.detailContent.classList.add('hidden');
     }
   } catch (error) {
