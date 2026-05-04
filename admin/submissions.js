@@ -480,6 +480,7 @@ async function loadRows() {
       }
     }
     if (!state.rows.length) {
+      setBanner('No rows returned from Supabase yet. If you just submitted, reload in a moment.', 'warning');
       els.detailHint.classList.remove('hidden');
       els.detailHint.textContent = 'Select a submission to manage report delivery.';
       els.detailPlaceholder?.classList.remove('hidden');

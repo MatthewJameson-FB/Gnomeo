@@ -213,14 +213,24 @@ module.exports = async (req, res) => {
   }
 
   const submissionId = randomUUID();
+  console.log('[gnomeo submit] submission_id generated:', submissionId);
   const csvBuffer = Buffer.from(uploadedFile.content || '', 'latin1');
   let csvPath = null;
   let customer = { id: randomUUID(), email };
+  let supabaseLoggingError = null;
 
   if (HAS_SUPABASE) {
     ensureConfig();
-    customer = await upsertCustomer({ email });
     const proposedCsvPath = `submissions/${submissionId}/${cleanFilename(originalFilename)}`;
+
+    try {
+      customer = await upsertCustomer({ email });
+      console.log('[gnomeo submit] customer row created:', customer.id);
+    } catch (error) {
+      supabaseLoggingError = supabaseLoggingError || (error instanceof Error ? error.message : String(error));
+      console.error('[gnomeo submit] supabase error details: customer row failed', error);
+      customer = { id: randomUUID(), email };
+    }
 
     try {
       await storageUpload({
@@ -234,6 +244,7 @@ module.exports = async (req, res) => {
     } catch (error) {
       csvPath = null;
       console.error('[gnomeo submit] step=supabase-storage csv upload failed (non-blocking):', error);
+      supabaseLoggingError = supabaseLoggingError || (error instanceof Error ? error.message : String(error));
     }
 
     const submissionRecord = createSubmissionRecord({
@@ -244,7 +255,13 @@ module.exports = async (req, res) => {
       timestamp: timestamp || new Date().toISOString(),
     });
 
-    await restInsert('submissions', submissionRecord);
+    try {
+      await restInsert('submissions', submissionRecord);
+      console.log('[gnomeo submit] submission row created:', submissionId);
+    } catch (error) {
+      supabaseLoggingError = supabaseLoggingError || (error instanceof Error ? error.message : String(error));
+      console.error('[gnomeo submit] supabase error details: submission row failed', error);
+    }
   } else {
     csvPath = null;
   }
@@ -307,16 +324,18 @@ module.exports = async (req, res) => {
   const analysisRunHint = csvPath
     ? `python3 agent_mvp/agent_test.py --graph ${csvStoragePathLabel}`
     : 'Use the CSV attachment from the admin email to run the local report tool.';
+  const warningLine = supabaseLoggingError ? `Supabase logging failed: ${supabaseLoggingError}` : '';
   const adminSubject = 'New Gnomeo Free Analysis Submission';
   const adminText = [
     `User email: ${email}`,
     `Submission ID: ${submissionId}`,
     `Original filename: ${originalFilename || 'not provided'}`,
     `CSV storage path: ${csvStoragePathLabel}`,
+    warningLine,
     `Timestamp: ${timestamp || 'not provided'}`,
     'Run analysis manually and send report.',
     analysisRunHint,
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 
   const adminHtml = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;">
@@ -324,6 +343,7 @@ module.exports = async (req, res) => {
       <p><strong>Submission ID:</strong> ${escapeHtml(submissionId)}</p>
       <p><strong>Original filename:</strong> ${escapeHtml(originalFilename || 'not provided')}</p>
       <p><strong>CSV storage path:</strong> ${escapeHtml(csvStoragePathLabel)}</p>
+      ${warningLine ? `<p><strong>Warning:</strong> ${escapeHtml(warningLine)}</p>` : ''}
       <p><strong>Timestamp:</strong> ${escapeHtml(timestamp || 'not provided')}</p>
       <p>Run analysis manually and send report.</p>
       <p>The CSV is attached to this email for direct access.</p>
@@ -377,5 +397,6 @@ module.exports = async (req, res) => {
     submission_id: submissionId,
     csv_file_url: csvPath,
     original_filename: originalFilename,
+    warning: supabaseLoggingError ? 'supabase_logging_failed' : null,
   });
 };
