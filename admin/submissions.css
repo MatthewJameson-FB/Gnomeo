@@ -311,6 +311,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); box-sha
 .dropzone-copy { margin: 0; font-weight: 700; }
 .dropzone .actions-row { align-items: center; }
 .report-note { margin: 0; }
+.upload-cta { min-height: 52px; font-size: 16px; font-weight: 800; }
 
 .modal {
   position: fixed;

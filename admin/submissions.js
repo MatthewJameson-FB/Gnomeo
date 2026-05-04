@@ -199,13 +199,12 @@ function detailTemplate(detail) {
     </div>
 
     <div class="workflow-panel">
-      <h3>Selected submission workflow</h3>
+      <h3>Next steps</h3>
       <ol>
-        <li>CSV received</li>
-        <li>Generate report locally</li>
-        <li>Upload report</li>
-        <li>Send report</li>
-        <li>Follow up / convert</li>
+        <li>Download CSV from admin email</li>
+        <li>Generate report locally <a class="pill-link active" href="http://localhost:6060" target="_blank" rel="noreferrer">Open local runner</a></li>
+        <li>Upload report below</li>
+        <li>Send report email</li>
       </ol>
     </div>
 
@@ -252,9 +251,10 @@ function detailTemplate(detail) {
           <button id="chooseReportBtn" class="secondary" type="button">Choose file</button>
           <p id="chosenReportName" class="small">${latestReport ? `Current file: ${esc(latestReport.report_file_url.split('/').pop() || '')}` : 'HTML or PDF only.'}</p>
           <div class="actions-row">
-            <button id="uploadReportBtn" class="primary" type="button">${latestReport ? 'Replace report' : 'Upload report'}</button>
+            <button id="uploadReportBtn" class="primary upload-cta" type="button">${latestReport ? 'Replace report' : 'Upload report'}</button>
             <button id="viewReportBtn" class="secondary" type="button" ${latestReport ? '' : 'disabled'}>View report</button>
           </div>
+          <p class="small">This report is generated locally from the CSV before uploading.</p>
           <p id="reportFeedback" class="small"></p>
         </div>
       </div>

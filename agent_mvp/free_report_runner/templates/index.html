@@ -61,6 +61,11 @@
       {% if result %}
         <section class="card stack">
           <div class="notice ok">Report generated successfully.</div>
+          <div class="notice">Next step: upload this report in the admin dashboard and send it to the customer.</div>
+          <div>
+            <strong>CSV filename</strong>
+            <pre>{{ result.csv_name }}</pre>
+          </div>
           <div>
             <strong>HTML report path</strong>
             <pre>{{ result.html_path }}</pre>
@@ -71,8 +76,9 @@
           </div>
           <div class="actions">
             <a class="link primary" href="{{ result.report_link }}" target="_blank" rel="noreferrer">Open report</a>
+            <a class="link" href="{{ result.admin_link }}" target="_blank" rel="noreferrer">Open admin dashboard</a>
           </div>
-          <div class="notice">Next steps: upload the HTML report to the admin portal and send the report email.</div>
+          <div class="notice">Open admin dashboard, upload the HTML/PDF, then send the report email.</div>
         </section>
       {% endif %}
     </div>

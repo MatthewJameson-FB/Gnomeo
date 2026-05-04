@@ -126,9 +126,13 @@ def index():
                     result = {
                         "email": email,
                         "saved_csv": str(saved_csv),
+                        "csv_name": saved_csv.name,
                         "html_path": str(html_file),
+                        "html_name": html_file.name,
                         "md_path": str(md_file),
+                        "md_name": md_file.name,
                         "report_link": url_for("report_file", filename=html_file.name),
+                        "admin_link": "https://www.gnomeo.nl/admin/submissions.html",
                         "generated_at": stamp,
                     }
 
