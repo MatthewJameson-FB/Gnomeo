@@ -24,13 +24,74 @@
           <p class="eyebrow">Gnomeo</p>
           <p class="notice warning">Internal dashboard only. Do not expose real customer data publicly.</p>
           <h1>Report Ops CRM</h1>
-          <p class="subtle">Production submissions arrive via email attachment and are tracked in Supabase.</p>
+          <p class="subtle">Reloading pulls the latest data from Supabase.</p>
         </div>
         <div class="actions">
           <a class="pill-link" href="/admin/">Admin Home</a>
           <a class="pill-link active" href="/admin/submissions.html">Submissions</a>
+          <button id="reloadBtn" type="button">Reload from Supabase</button>
         </div>
       </header>
+
+      <section id="banner" class="banner hidden" aria-live="polite"></section>
+
+      <section class="card checklist-card">
+        <div>
+          <p class="eyebrow">Workflow checklist</p>
+          <h2>Keep the report flow moving</h2>
+        </div>
+        <ol class="workflow-list">
+          <li>Download CSV</li>
+          <li>Generate report locally</li>
+          <li>Upload report</li>
+          <li>Send report email</li>
+          <li>Mark follow-up / converted</li>
+        </ol>
+      </section>
+
+      <section class="manual-card card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Manual entry</p>
+            <h2>Add manual submission</h2>
+          </div>
+          <p class="subtle">Use this when you want to create a customer and submission directly in Supabase.</p>
+        </div>
+        <form id="manualSubmissionForm" class="manual-form">
+          <div class="field">
+            <label for="manualEmail">Customer email</label>
+            <input id="manualEmail" name="email" type="email" required placeholder="customer@example.com" />
+          </div>
+          <div class="field">
+            <label for="manualCompany">Company name (optional)</label>
+            <input id="manualCompany" name="company" type="text" placeholder="Company Ltd" />
+          </div>
+          <div class="field">
+            <label for="manualFilename">Original filename (optional)</label>
+            <input id="manualFilename" name="original_filename" type="text" placeholder="lead-list.csv" />
+          </div>
+          <div class="field full">
+            <label for="manualNotes">Notes</label>
+            <textarea id="manualNotes" name="notes" placeholder="Context, reminders, call notes..."></textarea>
+          </div>
+          <div class="field">
+            <label for="manualStatus">Status</label>
+            <select id="manualStatus" name="status">
+              <option value="received">received</option>
+              <option value="processing">processing</option>
+              <option value="report_ready">report_ready</option>
+              <option value="report_sent">report_sent</option>
+              <option value="follow_up">follow_up</option>
+              <option value="converted">converted</option>
+              <option value="lost">lost</option>
+            </select>
+          </div>
+          <div class="field actions-field">
+            <label>&nbsp;</label>
+            <button type="submit">Create manual submission</button>
+          </div>
+        </form>
+      </section>
 
       <section class="summary card" id="summary"></section>
 
@@ -51,14 +112,18 @@
             <option value="all">All</option>
           </select>
         </div>
-        <div class="field">
+        <div class="field reload-note">
           <label>&nbsp;</label>
-          <button id="reloadBtn" type="button">Reload</button>
+          <p class="subtle">Reload updates the table from Supabase and refreshes the detail panel.</p>
         </div>
       </section>
 
       <section class="dashboard-grid">
-        <div class="card">
+        <div class="card table-card">
+          <div id="emptyState" class="empty-state hidden">
+            <h2>No submissions yet.</h2>
+            <p>Submit a test CSV from the homepage or add a manual submission below.</p>
+          </div>
           <table class="table">
             <thead>
               <tr>

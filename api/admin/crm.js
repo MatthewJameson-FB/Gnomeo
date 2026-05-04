@@ -23,6 +23,20 @@ const requireAdmin = (req) => String(req.headers['x-admin-password'] || '').trim
 
 const safeName = (value) => String(value || 'file').replace(/[^a-zA-Z0-9._-]+/g, '-');
 
+const mapSchemaError = (error) => {
+  const message = String(error?.message || error || 'Unknown error');
+  if (/SUPABASE_URL|SUPABASE_SERVICE_ROLE_KEY/i.test(message)) {
+    return 'Supabase env vars are missing. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.';
+  }
+  if (/relation .* does not exist|schema cache/i.test(message)) {
+    return 'Supabase tables are missing. Apply agent_mvp/admin_data/supabase_schema.sql.';
+  }
+  if (/bucket.*not found|storage/i.test(message) && /not found/i.test(message)) {
+    return 'Supabase storage buckets are missing. Create the private submissions and reports buckets.';
+  }
+  return message;
+};
+
 const latest = (items) => (Array.isArray(items) && items.length ? items[0] : null);
 
 const fetchCRMData = async () => {
@@ -153,133 +167,138 @@ const detailView = async (id) => {
 };
 
 module.exports = async (req, res) => {
-  if (!requireAdmin(req)) {
-    return respondError(res, 401, 'auth', 'Unauthorized');
-  }
-
-  const query = req.query || {};
-  const view = String(query.view || 'list');
-
-  if (req.method === 'GET') {
-    if (view === 'list') {
-      return res.status(200).json({ success: true, submissions: await listView() });
+  try {
+    if (!requireAdmin(req)) {
+      return respondError(res, 401, 'auth', 'Unauthorized');
     }
-    if (view === 'detail') {
-      const detail = await detailView(String(query.id || ''));
-      if (!detail) return respondError(res, 404, 'not-found', 'Submission not found');
-      return res.status(200).json({ success: true, ...detail });
+
+    const query = req.query || {};
+    const view = String(query.view || 'list');
+
+    if (req.method === 'GET') {
+      if (view === 'list') {
+        return res.status(200).json({ success: true, submissions: await listView() });
+      }
+      if (view === 'detail') {
+        const detail = await detailView(String(query.id || ''));
+        if (!detail) return respondError(res, 404, 'not-found', 'Submission not found');
+        return res.status(200).json({ success: true, ...detail });
+      }
+      return respondError(res, 400, 'view', 'Unknown view');
     }
-    return respondError(res, 400, 'view', 'Unknown view');
-  }
 
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'GET, POST');
-    return respondError(res, 405, 'method', 'Method not allowed');
-  }
+    if (req.method !== 'POST') {
+      res.setHeader('Allow', 'GET, POST');
+      return respondError(res, 405, 'method', 'Method not allowed');
+    }
 
-  let body = {};
-  let upload = null;
-  const contentType = String(req.headers['content-type'] || '');
-  const raw = await new Promise(async (resolve) => {
-    const chunks = [];
-    for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    resolve(Buffer.concat(chunks));
-  });
-
-  if (/multipart\/form-data/i.test(contentType)) {
-    const parsed = parseMultipartForm(raw, contentType);
-    body = parsed.fields || {};
-    upload = parsed.file;
-  } else if (raw.length) {
-    try { body = JSON.parse(raw.toString('utf8')); } catch { body = {}; }
-  }
-
-  const action = String(body.action || '').trim();
-
-  if (action === 'update-status') {
-    const submissionId = String(body.submission_id || '').trim();
-    const submission = await restSingle('submissions', { select: '*', id: `eq.${submissionId}`, limit: 1 });
-    if (!submission) return respondError(res, 404, 'not-found', 'Submission not found');
-    const customer = await restSingle('customers', { select: '*', id: `eq.${submission.customer_id}`, limit: 1 });
-    const updatedSubmission = await restUpdate('submissions', { id: `eq.${submissionId}` }, {
-      status: body.submission_status || submission.status,
-      notes: body.submission_notes ?? submission.notes,
-    });
-    const updatedCustomer = customer
-      ? await restUpdate('customers', { id: `eq.${customer.id}` }, {
-          status: body.customer_status || customer.status,
-          notes: body.customer_notes ?? customer.notes,
-        })
-      : [];
-    return res.status(200).json({ success: true, submission: updatedSubmission[0], customer: updatedCustomer[0] || customer });
-  }
-
-  if (action === 'upload-report') {
-    const submissionId = String(body.submission_id || '').trim();
-    const submission = await restSingle('submissions', { select: '*', id: `eq.${submissionId}`, limit: 1 });
-    if (!submission) return respondError(res, 404, 'not-found', 'Submission not found');
-    if (!upload || !upload.filename) return respondError(res, 400, 'file', 'Report file is required');
-    if (!/\.(html?|pdf)$/i.test(upload.filename)) return respondError(res, 400, 'file', 'Report must be HTML or PDF');
-
-    const reportId = generateId();
-    const reportName = `${Date.now()}-${safeName(upload.filename)}`;
-    const reportPath = `reports/${submissionId}/${reportName}`;
-    await storageUpload({
-      bucket: REPORTS_BUCKET,
-      objectPath: reportPath,
-      content: Buffer.from(upload.content, 'latin1'),
-      contentType: upload.contentType || (upload.filename.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/html; charset=utf-8'),
-      upsert: true,
+    let body = {};
+    let upload = null;
+    const contentType = String(req.headers['content-type'] || '');
+    const raw = await new Promise(async (resolve) => {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      resolve(Buffer.concat(chunks));
     });
 
-    const [reportRow] = await restInsert('reports', {
-      id: reportId,
-      submission_id: submissionId,
-      report_file_url: reportPath,
-      summary: String(body.summary || '').trim() || null,
-      sent_at: null,
-    });
+    if (/multipart\/form-data/i.test(contentType)) {
+      const parsed = parseMultipartForm(raw, contentType);
+      body = parsed.fields || {};
+      upload = parsed.file;
+    } else if (raw.length) {
+      try { body = JSON.parse(raw.toString('utf8')); } catch { body = {}; }
+    }
 
-    await restUpdate('submissions', { id: `eq.${submissionId}` }, { status: 'report_ready' });
-    return res.status(200).json({ success: true, report: reportRow, report_path: reportPath });
+    const action = String(body.action || '').trim();
+
+    if (action === 'update-status') {
+      const submissionId = String(body.submission_id || '').trim();
+      const submission = await restSingle('submissions', { select: '*', id: `eq.${submissionId}`, limit: 1 });
+      if (!submission) return respondError(res, 404, 'not-found', 'Submission not found');
+      const customer = await restSingle('customers', { select: '*', id: `eq.${submission.customer_id}`, limit: 1 });
+      const updatedSubmission = await restUpdate('submissions', { id: `eq.${submissionId}` }, {
+        status: body.submission_status || submission.status,
+        notes: body.submission_notes ?? submission.notes,
+      });
+      const updatedCustomer = customer
+        ? await restUpdate('customers', { id: `eq.${customer.id}` }, {
+            status: body.customer_status || customer.status,
+            notes: body.customer_notes ?? customer.notes,
+          })
+        : [];
+      return res.status(200).json({ success: true, submission: updatedSubmission[0], customer: updatedCustomer[0] || customer });
+    }
+
+    if (action === 'upload-report') {
+      const submissionId = String(body.submission_id || '').trim();
+      const submission = await restSingle('submissions', { select: '*', id: `eq.${submissionId}`, limit: 1 });
+      if (!submission) return respondError(res, 404, 'not-found', 'Submission not found');
+      if (!upload || !upload.filename) return respondError(res, 400, 'file', 'Report file is required');
+      if (!/\.(html?|pdf)$/i.test(upload.filename)) return respondError(res, 400, 'file', 'Report must be HTML or PDF');
+
+      const reportId = generateId();
+      const reportName = `${Date.now()}-${safeName(upload.filename)}`;
+      const reportPath = `reports/${submissionId}/${reportName}`;
+      await storageUpload({
+        bucket: REPORTS_BUCKET,
+        objectPath: reportPath,
+        content: Buffer.from(upload.content, 'latin1'),
+        contentType: upload.contentType || (upload.filename.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/html; charset=utf-8'),
+        upsert: true,
+      });
+
+      const [reportRow] = await restInsert('reports', {
+        id: reportId,
+        submission_id: submissionId,
+        report_file_url: reportPath,
+        summary: String(body.summary || '').trim() || null,
+        sent_at: null,
+      });
+
+      await restUpdate('submissions', { id: `eq.${submissionId}` }, { status: 'report_ready' });
+      return res.status(200).json({ success: true, report: reportRow, report_path: reportPath });
+    }
+
+    if (action === 'send-report') {
+      const submissionId = String(body.submission_id || '').trim();
+      const submission = await restSingle('submissions', { select: '*', id: `eq.${submissionId}`, limit: 1 });
+      if (!submission) return respondError(res, 404, 'not-found', 'Submission not found');
+      const customer = await restSingle('customers', { select: '*', id: `eq.${submission.customer_id}`, limit: 1 });
+      const reports = await restSelect('reports', { select: '*', submission_id: `eq.${submissionId}`, order: 'created_at.desc', limit: 1 });
+      const report = latest(reports);
+      if (!report) return respondError(res, 400, 'report', 'No report uploaded yet');
+
+      const downloaded = await storageDownload({ bucket: REPORTS_BUCKET, objectPath: report.report_file_url });
+      const template = loadTemplate();
+      const attachment = {
+        filename: path.basename(report.report_file_url),
+        content: downloaded.buffer.toString('base64'),
+      };
+
+      await resendSend({
+        to: customer?.email,
+        subject: template.subject,
+        body: template.body,
+        attachments: [attachment],
+      });
+
+      const sentAt = new Date().toISOString();
+      await restUpdate('submissions', { id: `eq.${submissionId}` }, { status: 'report_sent' });
+      await restUpdate('reports', { id: `eq.${report.id}` }, { sent_at: sentAt });
+      await restInsert('email_events', {
+        id: generateId(),
+        customer_id: customer?.id || null,
+        submission_id: submissionId,
+        type: 'report_sent',
+        status: 'sent',
+        sent_at: sentAt,
+      });
+      return res.status(200).json({ success: true, sent_at: sentAt });
+    }
+
+    return respondError(res, 400, 'action', 'Unknown action');
+  } catch (error) {
+    console.error('[gnomeo admin crm] request failed:', error);
+    return respondError(res, 500, 'supabase', mapSchemaError(error));
   }
-
-  if (action === 'send-report') {
-    const submissionId = String(body.submission_id || '').trim();
-    const submission = await restSingle('submissions', { select: '*', id: `eq.${submissionId}`, limit: 1 });
-    if (!submission) return respondError(res, 404, 'not-found', 'Submission not found');
-    const customer = await restSingle('customers', { select: '*', id: `eq.${submission.customer_id}`, limit: 1 });
-    const reports = await restSelect('reports', { select: '*', submission_id: `eq.${submissionId}`, order: 'created_at.desc', limit: 1 });
-    const report = latest(reports);
-    if (!report) return respondError(res, 400, 'report', 'No report uploaded yet');
-
-    const downloaded = await storageDownload({ bucket: REPORTS_BUCKET, objectPath: report.report_file_url });
-    const template = loadTemplate();
-    const attachment = {
-      filename: path.basename(report.report_file_url),
-      content: downloaded.buffer.toString('base64'),
-    };
-
-    await resendSend({
-      to: customer?.email,
-      subject: template.subject,
-      body: template.body,
-      attachments: [attachment],
-    });
-
-    const sentAt = new Date().toISOString();
-    await restUpdate('submissions', { id: `eq.${submissionId}` }, { status: 'report_sent' });
-    await restUpdate('reports', { id: `eq.${report.id}` }, { sent_at: sentAt });
-    await restInsert('email_events', {
-      id: generateId(),
-      customer_id: customer?.id || null,
-      submission_id: submissionId,
-      type: 'report_sent',
-      status: 'sent',
-      sent_at: sentAt,
-    });
-    return res.status(200).json({ success: true, sent_at: sentAt });
-  }
-
-  return respondError(res, 400, 'action', 'Unknown action');
 };

@@ -1,15 +1,26 @@
 const PASSWORD_HEADER = 'x-admin-password';
-const ADMIN_PASSWORD = 'gnomeo-admin';
+const ADMIN_PASSWORD = '***';
+
+const submissionStatuses = ['received', 'processing', 'report_ready', 'report_sent', 'follow_up', 'converted', 'lost'];
+const customerStatuses = ['lead', 'qualified', 'active_trial', 'paid', 'lost'];
 
 const els = {
+  banner: document.getElementById('banner'),
   summary: document.getElementById('summary'),
   search: document.getElementById('searchInput'),
   statusFilter: document.getElementById('statusFilter'),
   customerStatusFilter: document.getElementById('customerStatusFilter'),
   reloadBtn: document.getElementById('reloadBtn'),
   tableBody: document.getElementById('tableBody'),
+  emptyState: document.getElementById('emptyState'),
   detailHint: document.getElementById('detailHint'),
   detailContent: document.getElementById('detailContent'),
+  manualForm: document.getElementById('manualSubmissionForm'),
+  manualEmail: document.getElementById('manualEmail'),
+  manualCompany: document.getElementById('manualCompany'),
+  manualFilename: document.getElementById('manualFilename'),
+  manualNotes: document.getElementById('manualNotes'),
+  manualStatus: document.getElementById('manualStatus'),
 };
 
 const state = {
@@ -17,9 +28,6 @@ const state = {
   selectedId: null,
   detail: null,
 };
-
-const customerStatuses = ['lead', 'qualified', 'active_trial', 'paid', 'lost'];
-const submissionStatuses = ['received', 'processing', 'report_ready', 'report_sent', 'follow_up', 'converted', 'lost'];
 
 function authHeaders() {
   return { [PASSWORD_HEADER]: ADMIN_PASSWORD };
@@ -41,16 +49,36 @@ function fmtDate(value) {
 }
 
 function statusBadge(status) {
-  return `<span class="badge ${String(status || 'received').toLowerCase()}">${status || 'received'}</span>`;
+  return `<span class="badge ${String(status || 'received').toLowerCase()}">${esc(status || 'received')}</span>`;
 }
 
 function customerBadge(status) {
-  return `<span class="badge ${String(status || 'lead').toLowerCase()}">${status || 'lead'}</span>`;
+  return `<span class="badge ${String(status || 'lead').toLowerCase()}">${esc(status || 'lead')}</span>`;
 }
 
-function matches(item, query) {
+function setBanner(message, type = 'error') {
+  if (!message) {
+    els.banner.textContent = '';
+    els.banner.className = 'banner hidden';
+    return;
+  }
+  els.banner.textContent = message;
+  els.banner.className = `banner ${type}`;
+}
+
+function matches(row, query) {
   if (!query) return true;
-  const haystack = [item.customer_email, item.original_filename, item.notes, item.customer_status, item.status].join(' ').toLowerCase();
+  const haystack = [
+    row.customer_email,
+    row.original_filename,
+    row.notes,
+    row.customer_status,
+    row.status,
+    row.customer?.company,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
   return haystack.includes(query.toLowerCase());
 }
 
@@ -69,10 +97,10 @@ function renderSummary() {
 }
 
 function renderFilters() {
-  const currentSubmission = els.statusFilter.value;
-  const currentCustomer = els.customerStatusFilter.value;
-  const statuses = ['all', ...submissionStatuses.filter((v) => state.rows.some((row) => row.status === v))];
-  const custStatuses = ['all', ...customerStatuses.filter((v) => state.rows.some((row) => row.customer_status === v))];
+  const currentSubmission = els.statusFilter.value || 'all';
+  const currentCustomer = els.customerStatusFilter.value || 'all';
+  const statuses = ['all', ...submissionStatuses.filter((value) => state.rows.some((row) => row.status === value))];
+  const custStatuses = ['all', ...customerStatuses.filter((value) => state.rows.some((row) => row.customer_status === value))];
 
   els.statusFilter.innerHTML = statuses.map((status) => `<option value="${status}">${status === 'all' ? 'All' : status}</option>`).join('');
   els.customerStatusFilter.innerHTML = custStatuses.map((status) => `<option value="${status}">${status === 'all' ? 'All' : status}</option>`).join('');
@@ -84,6 +112,7 @@ function renderTable() {
   const query = els.search.value.trim();
   const status = els.statusFilter.value;
   const customerStatus = els.customerStatusFilter.value;
+
   const filtered = state.rows.filter((row) => {
     if (!matches(row, query)) return false;
     if (status !== 'all' && row.status !== status) return false;
@@ -91,17 +120,19 @@ function renderTable() {
     return true;
   });
 
+  els.emptyState.classList.toggle('hidden', state.rows.length !== 0);
+
   els.tableBody.innerHTML = filtered.map((row) => `
-    <tr data-id="${row.id}" class="row-link">
+    <tr data-id="${esc(row.id)}" class="row-link">
       <td>${esc(row.customer_email || '—')}<div class="small">${customerBadge(row.customer_status)}</div></td>
       <td>${esc(row.original_filename || '—')}</td>
       <td>${statusBadge(row.status)}</td>
       <td>${esc(fmtDate(row.created_at))}</td>
-      <td>${esc(row.notes ? row.notes : '—')}</td>
+      <td>${esc(row.notes || '—')}</td>
     </tr>
   `).join('');
 
-  if (!filtered.length) {
+  if (state.rows.length && !filtered.length) {
     els.tableBody.innerHTML = '<tr><td colspan="5" class="small">No submissions match the filters.</td></tr>';
   }
 
@@ -120,20 +151,20 @@ async function apiFetch(path, options = {}) {
   });
   const text = await response.text();
   let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch { data = null; }
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null;
+  }
   if (!response.ok) {
     throw new Error(data?.error || text || `Request failed (${response.status})`);
   }
   return data;
 }
 
-async function loadRows() {
-  const data = await apiFetch('/api/admin/crm?view=list');
-  state.rows = Array.isArray(data.submissions) ? data.submissions : [];
-  renderSummary();
-  renderFilters();
-  renderTable();
-  if (state.selectedId) await openDetail(state.selectedId, { quiet: true });
+function reportStateLabel(report) {
+  if (!report) return 'No report uploaded yet.';
+  return `${fmtDate(report.created_at)} · ${report.sent_at ? `sent ${fmtDate(report.sent_at)}` : 'not yet sent'}`;
 }
 
 function detailTemplate(detail) {
@@ -146,7 +177,7 @@ function detailTemplate(detail) {
         ${statusBadge(submission.status)}
         ${customerBadge(customer.status)}
       </div>
-      <p class="small">Customer status and submission status can both be updated.</p>
+      <p class="small">Use the quick buttons to move submissions through the report workflow.</p>
     </div>
 
     <div class="detail-grid">
@@ -160,19 +191,19 @@ function detailTemplate(detail) {
       </div>
       <div>
         <label>Submission status</label>
-        <select id="submissionStatus">${submissionStatuses.map((s) => `<option value="${s}" ${submission.status === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
+        <select id="submissionStatus">${submissionStatuses.map((value) => `<option value="${value}" ${submission.status === value ? 'selected' : ''}>${esc(value)}</option>`).join('')}</select>
       </div>
       <div>
         <label>Customer status</label>
-        <select id="customerStatus">${customerStatuses.map((s) => `<option value="${s}" ${customer.status === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
+        <select id="customerStatus">${customerStatuses.map((value) => `<option value="${value}" ${customer.status === value ? 'selected' : ''}>${esc(value)}</option>`).join('')}</select>
       </div>
       <div class="full">
         <label>Submission notes</label>
-        <textarea id="submissionNotes">${esc(submission.notes || '')}</textarea>
+        <textarea id="submissionNotes" placeholder="Internal submission notes">${esc(submission.notes || '')}</textarea>
       </div>
       <div class="full">
         <label>Customer notes</label>
-        <textarea id="customerNotes">${esc(customer.notes || '')}</textarea>
+        <textarea id="customerNotes" placeholder="Notes about the customer">${esc(customer.notes || '')}</textarea>
       </div>
       <div>
         <label>CSV download</label>
@@ -188,28 +219,43 @@ function detailTemplate(detail) {
       </div>
       <div class="full">
         <label>Report summary</label>
-        <textarea id="reportSummary" placeholder="Short summary for the report record">${latestReport?.summary || ''}</textarea>
+        <textarea id="reportSummary" placeholder="Short summary for the report record">${esc(latestReport?.summary || '')}</textarea>
       </div>
       <div class="full actions-row">
         <button id="saveStatusBtn" type="button">Save status</button>
+        <button id="followUpBtn" type="button">Mark follow-up needed</button>
+        <button id="convertedBtn" type="button">Mark converted</button>
         <button id="uploadReportBtn" type="button">Upload report</button>
-        <button id="sendReportBtn" type="button">Send report</button>
+        <button id="sendReportBtn" type="button">Send report email</button>
       </div>
-    </div>
-
-    <div class="note-box">
-      <strong>Workflow note</strong>
-      <p class="small">Download or access the CSV, run the local report tool, upload the report here, then send it from the CRM.</p>
     </div>
 
     <div class="note-box">
       <strong>Latest report</strong>
-      <p class="small">${latestReport ? `${esc(fmtDate(latestReport.created_at))} · sent ${latestReport.sent_at ? esc(fmtDate(latestReport.sent_at)) : 'not yet sent'}` : 'No report uploaded yet.'}</p>
+      <p class="small">${reportStateLabel(latestReport)}</p>
     </div>
   `;
 }
 
-async function openDetail(id, options = {}) {
+async function updateDetailStatus(id, submissionStatus, customerStatus) {
+  const submissionNotes = document.getElementById('submissionNotes').value;
+  const customerNotes = document.getElementById('customerNotes').value;
+
+  await apiFetch('/api/admin/crm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'update-status',
+      submission_id: id,
+      submission_status: submissionStatus,
+      customer_status: customerStatus,
+      submission_notes: submissionNotes,
+      customer_notes: customerNotes,
+    }),
+  });
+}
+
+async function openDetail(id) {
   if (!id) return;
   state.selectedId = id;
   const data = await apiFetch(`/api/admin/crm?view=detail&id=${encodeURIComponent(id)}`);
@@ -218,9 +264,12 @@ async function openDetail(id, options = {}) {
   els.detailContent.classList.remove('hidden');
   els.detailContent.innerHTML = detailTemplate(data);
 
+  const latestReport = data.reports?.[0] || null;
   const downloadCsvBtn = document.getElementById('downloadCsvBtn');
   const previewReportBtn = document.getElementById('previewReportBtn');
   const saveStatusBtn = document.getElementById('saveStatusBtn');
+  const followUpBtn = document.getElementById('followUpBtn');
+  const convertedBtn = document.getElementById('convertedBtn');
   const uploadReportBtn = document.getElementById('uploadReportBtn');
   const sendReportBtn = document.getElementById('sendReportBtn');
   const reportFile = document.getElementById('reportFile');
@@ -238,7 +287,6 @@ async function openDetail(id, options = {}) {
   });
 
   previewReportBtn?.addEventListener('click', async () => {
-    const latestReport = data.reports?.[0];
     if (!latestReport) return;
     const res = await fetch(`/api/admin/file?kind=report&report_id=${encodeURIComponent(latestReport.id)}`, { headers: authHeaders() });
     if (!res.ok) throw new Error('Report preview failed');
@@ -247,21 +295,28 @@ async function openDetail(id, options = {}) {
     window.open(url, '_blank', 'noopener,noreferrer');
   });
 
-  saveStatusBtn?.addEventListener('click', async () => {
-    await apiFetch('/api/admin/crm', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'update-status',
-        submission_id: id,
-        submission_status: document.getElementById('submissionStatus').value,
-        customer_status: document.getElementById('customerStatus').value,
-        submission_notes: document.getElementById('submissionNotes').value,
-        customer_notes: document.getElementById('customerNotes').value,
-      }),
-    });
+  const saveCurrent = async () => {
+    await updateDetailStatus(
+      id,
+      document.getElementById('submissionStatus').value,
+      document.getElementById('customerStatus').value,
+    );
     await loadRows();
-    await openDetail(id, { quiet: true });
+    await openDetail(id);
+  };
+
+  saveStatusBtn?.addEventListener('click', saveCurrent);
+  followUpBtn?.addEventListener('click', async () => {
+    document.getElementById('submissionStatus').value = 'follow_up';
+    if (document.getElementById('customerStatus').value === 'lead') {
+      document.getElementById('customerStatus').value = 'qualified';
+    }
+    await saveCurrent();
+  });
+  convertedBtn?.addEventListener('click', async () => {
+    document.getElementById('submissionStatus').value = 'converted';
+    document.getElementById('customerStatus').value = 'paid';
+    await saveCurrent();
   });
 
   uploadReportBtn?.addEventListener('click', async () => {
@@ -274,7 +329,7 @@ async function openDetail(id, options = {}) {
     form.append('report_file', file, file.name);
     await apiFetch('/api/admin/crm', { method: 'POST', body: form });
     await loadRows();
-    await openDetail(id, { quiet: true });
+    await openDetail(id);
   });
 
   sendReportBtn?.addEventListener('click', async () => {
@@ -284,20 +339,69 @@ async function openDetail(id, options = {}) {
       body: JSON.stringify({ action: 'send-report', submission_id: id }),
     });
     await loadRows();
-    await openDetail(id, { quiet: true });
+    await openDetail(id);
   });
+}
 
-  if (!options.quiet) {
-    els.detailHint.textContent = `${data.customer.email || 'Unknown customer'} · ${data.submission.original_filename || 'untitled'}`;
+async function loadRows() {
+  setBanner('');
+  els.reloadBtn.disabled = true;
+  try {
+    const data = await apiFetch('/api/admin/crm?view=list');
+    state.rows = Array.isArray(data.submissions) ? data.submissions : [];
+    renderSummary();
+    renderFilters();
+    renderTable();
+    if (state.selectedId) {
+      try {
+        await openDetail(state.selectedId);
+      } catch (error) {
+        setBanner(error.message, 'error');
+      }
+    }
+    if (!state.rows.length) {
+      els.detailHint.classList.remove('hidden');
+      els.detailHint.textContent = 'No submissions yet — create one manually or submit a CSV from the homepage.';
+      els.detailContent.classList.add('hidden');
+    }
+  } catch (error) {
+    setBanner(error.message, 'error');
+    els.summary.innerHTML = '<div><span>Error</span><strong>—</strong></div>';
+    els.tableBody.innerHTML = '';
+    els.emptyState.classList.remove('hidden');
+  } finally {
+    els.reloadBtn.disabled = false;
   }
 }
 
 els.search.addEventListener('input', renderTable);
 els.statusFilter.addEventListener('change', renderTable);
 els.customerStatusFilter.addEventListener('change', renderTable);
-els.reloadBtn.addEventListener('click', () => loadRows().catch((error) => { els.detailHint.textContent = error.message; }));
+els.reloadBtn.addEventListener('click', () => loadRows());
 
-loadRows().catch((error) => {
-  els.summary.innerHTML = `<div><span>Error</span><strong>—</strong></div>`;
-  els.tableBody.innerHTML = `<tr><td colspan="5">${error.message}</td></tr>`;
+els.manualForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  setBanner('');
+  try {
+    const response = await apiFetch('/api/admin/submissions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: els.manualEmail.value,
+        company: els.manualCompany.value,
+        original_filename: els.manualFilename.value,
+        notes: els.manualNotes.value,
+        status: els.manualStatus.value,
+      }),
+    });
+    els.manualForm.reset();
+    els.manualStatus.value = 'received';
+    setBanner(`Manual submission created for ${response.customer?.email || 'customer'}.`, 'good');
+    await loadRows();
+    await openDetail(response.submission.id);
+  } catch (error) {
+    setBanner(error.message, 'error');
+  }
 });
+
+loadRows().catch((error) => setBanner(error.message, 'error'));

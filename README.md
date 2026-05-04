@@ -26,8 +26,9 @@ python3 agent_mvp/agent_test.py --graph <file.csv> --output-html report.html
 ```
 
 6. Review output
-7. Email report back to user
-8. Update status manually for now
+7. Upload the generated report in the admin CRM
+8. Send the report email from the admin CRM
+9. Mark follow-up or converted as needed
 
 Live Vercel function does not run Python. Reports are generated manually/local for now.
 Real file access currently happens via the admin email attachment.
