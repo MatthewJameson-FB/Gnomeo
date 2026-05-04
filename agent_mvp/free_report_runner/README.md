@@ -16,7 +16,7 @@ A tiny local UI for free-tier report processing.
 cd agent_mvp/free_report_runner
 python3 -m venv .venv
 source .venv/bin/activate
-pip install flask
+pip install -r requirements.txt
 python3 app.py
 ```
 
@@ -31,5 +31,7 @@ http://localhost:6060
 - local only
 - no email is sent
 - CSV files must be valid and readable
-- if macOS permissions get in the way, move the CSV into `~/Gnomeo/free_reports/inbox` first
+- If you get permission errors, move your CSV into:
+
+`~/Gnomeo/free_reports/inbox/`
 - after generating the report, upload the HTML to the admin portal and send the customer email there
