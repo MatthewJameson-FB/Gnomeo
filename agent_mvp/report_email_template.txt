@@ -1,0 +1,23 @@
+Subject: Your Gnomeo analysis
+
+Hey — I’ve run your data through Gnomeo.
+
+Attached is your report.
+
+It highlights:
+- where spend is likely being wasted
+- 3 specific decisions we’d make
+- expected impact + risks
+
+A quick note on context — this is based purely on the dataset you shared.
+
+Where this gets significantly more accurate is when we layer in:
+- your actual business goals
+- margin / LTV context
+- and track performance week to week
+
+That’s where Gnomeo starts to learn what actually works in your account over time.
+
+Happy to walk through this or run it on a weekly basis if useful.
+
+Curious what stands out / what feels off.

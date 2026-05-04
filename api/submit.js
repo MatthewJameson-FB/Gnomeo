@@ -1,12 +1,5 @@
-const parseContentDisposition = (value = '') => {
-  const result = {};
-  for (const part of value.split(';')) {
-    const [rawKey, rawValue] = part.split('=');
-    if (!rawValue) continue;
-    result[rawKey.trim().toLowerCase()] = rawValue.trim().replace(/^"|"$/g, '');
-  }
-  return result;
-};
+const fs = require('fs');
+const path = require('path');
 
 const getHeader = (req, name) => {
   const target = String(name).toLowerCase();
@@ -20,6 +13,16 @@ const readRequestBuffer = async (req) => {
   const chunks = [];
   for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   return Buffer.concat(chunks);
+};
+
+const parseContentDisposition = (value = '') => {
+  const result = {};
+  for (const part of value.split(';')) {
+    const [rawKey, rawValue] = part.split('=');
+    if (!rawValue) continue;
+    result[rawKey.trim().toLowerCase()] = rawValue.trim().replace(/^"|"$/g, '');
+  }
+  return result;
 };
 
 const parseMultipartForm = (buffer, contentType) => {
@@ -82,7 +85,21 @@ const respondError = (res, statusCode, step, error) =>
 const respondSuccess = (res, data = {}) =>
   res.status(200).json({ success: true, ...data });
 
-const sendResendEmail = async ({ apiKey, to, subject, html, text }) => {
+const escapeHtml = (value) =>
+  String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const resolveSender = () => {
+  const configured = String(process.env.RESEND_FROM || '').trim();
+  if (configured) return configured;
+  return process.env.VERCEL_ENV ? 'Gnomeo <reports@gnomeo.nl>' : 'Gnomeo <onboarding@resend.dev>';
+};
+
+const sendResendEmail = async ({ apiKey, to, subject, html, text, reply_to }) => {
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -90,11 +107,12 @@ const sendResendEmail = async ({ apiKey, to, subject, html, text }) => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'Gnomeo <onboarding@resend.dev>',
+      from: resolveSender(),
       to: Array.isArray(to) ? to : [to],
       subject,
       html,
       text,
+      reply_to,
     }),
   });
 
@@ -103,13 +121,13 @@ const sendResendEmail = async ({ apiKey, to, subject, html, text }) => {
   }
 };
 
-const escapeHtml = (value) =>
-  String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+const saveUploadedCsv = (file) => {
+  const timestamp = Date.now();
+  const filePath = path.join('/tmp', `gnomeo-${timestamp}.csv`);
+  const originalFilename = String(file?.filename || '');
+  fs.writeFileSync(filePath, file?.content ? Buffer.from(file.content, 'utf8') : Buffer.alloc(0));
+  return { filePath, originalFilename };
+};
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -138,15 +156,19 @@ module.exports = async (req, res) => {
   }
 
   const email = String(body.email || '').trim();
-  const filename = String(body.filename || uploadedFile?.filename || '').trim();
   const timestamp = String(body.timestamp || '').trim();
+  const originalFilename = String(body.filename || uploadedFile?.filename || '').trim();
 
   console.log('[gnomeo submit] email received:', Boolean(email));
   console.log('[gnomeo submit] file received:', Boolean(uploadedFile));
-  console.log('[gnomeo submit] file name:', filename || '(missing)');
+  console.log('[gnomeo submit] file name:', originalFilename || '(missing)');
 
   if (!email) {
     return respondError(res, 400, 'validation', 'Email is required');
+  }
+
+  if (!uploadedFile) {
+    return respondError(res, 400, 'file-upload', 'CSV file is required');
   }
 
   const apiKey = process.env.RESEND_API_KEY;
@@ -156,24 +178,71 @@ module.exports = async (req, res) => {
     return respondError(res, 500, 'configuration', 'Server email configuration is missing');
   }
 
-  const userSubject = 'Your Gnomeo analysis request';
+  const saved = saveUploadedCsv(uploadedFile);
+  console.log('[gnomeo submit] saved file path:', saved.filePath);
+
+  const userSubject = 'We’re analysing your ad account';
   const userText = [
-    'Hey — thanks for sending your data through.',
+    'Hey — got your data, thanks for sending it through.',
     '',
-    'We\'ve received it and will run it through Gnomeo.',
+    'We’re running it through Gnomeo now.',
     '',
-    'You\'ll receive your report within 24 hours.',
+    'You’ll receive a report shortly that shows:',
+    '- where budget is likely being wasted',
+    '- 3 decisions we’d make',
+    '- expected impact + trade-offs',
     '',
-    'Worth noting: this first report is a one-off snapshot. Decisions become much stronger when we include business goals, margin/LTV context, and track performance week to week.',
+    'Quick note — this is a snapshot based on the data provided.',
+    '',
+    'Decisions get much stronger when we include:',
+    '- your business goals (growth vs efficiency)',
+    '- margin / LTV context',
+    '- and track performance week to week',
+    '',
+    'Will send the report shortly.',
   ].join('\n');
+
+  const userHtml = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+      <p>Hey — got your data, thanks for sending it through.</p>
+      <p>We’re running it through Gnomeo now.</p>
+      <p>You’ll receive a report shortly that shows:</p>
+      <ul>
+        <li>where budget is likely being wasted</li>
+        <li>3 decisions we’d make</li>
+        <li>expected impact + trade-offs</li>
+      </ul>
+      <p>Quick note — this is a snapshot based on the data provided.</p>
+      <p>Decisions get much stronger when we include:</p>
+      <ul>
+        <li>your business goals (growth vs efficiency)</li>
+        <li>margin / LTV context</li>
+        <li>and track performance week to week</li>
+      </ul>
+      <p>Will send the report shortly.</p>
+    </div>
+  `;
 
   const adminSubject = 'New Gnomeo Free Analysis Submission';
   const adminText = [
     `User email: ${email}`,
-    `File name: ${filename || 'not provided'}`,
+    `Original filename: ${originalFilename || 'not provided'}`,
+    `Saved file path: ${saved.filePath}`,
     `Timestamp: ${timestamp || 'not provided'}`,
     'Run analysis manually and send report.',
+    `Download or access this file and run: python3 agent_mvp/agent_test.py --graph ${saved.filePath}`,
   ].join('\n');
+
+  const adminHtml = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+      <p><strong>User email:</strong> ${escapeHtml(email)}</p>
+      <p><strong>Original filename:</strong> ${escapeHtml(originalFilename || 'not provided')}</p>
+      <p><strong>Saved file path:</strong> ${escapeHtml(saved.filePath)}</p>
+      <p><strong>Timestamp:</strong> ${escapeHtml(timestamp || 'not provided')}</p>
+      <p>Run analysis manually and send report.</p>
+      <p><code>python3 agent_mvp/agent_test.py --graph ${escapeHtml(saved.filePath)}</code></p>
+    </div>
+  `;
 
   try {
     console.log('[gnomeo submit] sending user confirmation email');
@@ -181,8 +250,9 @@ module.exports = async (req, res) => {
       apiKey,
       to: email,
       subject: userSubject,
-      html: `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;"><p>Hey — thanks for sending your data through.</p><p>We\'ve received it and will run it through Gnomeo.</p><p>You\'ll receive your report within 24 hours.</p><p>Worth noting: this first report is a one-off snapshot. Decisions become much stronger when we include business goals, margin/LTV context, and track performance week to week.</p></div>`,
+      html: userHtml,
       text: userText,
+      reply_to: 'matt@gnomeo.nl',
     });
     console.log('[gnomeo submit] resend success: user email');
   } catch (error) {
@@ -196,8 +266,9 @@ module.exports = async (req, res) => {
       apiKey,
       to: adminEmail,
       subject: adminSubject,
-      html: `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;"><p><strong>User email:</strong> ${escapeHtml(email)}</p><p><strong>File name:</strong> ${escapeHtml(filename || 'not provided')}</p><p><strong>Timestamp:</strong> ${escapeHtml(timestamp || 'not provided')}</p><p>Run analysis manually and send report.</p></div>`,
+      html: adminHtml,
       text: adminText,
+      reply_to: 'matt@gnomeo.nl',
     });
     console.log('[gnomeo submit] resend success: admin email');
   } catch (error) {
@@ -207,5 +278,7 @@ module.exports = async (req, res) => {
 
   return respondSuccess(res, {
     step: 'emails-sent',
+    savedFilePath: saved.filePath,
+    originalFilename,
   });
 };
