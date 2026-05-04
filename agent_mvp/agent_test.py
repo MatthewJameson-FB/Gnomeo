@@ -214,7 +214,15 @@ def load_campaigns(path: Path) -> List[Campaign]:
 
 
 def label(c: Campaign) -> str:
-    return c.campaign or "Unnamed row"
+    if c.campaign:
+        return c.campaign
+    if c.platform and c.campaign_type:
+        return f"{c.platform} {c.campaign_type}".strip()
+    if c.platform:
+        return c.platform
+    if c.campaign_type:
+        return c.campaign_type
+    return "Unassigned segment"
 
 
 def fmt_money(value: Optional[float]) -> str:
@@ -373,15 +381,15 @@ def split_by_performance(campaigns: List[Campaign], thresholds: Thresholds, summ
     wasted_share = safe_ratio(wasted_spend, summary["total_spend"]) if summary["total_spend"] else None
 
     roas_ready = [c for c in campaigns if c.roas is not None]
-    top_10 = top_percent(roas_ready, 0.10, lambda c: c.roas or -1.0)
-    bottom_20 = percentile(roas_ready, 0.20, lambda c: c.roas or -1.0)
+    top_30 = top_percent(roas_ready, 0.30, lambda c: c.roas or -1.0)
+    bottom_30 = percentile(roas_ready, 0.30, lambda c: c.roas or -1.0)
 
     return {
         "wasted_campaigns": wasted,
         "wasted_spend": wasted_spend,
         "wasted_share": wasted_share,
-        "top_10": sorted(top_10, key=lambda c: c.roas or -1.0, reverse=True),
-        "bottom_20": bottom_20,
+        "top_30": sorted(top_30, key=lambda c: c.roas or -1.0, reverse=True),
+        "bottom_30": bottom_30,
     }
 
 
@@ -443,11 +451,11 @@ def strategist_initial(analysis: Dict[str, Any], context: Dict[str, Any]) -> Dic
 
     winners = [c for c in all_campaigns if meets_scale_gate(c)]
     if not winners:
-        winners = [c for c in sorted(perf["top_10"], key=lambda c: (c.roas or -1.0, c.spend), reverse=True)]
+        winners = [c for c in sorted(perf["top_30"], key=lambda c: (c.roas or -1.0, c.spend), reverse=True)]
 
     losers = [c for c in all_campaigns if c.cpa is not None and c.cpa > thresholds.acceptable_cpa]
     if not losers:
-        losers = [c for c in sorted(perf["bottom_20"], key=lambda c: (c.roas or 0.0, c.spend))]
+        losers = [c for c in sorted(perf["bottom_30"], key=lambda c: (c.roas or 0.0, c.spend))]
 
     by_platform: Dict[str, List[Campaign]] = {}
     for campaign in all_campaigns:
@@ -687,11 +695,11 @@ def synthesizer(analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Di
     lines.extend(["", "### Analyst insights"])
     lines.extend(f"- {item}" for item in analysis["insights"])
 
-    lines.extend(["", "### Top 10% performers"])
-    lines.extend(f"- {label(item)} ({fmt_x(item.roas)})" for item in perf["top_10"])
+    lines.extend(["", "### Top 30% performers"])
+    lines.extend(f"- {label(item)} ({fmt_x(item.roas)})" for item in perf["top_30"])
 
-    lines.extend(["", "### Bottom 20% performers"])
-    lines.extend(f"- {label(item)} ({fmt_x(item.roas)})" for item in perf["bottom_20"])
+    lines.extend(["", "### Bottom 30% performers"])
+    lines.extend(f"- {label(item)} ({fmt_x(item.roas)})" for item in perf["bottom_30"])
 
     lines.extend(["", "## Strategist"])
     for item in strategy["actions"][:3]:
@@ -810,17 +818,17 @@ def format_expected_impact(action: Dict[str, Any], summary: Dict[str, Any]) -> s
     if action["type"] == "scale":
         if roas is not None and base_roas is not None:
             return f"Expected to lift ROAS from {fmt_x(base_roas)} to around {fmt_x(min(roas * 1.05, roas * 1.15))} if efficiency holds; CPA should stay near {fmt_money(cpa)} and conversions should rise by roughly 10–15%."
-        return "Expected to increase conversions by roughly 10–15% with CPA staying broadly stable if the additional budget absorbs cleanly."
+        return "Expected to increase conversions if the larger budget holds current efficiency."
 
     if action["type"] == "pause":
         if cpa is not None and base_cpa is not None:
             return f"Expected to reduce blended CPA by trimming a weak spender, with ROAS improving modestly as spend shifts away from {fmt_money(cpa)} CPA traffic; conversions may fall slightly in the short term."
-        return "Expected to improve efficiency by removing a weak spend pocket, with a possible short-term dip in volume."
+        return "Expected to improve efficiency by removing a weaker spender, with a possible short-term dip in volume."
 
     if action["type"] == "reallocate":
         if roas is not None and base_roas is not None:
             return f"Expected to improve ROAS from {fmt_x(base_roas)} toward {fmt_x(min(base_roas * 1.08, (roas or base_roas) * 1.05))}, with CPA drifting down or holding steady and conversions staying broadly flat to slightly up."
-        return "Expected to shift spend toward a stronger efficiency pocket, improving CPA modestly while keeping conversions broadly stable."
+        return "Expected to shift spend toward a stronger campaign and improve blended efficiency."
 
     return "Expected impact is limited; this is a hold decision rather than a budget move."
 
@@ -916,6 +924,11 @@ def simulate_decision(action: Dict[str, Any], analysis: Dict[str, Any], campaign
     if action["type"] == "scale" and source is None:
         source_roas = summary.get("overall_roas") or 0.0
 
+    source_cpa = source.cpa if source and source.cpa is not None else None
+    target_cpa = target.cpa if target and target.cpa is not None else None
+    source_spend = source.spend if source else 0.0
+    target_spend = target.spend if target else 0.0
+
     delta = target_roas - source_roas
     theoretical_gain = spend * delta
     expected_gain = theoretical_gain * 0.5
@@ -934,19 +947,23 @@ def simulate_decision(action: Dict[str, Any], analysis: Dict[str, Any], campaign
         assumptions = [
             "The campaign keeps a similar efficiency profile when budget rises.",
             "No saturation or audience fatigue appears inside the test window.",
-            "Extra spend converts at roughly the same ROAS as current spend, then is discounted by the realism factor.",
+            "Extra spend converts in line with the current pattern.",
         ]
     else:
         assumptions = [
             "The destination campaign can absorb extra spend without a sharp ROAS drop.",
             "The source campaign can lose spend without creating hidden downstream value loss.",
-            "The 50% realism factor covers normal execution slippage.",
+            "Execution risk is moderate and should be monitored closely.",
         ]
 
     return {
         **action,
         "source_campaign": label(source) if source else action.get("from") or action.get("campaign") or "account baseline",
         "target_campaign": label(target) if target else action.get("to") or action.get("campaign") or "account baseline",
+        "source_spend": source_spend,
+        "target_spend": target_spend,
+        "source_cpa": source_cpa,
+        "target_cpa": target_cpa,
         "source_roas": source_roas,
         "target_roas": target_roas,
         "delta": delta,
@@ -966,6 +983,8 @@ def simulate_projections(strategy: Dict[str, Any], analysis: Dict[str, Any]) -> 
     projected_revenue = max(0.0, (summary["total_revenue"] or 0.0) + total_expected_gain)
     projected_roas = (projected_revenue / summary["total_spend"]) if summary["total_spend"] else None
     projected_cpa = (summary["total_spend"] / summary["total_conversions"]) if summary["total_conversions"] else None
+    impact_low = total_expected_gain * 0.75
+    impact_high = total_expected_gain * 1.25
 
     return {
         "decisions": decisions,
@@ -979,77 +998,19 @@ def simulate_projections(strategy: Dict[str, Any], analysis: Dict[str, Any]) -> 
             "roas": projected_roas,
             "cpa": projected_cpa,
         },
-        "total_theoretical_gain": sum(item["theoretical_gain"] for item in decisions),
         "total_expected_gain": total_expected_gain,
+        "impact_low": impact_low,
+        "impact_high": impact_high,
     }
 
 
 def render_evaluation(evaluation: Dict[str, Any]) -> str:
     return "\n".join([
         "## Confidence & limitations",
-        "- Confidence reflects data volume, signal strength, and whether campaign comparisons are like-for-like.",
-        "- This is a snapshot based on the exported dataset.",
-        "- Results may be affected by attribution windows, seasonality, creative fatigue, and missing margin/LTV data.",
-        "- Stronger recommendations require business goals and week-to-week decision tracking.",
-    ])
-
-
-def render_key_decisions(strategy: Dict[str, Any], critique: Dict[str, Any], simulation: Dict[str, Any]) -> str:
-    lines = ["## Key Decisions (3)"]
-    for idx, (action, challenge, sim) in enumerate(zip(strategy["actions"][:3], critique["critiques"][:3], simulation["decisions"][:3]), 1):
-        risk = challenge["attribution_risk"] if action["type"] in {"pause", "scale", "reallocate"} else challenge["weak_signal"]
-        lines.extend([
-            f"### {idx}. {action['action']}",
-            f"- £ amount: {fmt_money(action.get('amount', 0.0))}",
-            f"- Reason: {action['reason']}",
-            f"- Expected impact: {action.get('expected_impact', 'n/a')}",
-            f"- Timeframe: {action.get('timeframe', 'n/a')}",
-            f"- Risk: {risk}",
-            f"- What to monitor: {action.get('monitor', 'n/a')}",
-            f"- Confidence: {action.get('confidence', 'Medium')}",
-        ])
-    return "\n".join(lines)
-
-
-def render_expected_impact(simulation: Dict[str, Any], perf: Dict[str, Any]) -> str:
-    before = simulation["before"]
-    after = simulation["after"]
-    lines = ["## Expected Impact"]
-    lines.extend([
-        f"- Wasted spend: {fmt_money(perf['wasted_spend'])} ({perf['wasted_share'] * 100:.1f}%)" if perf["wasted_share"] is not None else f"- Wasted spend: {fmt_money(perf['wasted_spend'])}",
-        f"- Projected uplift: {fmt_money(simulation['total_expected_gain'])} adjusted revenue gain",
-        f"- Revenue: {fmt_money(before['revenue'])} → {fmt_money(after['revenue'])}",
-        f"- ROAS: {fmt_x(before['roas'])} → {fmt_x(after['roas'])}",
-    ])
-    return "\n".join(lines)
-
-
-def render_key_insights(analysis: Dict[str, Any], simulation: Dict[str, Any]) -> str:
-    summary = analysis["summary"]
-    perf = analysis["performance"]
-    lines = ["## Key Insights"]
-    lines.extend([
-        f"- Wasted spend: {fmt_money(perf['wasted_spend'])} ({perf['wasted_share'] * 100:.1f}%)" if perf["wasted_share"] is not None else f"- Wasted spend: {fmt_money(perf['wasted_spend'])}",
-        f"- Account ROAS is {fmt_x(summary['overall_roas'])} before changes.",
-        f"- Projected uplift from the three decisions: {fmt_money(simulation['total_expected_gain'])} adjusted revenue gain.",
-    ])
-    return "\n".join(lines)
-
-
-def render_methodology(analysis: Dict[str, Any], simulation: Dict[str, Any]) -> str:
-    return "\n".join([
-        "## How to read this report",
-        "This report uses campaign performance data to identify likely areas of inefficient spend and suggest practical budget decisions. Recommendations are directional and should be reviewed alongside business context such as margin, customer value, attribution, and current priorities.",
-    ])
-
-
-def render_confidence_limitations(evaluation: Dict[str, Any], critique: Dict[str, Any], simulation: Dict[str, Any]) -> str:
-    return "\n".join([
-        "## Confidence & limitations",
-        "- Confidence reflects data volume, signal strength, and whether campaign comparisons are like-for-like.",
-        "- This is a snapshot based on the exported dataset.",
-        "- Results may be affected by attribution windows, seasonality, creative fatigue, and missing margin/LTV data.",
-        "- Stronger recommendations require business goals and week-to-week decision tracking.",
+        "- Confidence reflects data volume, consistency, and missing context.",
+        "- This is a snapshot from the exported dataset.",
+        "- Attribution, seasonality, creative fatigue, and margin/LTV gaps can change the call.",
+        "- Recheck decisions after the next spend cycle.",
     ])
 
 
@@ -1057,193 +1018,243 @@ def esc(value: Any) -> str:
     return html.escape(str(value), quote=True)
 
 
-def render_html_report(source: Path, analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Dict[str, Any], evaluation: Dict[str, Any], simulation: Dict[str, Any]) -> str:
-    summary = analysis["summary"]
-    perf = analysis["performance"]
+def _decision_confidence(action: Dict[str, Any], analysis: Dict[str, Any]) -> tuple[str, str]:
+    campaign_count = analysis["summary"].get("campaign_count", 0)
+    source_spend = float(action.get("source_spend") or 0.0)
+    target_spend = float(action.get("target_spend") or 0.0)
+    if campaign_count >= 5 and source_spend >= 500 and target_spend >= 500:
+        return "High", "Good volume, consistent signal, and enough spend on both sides of the move."
+    if campaign_count >= 3:
+        return "Medium", "Enough data to act, but attribution and margin context are still missing."
+    return "Low", "Thin data makes this directionally useful, not definitive."
 
+
+def _priority_from_rank(rank: int) -> str:
+    return {1: "High", 2: "Medium"}.get(rank, "Low")
+
+
+def _estimated_impact_range(amount: float) -> str:
+    low = max(0.0, amount * 0.75)
+    high = amount * 1.25
+    return f"{fmt_money(low)}–{fmt_money(high)}"
+
+
+def _build_decision_rows(strategy: Dict[str, Any], analysis: Dict[str, Any], simulation: Dict[str, Any]) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    for action, sim in zip(strategy["actions"][:3], simulation["decisions"][:3]):
+        metric_name = "CPA" if sim.get("source_cpa") is not None or sim.get("target_cpa") is not None else "ROAS"
+        metric_value = sim.get("source_cpa") if metric_name == "CPA" else sim.get("source_roas")
+        target_metric_value = sim.get("target_cpa") if metric_name == "CPA" else sim.get("target_roas")
+        current_spend = sim.get("source_spend") if action.get("type") in {"reallocate", "pause"} else sim.get("target_spend")
+        confidence, confidence_reason = _decision_confidence(sim, analysis)
+        if action.get("type") == "reallocate":
+            campaign_line = f"{sim.get('source_campaign')} → {sim.get('target_campaign')}"
+            action_line = f"Reduce {fmt_money(float(action.get('amount', 0.0) or 0.0))} from {sim.get('source_campaign')} → increase {sim.get('target_campaign')} by {fmt_money(float(action.get('amount', 0.0) or 0.0))}"
+            metric_text = f"{metric_name} {fmt_money(metric_value) if metric_name == 'CPA' else fmt_x(metric_value)} → {fmt_money(target_metric_value) if metric_name == 'CPA' else fmt_x(target_metric_value)}"
+        elif action.get("type") == "pause":
+            campaign_line = f"{sim.get('source_campaign')}"
+            action_line = f"Pause {sim.get('source_campaign')} and free {fmt_money(float(action.get('amount', 0.0) or 0.0))}"
+            metric_text = f"{metric_name} {fmt_money(metric_value) if metric_name == 'CPA' else fmt_x(metric_value)}"
+        else:
+            campaign_line = f"{sim.get('target_campaign')}"
+            action_line = f"Increase {sim.get('target_campaign')} by {fmt_money(float(action.get('amount', 0.0) or 0.0))}"
+            metric_text = f"{metric_name} {fmt_money(target_metric_value) if metric_name == 'CPA' else fmt_x(target_metric_value)}"
+        rows.append({
+            "type": action.get("type"),
+            "source": sim.get("source_campaign") or action.get("from") or action.get("campaign") or "Account baseline",
+            "target": sim.get("target_campaign") or action.get("to") or action.get("campaign") or "Account baseline",
+            "campaign_line": campaign_line,
+            "action_line": action_line,
+            "metric_name": metric_name,
+            "metric_value": metric_value,
+            "target_metric_value": target_metric_value,
+            "metric_text": metric_text,
+            "current_spend": current_spend,
+            "amount": float(action.get("amount", 0.0) or 0.0),
+            "priority": None,
+            "confidence": confidence,
+            "confidence_reason": confidence_reason,
+            "impact_range": _estimated_impact_range(abs(float(sim.get("adjusted_expected_gain", 0.0) or 0.0))),
+        })
+    rows = sorted(rows, key=lambda row: row["amount"], reverse=True)
+    for idx, row in enumerate(rows, 1):
+        row["priority"] = _priority_from_rank(idx)
+    return rows
+
+
+def build_marketer_content(source_label: str, analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Dict[str, Any], simulation: Dict[str, Any]) -> Dict[str, Any]:
+    perf = analysis["performance"]
+    decisions = _build_decision_rows(strategy, analysis, simulation)
+    total_low = sum(float(d["impact_range"].split("–")[0].replace("£", "").replace(",", "")) for d in decisions)
+    total_high = sum(float(d["impact_range"].split("–")[1].replace("£", "").replace(",", "")) for d in decisions)
+    top_names = ", ".join(label(c) for c in (perf.get("top_30") or [])[:2]) or "n/a"
+    bottom_names = ", ".join(label(c) for c in (perf.get("bottom_30") or [])[:2]) or "n/a"
+    wasted_pct = perf["wasted_share"] * 100 if perf["wasted_share"] is not None else None
+    return {
+        "source_name": source_label,
+        "wasted_share_pct": wasted_pct,
+        "wasted_spend": perf["wasted_spend"],
+        "current_roas": analysis["summary"].get("overall_roas"),
+        "decisions": decisions,
+        "impact_low": total_low,
+        "impact_high": total_high,
+        "top_names": top_names,
+        "bottom_names": bottom_names,
+        "summary_line": f"~{wasted_pct:.0f}% of budget is underperforming and can be reallocated." if wasted_pct is not None else "Underperforming spend is present but the share is unclear.",
+        "methodology": "This analysis compares campaign efficiency and reallocates budget toward areas with stronger historical performance, while adjusting for execution risk.",
+        "insights": [
+            f"Top performers: {top_names}",
+            f"Bottom performers: {bottom_names}",
+            f"Wasted spend: {fmt_money(perf['wasted_spend'])}" + (f" ({wasted_pct:.1f}%)" if wasted_pct is not None else ""),
+        ],
+        "confidence_notes": [
+            "Confidence reflects data volume, consistency, and missing context such as margin and attribution.",
+            "This is a snapshot based on the exported dataset.",
+            "Results may shift with seasonality, creative fatigue, and lagged conversions.",
+            "Recheck after the next spend cycle.",
+        ],
+    }
+
+
+def render_html_report(source_label: str, content: Dict[str, Any]) -> str:
     decision_cards = []
-    for action, challenge, sim in zip(strategy["actions"][:3], critique["critiques"][:3], simulation["decisions"][:3]):
-        risk = challenge["attribution_risk"] if action["type"] in {"pause", "scale", "reallocate"} else challenge["weak_signal"]
+    for idx, decision in enumerate(content["decisions"], 1):
+        current_spend_text = fmt_money(decision['current_spend']) if isinstance(decision['current_spend'], (int, float)) else "n/a"
         decision_cards.append(f"""
-        <div class="card decision">
-          <div class="decision-title">{esc(action['action'])}</div>
-          <div class="meta"><span class="pill">{esc(fmt_money(action.get('amount', 0.0)))}</span> <span class="pill subtle">{esc(action.get('confidence', 'Medium'))}</span></div>
-          <p><strong>Expected impact:</strong> {esc(action.get('expected_impact', 'n/a'))}</p>
-          <p><strong>Reason:</strong> {esc(action['reason'])}</p>
-          <p><strong>Risk:</strong> {esc(risk)}</p>
-          <p><strong>Monitor:</strong> {esc(action.get('monitor', 'n/a'))}</p>
+        <div class=\"card\">
+          <div class=\"decision-title\">{idx}. {esc(decision['action_line'])}</div>
+          <p><strong>Priority:</strong> {esc(decision['priority'])}</p>
+          <p><strong>Campaign(s):</strong> {esc(decision['campaign_line'])}</p>
+          <p><strong>Current spend:</strong> {esc(current_spend_text)}</p>
+          <p><strong>Key metric:</strong> {esc(decision['metric_text'])}</p>
+          <p><strong>Estimated impact:</strong> {esc(decision['impact_range'])}</p>
+          <p><strong>Confidence:</strong> {esc(decision['confidence'])} — {esc(decision['confidence_reason'])}</p>
         </div>
         """)
 
-    confidence_items = "".join(
-        f"<li>{esc(item)}</li>"
-        for item in [
-            "Confidence reflects data volume, signal strength, and whether campaign comparisons are like-for-like.",
-            "This is a snapshot based on the exported dataset.",
-            "Results may be affected by attribution windows, seasonality, creative fatigue, and missing margin/LTV data.",
-            "Stronger recommendations require business goals and week-to-week decision tracking.",
-        ]
-    )
-
-    html_doc = f"""<!doctype html>
-<html lang="en">
+    return f"""<!doctype html>
+<html lang=\"en\">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset=\"utf-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
   <title>Gnomeo Agent MVP Report</title>
   <style>
-    :root {{ --bg:#fff; --text:#101828; --muted:#667085; --line:#eaecf0; --soft:#f9fafb; --accent:#2563eb; }}
+    :root {{ --bg:#fff; --text:#101828; --muted:#667085; --line:#eaecf0; --accent:#2563eb; }}
     * {{ box-sizing:border-box; }}
-    body {{ margin:0; background:var(--bg); color:var(--text); font:15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
-    .wrap {{ max-width:800px; margin:0 auto; padding:40px 24px 72px; }}
-    .hero {{ margin-bottom:32px; }}
-    h1 {{ font-size:30px; line-height:1.15; margin:0 0 10px; }}
-    h2 {{ font-size:22px; margin:36px 0 16px; }}
-    h3 {{ font-size:18px; margin:0 0 10px; }}
+    body {{ margin:0; background:var(--bg); color:var(--text); font:15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; }}
+    .wrap {{ max-width:840px; margin:0 auto; padding:40px 24px 72px; }}
+    h1 {{ font-size:30px; margin:0 0 10px; }}
+    h2 {{ font-size:22px; margin:32px 0 14px; }}
     p {{ margin:0 0 10px; }}
     .muted {{ color:var(--muted); }}
     .summary {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin:18px 0 0; }}
-    .stat, .card, .eval-item {{ border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 1px 2px rgba(16,24,40,.04); }}
+    .stat, .card {{ border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 1px 2px rgba(16,24,40,.04); }}
     .stat {{ padding:16px; }}
     .stat .label {{ color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }}
     .stat .value {{ font-size:22px; font-weight:700; margin-top:4px; }}
-    .section {{ margin-top:10px; }}
     .cards {{ display:grid; gap:16px; }}
     .card {{ padding:18px; }}
     .decision-title {{ font-weight:700; font-size:16px; margin-bottom:10px; }}
-    .meta {{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }}
-    .pill {{ display:inline-block; padding:5px 10px; border-radius:999px; background:#eff6ff; color:#1d4ed8; font-weight:700; }}
-    .pill.subtle {{ background:var(--soft); color:var(--muted); font-weight:600; }}
     .highlight {{ color:var(--accent); font-weight:800; }}
-    .grid-2 {{ display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); }}
-    .callout {{ padding:16px; border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 1px 2px rgba(16,24,40,.04); }}
-    .section-block {{ margin-top:24px; }}
     ul {{ margin:8px 0 0 20px; padding:0; }}
     li {{ margin-bottom:6px; }}
-    hr {{ border:none; border-top:1px solid var(--line); margin:24px 0; }}
-    .kpi {{ color:var(--accent); font-weight:800; }}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="hero">
-      <h1>Gnomeo Agent MVP Report</h1>
-      <p class="muted">Source file: {esc(source.name)}</p>
-      <div class="summary">
-        <div class="stat"><div class="label">Campaigns</div><div class="value">{summary['campaign_count']}</div></div>
-        <div class="stat"><div class="label">Spend</div><div class="value">{esc(fmt_money(summary['total_spend']))}</div></div>
-        <div class="stat"><div class="label">Wasted spend</div><div class="value kpi">{esc(fmt_money(perf['wasted_spend']))}</div><div class="muted">{esc(f'{perf["wasted_share"]*100:.1f}%') if perf['wasted_share'] is not None else 'n/a'}</div></div>
-        <div class="stat"><div class="label">Current ROAS</div><div class="value">{esc(fmt_x(summary['overall_roas']))}</div></div>
-        <div class="stat"><div class="label">Projected uplift</div><div class="value kpi">{esc(fmt_money(simulation['total_expected_gain']))}</div></div>
-      </div>
+  <div class=\"wrap\">
+    <h1>Gnomeo Agent MVP Report</h1>
+      <p class=\"muted\">Source file: {esc(source_label)}</p>
+    <div class=\"summary\">
+      <div class=\"stat\"><div class=\"label\">Budget underperforming</div><div class=\"value\">{esc(content['summary_line'])}</div></div>
+      <div class=\"stat\"><div class=\"label\">Wasted spend</div><div class=\"value\">{esc(fmt_money(content['wasted_spend']))}</div></div>
+      <div class=\"stat\"><div class=\"label\">Current ROAS</div><div class=\"value\">{esc(fmt_x(content['current_roas']))}</div></div>
+      <div class=\"stat\"><div class=\"label\">Estimated impact</div><div class=\"value highlight\">{esc(fmt_money(content['impact_low']))}–{esc(fmt_money(content['impact_high']))}</div></div>
     </div>
 
-    <section class="section-block">
-      <h2>Executive Summary</h2>
-      <p>Three budget moves are recommended. The current account is at {esc(fmt_x(summary['overall_roas']))} ROAS, with {esc(fmt_money(perf['wasted_spend']))} ({esc(f'{perf["wasted_share"]*100:.1f}%') if perf['wasted_share'] is not None else 'n/a'}) of spend sitting in CPA outliers.</p>
-      <p>The projected adjusted revenue uplift is <span class="highlight">{esc(fmt_money(simulation['total_expected_gain']))}</span>.</p>
-    </section>
+    <h2>Executive Summary</h2>
+    <p>{esc(content['summary_line'])}</p>
 
-    <section class="section-block">
-      <h2>Key Decisions</h2>
-      <div class="cards">{''.join(decision_cards)}</div>
-    </section>
+    <h2>Key Decisions (prioritised)</h2>
+    <div class=\"cards\">{''.join(decision_cards)}</div>
 
-    <section class="section-block">
-      <h2>Expected Impact</h2>
-      <div class="grid-2">
-        <div class="card"><p><strong class="highlight">Wasted spend:</strong> {esc(fmt_money(perf['wasted_spend']))} ({esc(f'{perf["wasted_share"]*100:.1f}%') if perf['wasted_share'] is not None else 'n/a'})</p><p><strong>Projected uplift:</strong> {esc(fmt_money(simulation['total_expected_gain']))}</p></div>
-        <div class="card"><p><strong>Before:</strong> revenue {esc(fmt_money(simulation['before']['revenue']))}, ROAS {esc(fmt_x(simulation['before']['roas']))}</p><p><strong>After (projected):</strong> revenue {esc(fmt_money(simulation['after']['revenue']))}, ROAS {esc(fmt_x(simulation['after']['roas']))}</p></div>
-      </div>
-    </section>
+    <h2>Expected Impact</h2>
+    <p><strong>Estimated impact:</strong> {esc(fmt_money(content['impact_low']))}–{esc(fmt_money(content['impact_high']))}</p>
+    <p><strong>Current waste:</strong> {esc(fmt_money(content['wasted_spend']))}</p>
 
-    <section class="section-block">
-      <h2>Key Insights</h2>
-      <ul>
-        <li>Wasted spend is <span class="highlight">{esc(fmt_money(perf['wasted_spend']))}</span> ({esc(f'{perf["wasted_share"]*100:.1f}%') if perf['wasted_share'] is not None else 'n/a'}).</li>
-        <li>The account currently runs at {esc(fmt_x(summary['overall_roas']))} ROAS.</li>
-        <li>The projected uplift from the three decisions is <span class="highlight">{esc(fmt_money(simulation['total_expected_gain']))}</span>.</li>
-      </ul>
-    </section>
+    <h2>Key Insights</h2>
+    <ul>{''.join(f'<li>{esc(item)}</li>' for item in content['insights'])}</ul>
 
-    <section class="section-block">
-      <h2>How to read this report</h2>
-      <p>This report uses campaign performance data to identify likely areas of inefficient spend and suggest practical budget decisions. Recommendations are directional and should be reviewed alongside business context such as margin, customer value, attribution, and current priorities.</p>
-    </section>
+    <h2>How to read this report</h2>
+    <p>{esc(content['methodology'])}</p>
 
-    <section class="section-block">
-      <h2>Confidence &amp; limitations</h2>
-      <div class="callout">
-        <ul>
-          {confidence_items}
-        </ul>
-      </div>
-    </section>
+    <h2>Confidence &amp; Limitations</h2>
+    <ul>{''.join(f'<li>{esc(item)}</li>' for item in content['confidence_notes'])}</ul>
   </div>
 </body>
 </html>"""
-    return html_doc
 
 
-def print_section(title: str, body: Any) -> None:
-    print(f"\n=== {title} ===")
-    if isinstance(body, dict):
-        for key, value in body.items():
-            print(f"{key}: {value}")
-    elif isinstance(body, list):
-        for item in body:
-            print(f"- {item}")
-    else:
-        print(body)
-
-
-def build_report_text(source: Path, analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Dict[str, Any], final: str, evaluation: Dict[str, Any], simulation: Dict[str, Any]) -> str:
-    summary = analysis["summary"]
-    perf = analysis["performance"]
+def build_report_text(source_label: str, content: Dict[str, Any]) -> str:
     lines = [
         "# Gnomeo Agent MVP Report",
-        f"Source: `{source.name}`",
+        f"Source: `{source_label}`",
         "",
         "## Executive Summary",
-        f"- Campaigns analyzed: {summary['campaign_count']}",
-        f"- Spend: {fmt_money(summary['total_spend'])}",
-        f"- Wasted spend: {fmt_money(perf['wasted_spend'])} ({perf['wasted_share'] * 100:.1f}%)" if perf["wasted_share"] is not None else f"- Wasted spend: {fmt_money(perf['wasted_spend'])}",
-        f"- Current ROAS: {fmt_x(summary['overall_roas'])}",
-        f"- Projected uplift: {fmt_money(simulation['total_expected_gain'])} adjusted revenue gain",
+        content["summary_line"],
+        f"- Wasted spend: {fmt_money(content['wasted_spend'])}",
+        f"- Current ROAS: {fmt_x(content['current_roas'])}",
+        f"- Estimated impact: {fmt_money(content['impact_low'])}–{fmt_money(content['impact_high'])}",
         "",
-        render_key_decisions(strategy, critique, simulation),
-        "",
-        render_expected_impact(simulation, perf),
-        "",
-        render_key_insights(analysis, simulation),
-        "",
-        render_methodology(analysis, simulation),
-        "",
-        render_confidence_limitations(evaluation, critique, simulation),
-        "",
-        "## Case Study",
-        "### Before",
-        f"- Revenue: {fmt_money(simulation['before']['revenue'])}",
-        f"- ROAS: {fmt_x(simulation['before']['roas'])}",
-        f"- CPA: {fmt_money(simulation['before']['cpa'])}",
-        "",
-        "### After (projected)",
-        f"- Revenue: {fmt_money(simulation['after']['revenue'])}",
-        f"- ROAS: {fmt_x(simulation['after']['roas'])}",
-        f"- CPA: {fmt_money(simulation['after']['cpa'])}",
-        "",
+        "## Key Decisions (prioritised)",
     ]
+    for idx, decision in enumerate(content["decisions"], 1):
+        lines.extend([
+            f"### {idx}. {decision['action_line']}",
+            f"- Priority: {decision['priority']}",
+            f"- Campaign(s): {decision['campaign_line']}",
+            f"- Current spend: {fmt_money(decision['current_spend']) if isinstance(decision['current_spend'], (int, float)) else 'n/a'}",
+            f"- Key metric: {decision['metric_text']}",
+            f"- Estimated impact: {decision['impact_range']}",
+            f"- Confidence: {decision['confidence']} — {decision['confidence_reason']}",
+        ])
+    lines.extend([
+        "",
+        "## Expected Impact",
+        f"Estimated impact: {fmt_money(content['impact_low'])}–{fmt_money(content['impact_high'])}",
+        f"Current waste: {fmt_money(content['wasted_spend'])}",
+        "",
+        "## Key Insights",
+    ])
+    lines.extend(f"- {item}" for item in content["insights"])
+    lines.extend([
+        "",
+        "## How to read this report",
+        content["methodology"],
+        "",
+        "## Confidence & Limitations",
+    ])
+    lines.extend(f"- {item}" for item in content["confidence_notes"])
     return "\n".join(lines)
+
+
+def marketer(source_context: Dict[str, Any], analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Dict[str, Any], simulation: Dict[str, Any], evaluation: Dict[str, Any], synthesizer_text: str) -> Dict[str, Any]:
+    source_value = str(source_context.get("source") or source_context.get("csv_path") or "dataset")
+    source_label = Path(source_value).name if source_value else "dataset"
+    content = build_marketer_content(source_label, analysis, strategy, critique, simulation)
+    return {
+        "content": content,
+        "final_report_text": build_report_text(source_label, content),
+        "final_report_html": render_html_report(source_label, content),
+    }
 
 
 def render_graph_mode_appendix(state: Any) -> str:
     warnings = getattr(state, "warnings", []) or []
     confidence = getattr(state, "confidence", "high")
     trace = getattr(state, "trace", []) or []
-
     lines = [
         "## Graph Mode Trace",
-        "- Flow: Profile Interpreter → Analyst → Strategist Initial → Critic → Strategist Refinement → Synthesizer → Evaluation",
+        "- Flow: Profile Interpreter → Analyst → Strategist Initial → Critic → Strategist Refinement → Synthesizer → Marketer → Evaluation",
         f"- Confidence: {confidence}",
     ]
     if trace:
@@ -1265,13 +1276,25 @@ def render_graph_mode_html_appendix(state: Any) -> str:
     <section class=\"section-block\">
       <h2>Graph Mode Trace</h2>
       <div class=\"card\">
-        <p><strong>Flow:</strong> Profile Interpreter → Analyst → Strategist Initial → Critic → Strategist Refinement → Synthesizer → Evaluation</p>
+        <p><strong>Flow:</strong> Profile Interpreter → Analyst → Strategist Initial → Critic → Strategist Refinement → Synthesizer → Marketer → Evaluation</p>
         <p><strong>Confidence:</strong> {esc(confidence)}</p>
         <p><strong>Steps executed:</strong> {trace_html}</p>
         {f'<p><strong>Warnings:</strong></p><ul>{warning_html}</ul>' if warnings else ''}
       </div>
     </section>
 """
+
+
+def print_section(title: str, body: Any) -> None:
+    print(f"\n=== {title} ===")
+    if isinstance(body, dict):
+        for key, value in body.items():
+            print(f"{key}: {value}")
+    elif isinstance(body, list):
+        for item in body:
+            print(f"- {item}")
+    else:
+        print(body)
 
 
 def main() -> None:
@@ -1306,6 +1329,7 @@ def main() -> None:
             simulate_projections=simulate_projections,
             synthesizer=synthesizer,
             evaluate_output=evaluate_output,
+            marketer=marketer,
         )
         graph_state = graph.run(campaigns, args)
         profile_context = graph_state.profile or {}
@@ -1315,12 +1339,13 @@ def main() -> None:
         enriched_strategy = graph_state.enriched_strategy or {}
         critique = graph_state.critic_output or {}
         simulation = graph_state.simulation or {}
-        final = graph_state.synthesizer_output or ""
         evaluation = graph_state.evaluation_output or {}
-        report = build_report_text(source, analysis, enriched_strategy, critique, final, evaluation, simulation)
+        marketer_output = graph_state.marketer_output or marketer({"source": str(source)}, analysis, enriched_strategy, critique, simulation, evaluation, graph_state.synthesizer_output or "")
+        final = marketer_output.get("final_report_text", graph_state.synthesizer_output or "")
+        report = final
         report += "\n" + render_graph_mode_appendix(graph_state)
-        html_report = render_html_report(source, analysis, enriched_strategy, critique, evaluation, simulation)
-        html_report = html_report.replace("</div>\n  </body>", render_graph_mode_html_appendix(graph_state) + "  </div>\n  </body>")
+        html_report = marketer_output.get("final_report_html", "")
+        html_report = html_report.replace("</body>\n</html>", render_graph_mode_html_appendix(graph_state) + "</body>\n</html>")
     else:
         profile_context = run_profile_interpreter(campaigns, args)
         analysis = analyst(campaigns, profile_context)
@@ -1331,8 +1356,10 @@ def main() -> None:
         simulation = simulate_projections(enriched_strategy, analysis)
         final = synthesizer(analysis, enriched_strategy, critique, simulation)
         evaluation = evaluate_output(enriched_strategy, critique)
-        report = build_report_text(source, analysis, enriched_strategy, critique, final, evaluation, simulation)
-        html_report = render_html_report(source, analysis, enriched_strategy, critique, evaluation, simulation)
+        marketer_output = marketer({"source": str(source)}, analysis, enriched_strategy, critique, simulation, evaluation, final)
+        final = marketer_output["final_report_text"]
+        report = final
+        html_report = marketer_output["final_report_html"]
 
     output_report.write_text(report, encoding="utf-8")
     output_html.write_text(html_report, encoding="utf-8")
@@ -1347,7 +1374,7 @@ def main() -> None:
     print_section("STRATEGIST (initial)", strategy_initial)
     print_section("CRITIC", critique)
     print_section("STRATEGIST (refined)", enriched_strategy)
-    print("\n=== SYNTHESIZER ===")
+    print("\n=== FINAL REPORT ===")
     print(final)
     print("\n=== EVALUATION ===")
     print(render_evaluation(evaluation))

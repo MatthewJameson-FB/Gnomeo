@@ -14,6 +14,8 @@ class DecisionGraphState:
     strategist_refined_output: Dict[str, Any] | None = None
     synthesizer_output: str | None = None
     evaluation_output: Dict[str, Any] | None = None
+    marketer_output: Dict[str, Any] | None = None
+    final_report_text: str | None = None
     warnings: List[str] = field(default_factory=list)
     confidence: str = "high"
     trace: List[str] = field(default_factory=list)
@@ -34,6 +36,7 @@ class DecisionGraph:
         simulate_projections: Callable[[Dict[str, Any], Dict[str, Any]], Dict[str, Any]],
         synthesizer: Callable[[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]], str],
         evaluate_output: Callable[[Dict[str, Any], Dict[str, Any]], Dict[str, Any]],
+        marketer: Callable[[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], str], Dict[str, Any]] | None = None,
     ):
         self.profile_interpreter = profile_interpreter
         self.analyst = analyst
@@ -44,6 +47,7 @@ class DecisionGraph:
         self.simulate_projections = simulate_projections
         self.synthesizer = synthesizer
         self.evaluate_output = evaluate_output
+        self.marketer = marketer
 
     @staticmethod
     def _is_low_data_quality(analysis: Dict[str, Any]) -> bool:
@@ -104,5 +108,22 @@ class DecisionGraph:
             state.evaluation_output["confidence"] = state.confidence
             if state.warnings:
                 state.evaluation_output["warnings"] = list(state.warnings)
+
+        state.trace.append("Marketer")
+        if self.marketer is not None:
+            state.marketer_output = self.marketer(
+                state.normalized_data or {},
+                state.analyst_output or {},
+                state.enriched_strategy or {},
+                state.critic_output or {},
+                state.simulation or {},
+                state.evaluation_output or {},
+                state.synthesizer_output or "",
+            )
+            if isinstance(state.marketer_output, dict):
+                state.final_report_text = state.marketer_output.get("final_report_text")
+        else:
+            state.marketer_output = {"final_report_text": state.synthesizer_output or ""}
+            state.final_report_text = state.synthesizer_output or ""
 
         return state
