@@ -30,59 +30,15 @@
           <a class="pill-link" href="/admin/">Admin Home</a>
           <a class="pill-link active" href="/admin/submissions.html">Submissions</a>
           <button id="reloadBtn" type="button">Reload from Supabase</button>
+          <button id="openManualBtn" class="primary" type="button">Add manual submission</button>
         </div>
       </header>
 
       <section id="banner" class="banner hidden" aria-live="polite"></section>
 
-      <section class="controls-row">
-        <details class="card compact-panel">
-          <summary>How this works</summary>
-          <ol class="workflow-list compact">
-            <li>Download CSV</li>
-            <li>Generate report locally</li>
-            <li>Upload report</li>
-            <li>Send report email</li>
-          </ol>
-        </details>
-
-        <details class="card compact-panel">
-          <summary>Add manual submission</summary>
-          <form id="manualSubmissionForm" class="manual-form compact">
-          <div class="field">
-            <label for="manualEmail">Customer email</label>
-            <input id="manualEmail" name="email" type="email" required placeholder="customer@example.com" />
-          </div>
-          <div class="field">
-            <label for="manualCompany">Company name (optional)</label>
-            <input id="manualCompany" name="company" type="text" placeholder="Company Ltd" />
-          </div>
-          <div class="field">
-            <label for="manualFilename">Original filename (optional)</label>
-            <input id="manualFilename" name="original_filename" type="text" placeholder="lead-list.csv" />
-          </div>
-          <div class="field full">
-            <label for="manualNotes">Notes</label>
-            <textarea id="manualNotes" name="notes" placeholder="Context, reminders, call notes..."></textarea>
-          </div>
-          <div class="field">
-            <label for="manualStatus">Status</label>
-            <select id="manualStatus" name="status">
-              <option value="received">received</option>
-              <option value="processing">processing</option>
-              <option value="report_ready">report_ready</option>
-              <option value="report_sent">report_sent</option>
-              <option value="follow_up">follow_up</option>
-              <option value="converted">converted</option>
-              <option value="lost">lost</option>
-            </select>
-          </div>
-          <div class="field actions-field">
-            <label>&nbsp;</label>
-            <button class="primary" type="submit">Create manual submission</button>
-          </div>
-          </form>
-        </details>
+      <section class="workflow-strip card">
+        <span class="workflow-label">Workflow</span>
+        <span>1. Receive CSV → 2. Generate report locally → 3. Upload report → 4. Send → 5. Follow up</span>
       </section>
 
       <section class="summary card" id="summary"></section>
@@ -132,11 +88,58 @@
 
         <aside class="detail-card card">
           <h2>Submission detail</h2>
-          <p class="subtle" id="detailHint">Select a submission to manage it.</p>
+          <p class="subtle" id="detailHint">Select a submission to manage report delivery.</p>
           <div id="detailContent" class="hidden"></div>
         </aside>
       </section>
     </main>
+
+    <div id="manualModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-manual></div>
+      <div class="modal-card card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Manual entry</p>
+            <h2>Add manual submission</h2>
+          </div>
+          <button id="closeManualBtn" class="secondary" type="button">Close</button>
+        </div>
+        <form id="manualSubmissionForm" class="manual-form compact">
+          <div class="field">
+            <label for="manualEmail">Customer email</label>
+            <input id="manualEmail" name="email" type="email" required placeholder="customer@example.com" />
+          </div>
+          <div class="field">
+            <label for="manualCompany">Company name (optional)</label>
+            <input id="manualCompany" name="company" type="text" placeholder="Company Ltd" />
+          </div>
+          <div class="field">
+            <label for="manualFilename">Original filename (optional)</label>
+            <input id="manualFilename" name="original_filename" type="text" placeholder="lead-list.csv" />
+          </div>
+          <div class="field full">
+            <label for="manualNotes">Notes</label>
+            <textarea id="manualNotes" name="notes" placeholder="Context, reminders, call notes..."></textarea>
+          </div>
+          <div class="field">
+            <label for="manualStatus">Status</label>
+            <select id="manualStatus" name="status">
+              <option value="received">received</option>
+              <option value="processing">processing</option>
+              <option value="report_ready">report_ready</option>
+              <option value="report_sent">report_sent</option>
+              <option value="follow_up">follow_up</option>
+              <option value="converted">converted</option>
+              <option value="lost">lost</option>
+            </select>
+          </div>
+          <div class="field actions-field">
+            <label>&nbsp;</label>
+            <button class="primary" type="submit">Create manual submission</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <script src="auth.js"></script>
     <script src="submissions.js"></script>

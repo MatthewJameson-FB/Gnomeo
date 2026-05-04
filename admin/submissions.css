@@ -119,22 +119,26 @@ button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
 .banner.good { background: #ecfdf3; color: #166534; }
 .banner.error { background: #fef2f2; color: #b42318; }
 
-.controls-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+.workflow-strip {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 14px;
   margin-top: 14px;
+  font-size: 13px;
 }
-.compact-panel {
-  padding: 12px 14px;
+.workflow-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #2347d7;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
-.compact-panel summary {
-  cursor: pointer;
-  font-weight: 700;
-  list-style: none;
-}
-.compact-panel summary::-webkit-details-marker { display: none; }
-.compact-panel[open] summary { margin-bottom: 12px; }
 
 .checklist-card,
 .manual-card {
@@ -273,6 +277,30 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); box-sha
 .dropzone.dragover { border-color: var(--accent); background: #eef4ff; box-shadow: 0 0 0 4px var(--accent-soft); }
 .dropzone.has-report { background: #f5fff7; border-color: #a7f3d0; }
 .dropzone-copy { margin: 0; font-weight: 700; }
+.dropzone .actions-row { align-items: center; }
+.report-note { margin: 0; }
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+}
+.modal.hidden { display: none; }
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+}
+.modal-card {
+  position: relative;
+  z-index: 1;
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: 16px;
+}
 .command, pre {
   white-space: pre-wrap;
   word-break: break-word;
@@ -288,7 +316,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); box-sha
 .hidden { display: none; }
 .small { font-size: 13px; color: var(--muted); }
 @media (max-width: 980px) {
-  .hero, .toolbar, .dashboard-grid, .summary, .detail-grid, .manual-form, .controls-row { grid-template-columns: 1fr; }
+  .hero, .toolbar, .dashboard-grid, .summary, .detail-grid, .manual-form { grid-template-columns: 1fr; }
   .hero { align-items: stretch; }
   .section-head { flex-direction: column; }
+  .workflow-strip { flex-direction: column; align-items: flex-start; }
 }
