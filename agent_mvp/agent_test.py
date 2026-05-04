@@ -723,7 +723,7 @@ def synthesizer(analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Di
             confidence = "Low"
 
         lines.append(
-            f"{idx}. Action: {action['action']}\n   £ amount: {fmt_money(action.get('amount', 0.0))}\n   Reason: {action['reason']}\n   Expected impact: {action.get('expected_impact', 'n/a')}\n   Timeframe: {action.get('timeframe', 'n/a')}\n   Source ROAS: {fmt_x(sim['source_roas'])}\n   Target ROAS: {fmt_x(sim['target_roas'])}\n   Delta: {fmt_x(sim['delta'])}\n   Theoretical gain: {fmt_money(sim['theoretical_gain'])}\n   Adjusted expected gain: {fmt_money(sim['adjusted_expected_gain'])}\n   Assumptions: {', '.join(sim['assumptions'])}\n   Risk: {risk}\n   What to monitor: {action.get('monitor', 'n/a')}\n   Confidence: {confidence}"
+            f"{idx}. Action: {action['action']}\n   £ amount: {fmt_money(action.get('amount', 0.0))}\n   Reason: {action['reason']}\n   Expected impact: {action.get('expected_impact', 'n/a')}\n   Timeframe: {action.get('timeframe', 'n/a')}\n   Source ROAS: {fmt_x(sim['source_roas'])}\n   Target ROAS: {fmt_x(sim['target_roas'])}\n   Delta: {fmt_x(sim['delta'])}\n   Assumptions: {', '.join(sim['assumptions'])}\n   Risk: {risk}\n   What to monitor: {action.get('monitor', 'n/a')}\n   Confidence: {confidence}"
         )
 
     lines.extend(["", "## Flow control"])
@@ -742,13 +742,6 @@ def synthesizer(analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Di
     lines.append(f"- Revenue: {fmt_money(after['revenue'])}")
     lines.append(f"- ROAS: {fmt_x(after['roas'])}")
     lines.append(f"- CPA: {fmt_money(after['cpa'])}")
-    lines.append(f"- Total theoretical gain: {fmt_money(simulation['total_theoretical_gain'])}")
-    lines.append(f"- Total adjusted expected gain: {fmt_money(simulation['total_expected_gain'])}")
-    lines.extend(["", "### Assumptions"])
-    for item in simulation["decisions"][:3]:
-        lines.append(f"- {item['action']}")
-        for assumption in item["assumptions"]:
-            lines.append(f"  - {assumption}")
 
     return "\n".join(lines)
 
@@ -992,18 +985,13 @@ def simulate_projections(strategy: Dict[str, Any], analysis: Dict[str, Any]) -> 
 
 
 def render_evaluation(evaluation: Dict[str, Any]) -> str:
-    lines = ["## Evaluation"]
-    labels = [
-        ("Actionability", "actionability"),
-        ("Financial clarity", "financial_clarity"),
-        ("Risk awareness", "risk_awareness"),
-        ("Confidence quality", "confidence_quality"),
-        ("Overall decision quality", "overall"),
-    ]
-    for label, key in labels:
-        item = evaluation[key]
-        lines.append(f"- {label} score: {item['score']}/5 — {item['reason']}")
-    return "\n".join(lines)
+    return "\n".join([
+        "## Confidence & limitations",
+        "- Confidence reflects data volume, signal strength, and whether campaign comparisons are like-for-like.",
+        "- This is a snapshot based on the exported dataset.",
+        "- Results may be affected by attribution windows, seasonality, creative fatigue, and missing margin/LTV data.",
+        "- Stronger recommendations require business goals and week-to-week decision tracking.",
+    ])
 
 
 def render_key_decisions(strategy: Dict[str, Any], critique: Dict[str, Any], simulation: Dict[str, Any]) -> str:
@@ -1016,8 +1004,6 @@ def render_key_decisions(strategy: Dict[str, Any], critique: Dict[str, Any], sim
             f"- Reason: {action['reason']}",
             f"- Expected impact: {action.get('expected_impact', 'n/a')}",
             f"- Timeframe: {action.get('timeframe', 'n/a')}",
-            f"- Theoretical gain: {fmt_money(sim['theoretical_gain'])}",
-            f"- Adjusted expected gain: {fmt_money(sim['adjusted_expected_gain'])}",
             f"- Risk: {risk}",
             f"- What to monitor: {action.get('monitor', 'n/a')}",
             f"- Confidence: {action.get('confidence', 'Medium')}",
@@ -1051,27 +1037,20 @@ def render_key_insights(analysis: Dict[str, Any], simulation: Dict[str, Any]) ->
 
 
 def render_methodology(analysis: Dict[str, Any], simulation: Dict[str, Any]) -> str:
-    lines = ["## Methodology"]
-    lines.extend([
-        "- Analyst segments data by campaign group and benchmarks CPA / ROAS.",
-        "- Strategist proposes one reallocation, one pause, and one scale move.",
-        "- Critic challenges each move once; strategist refines once.",
-        "- Projections use ROAS deltas, budget shift size, and a 0.5 realism factor.",
-        "- Outputs are estimates, not guarantees.",
+    return "\n".join([
+        "## How to read this report",
+        "This report uses campaign performance data to identify likely areas of inefficient spend and suggest practical budget decisions. Recommendations are directional and should be reviewed alongside business context such as margin, customer value, attribution, and current priorities.",
     ])
-    return "\n".join(lines)
 
 
 def render_confidence_limitations(evaluation: Dict[str, Any], critique: Dict[str, Any], simulation: Dict[str, Any]) -> str:
-    lines = ["## Confidence & Limitations"]
-    lines.extend([
-        f"- Confidence quality: {evaluation['confidence_quality']['score']}/5.",
-        "- Brand scaling may face saturation, so ROAS gains may not scale linearly.",
-        "- Cross-channel moves are directional and can be distorted by attribution windows.",
-        "- Forecasts assume the source and target campaigns behave roughly like their current ROAS profile.",
-        "- The projection is a simplified estimate, not a guarantee of revenue uplift.",
+    return "\n".join([
+        "## Confidence & limitations",
+        "- Confidence reflects data volume, signal strength, and whether campaign comparisons are like-for-like.",
+        "- This is a snapshot based on the exported dataset.",
+        "- Results may be affected by attribution windows, seasonality, creative fatigue, and missing margin/LTV data.",
+        "- Stronger recommendations require business goals and week-to-week decision tracking.",
     ])
-    return "\n".join(lines)
 
 
 def esc(value: Any) -> str:
@@ -1091,20 +1070,18 @@ def render_html_report(source: Path, analysis: Dict[str, Any], strategy: Dict[st
           <div class="meta"><span class="pill">{esc(fmt_money(action.get('amount', 0.0)))}</span> <span class="pill subtle">{esc(action.get('confidence', 'Medium'))}</span></div>
           <p><strong>Expected impact:</strong> {esc(action.get('expected_impact', 'n/a'))}</p>
           <p><strong>Reason:</strong> {esc(action['reason'])}</p>
-          <p><strong>Theoretical gain:</strong> {esc(fmt_money(sim['theoretical_gain']))} · <strong>Adjusted expected gain:</strong> {esc(fmt_money(sim['adjusted_expected_gain']))}</p>
           <p><strong>Risk:</strong> {esc(risk)}</p>
           <p><strong>Monitor:</strong> {esc(action.get('monitor', 'n/a'))}</p>
         </div>
         """)
 
-    eval_items = "".join(
-        f"<div class='eval-item'><span>{esc(label)}</span><strong>{evaluation[key]['score']}/5</strong><p>{esc(evaluation[key]['reason'])}</p></div>"
-        for label, key in [
-            ("Actionability", "actionability"),
-            ("Financial clarity", "financial_clarity"),
-            ("Risk awareness", "risk_awareness"),
-            ("Confidence quality", "confidence_quality"),
-            ("Overall decision quality", "overall"),
+    confidence_items = "".join(
+        f"<li>{esc(item)}</li>"
+        for item in [
+            "Confidence reflects data volume, signal strength, and whether campaign comparisons are like-for-like.",
+            "This is a snapshot based on the exported dataset.",
+            "Results may be affected by attribution windows, seasonality, creative fatigue, and missing margin/LTV data.",
+            "Stronger recommendations require business goals and week-to-week decision tracking.",
         ]
     )
 
@@ -1139,10 +1116,7 @@ def render_html_report(source: Path, analysis: Dict[str, Any], strategy: Dict[st
     .pill.subtle {{ background:var(--soft); color:var(--muted); font-weight:600; }}
     .highlight {{ color:var(--accent); font-weight:800; }}
     .grid-2 {{ display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); }}
-    .eval-grid {{ display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); }}
-    .eval-item {{ padding:14px; }}
-    .eval-item span {{ color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }}
-    .eval-item strong {{ display:block; font-size:20px; margin:4px 0 8px; }}
+    .callout {{ padding:16px; border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 1px 2px rgba(16,24,40,.04); }}
     .section-block {{ margin-top:24px; }}
     ul {{ margin:8px 0 0 20px; padding:0; }}
     li {{ margin-bottom:6px; }}
@@ -1193,20 +1167,16 @@ def render_html_report(source: Path, analysis: Dict[str, Any], strategy: Dict[st
     </section>
 
     <section class="section-block">
-      <h2>Methodology</h2>
-      <ul>
-        <li>Analyst segments by campaign group and benchmarks CPA / ROAS.</li>
-        <li>Strategist proposes one reallocation, one pause, and one scale move.</li>
-        <li>Critic challenges each move once; strategist refines once.</li>
-        <li>Projection uses ROAS delta × budget shift × 0.5 realism factor.</li>
-      </ul>
+      <h2>How to read this report</h2>
+      <p>This report uses campaign performance data to identify likely areas of inefficient spend and suggest practical budget decisions. Recommendations are directional and should be reviewed alongside business context such as margin, customer value, attribution, and current priorities.</p>
     </section>
 
     <section class="section-block">
-      <h2>Confidence &amp; Limitations</h2>
-      <div class="eval-grid">{eval_items}</div>
-      <div class="card" style="margin-top:12px;">
-        <p>Forecasts assume current ROAS relationships hold approximately. Brand scaling can saturate, cross-channel moves can be distorted by attribution, and the projection is an estimate — not a guarantee.</p>
+      <h2>Confidence &amp; limitations</h2>
+      <div class="callout">
+        <ul>
+          {confidence_items}
+        </ul>
       </div>
     </section>
   </div>
@@ -1261,8 +1231,6 @@ def build_report_text(source: Path, analysis: Dict[str, Any], strategy: Dict[str
         f"- Revenue: {fmt_money(simulation['after']['revenue'])}",
         f"- ROAS: {fmt_x(simulation['after']['roas'])}",
         f"- CPA: {fmt_money(simulation['after']['cpa'])}",
-        f"- Total theoretical gain: {fmt_money(simulation['total_theoretical_gain'])}",
-        f"- Total adjusted expected gain: {fmt_money(simulation['total_expected_gain'])}",
         "",
     ]
     return "\n".join(lines)

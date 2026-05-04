@@ -14,8 +14,6 @@ Source: `sample_ads_data.csv`
 - Reason: Shifts spend from the weaker campaign into the stronger one while staying within the same platform where possible. Addressing critique: The move assumes Non-Brand Search | Core is structurally weak rather than temporarily noisy.
 - Expected impact: Expected to shift spend toward a stronger efficiency pocket, improving CPA modestly while keeping conversions broadly stable.
 - Timeframe: 7–14 days
-- Theoretical gain: £8,320.00
-- Adjusted expected gain: £4,160.00
 - Risk: Platform attribution windows may overstate the destination campaign's advantage.
 - What to monitor: Monitor CPA and ROAS on both source and destination campaigns, plus total conversions.
 - Confidence: Medium
@@ -24,8 +22,6 @@ Source: `sample_ads_data.csv`
 - Reason: This campaign sits above the acceptable CPA threshold and should give up budget first. Addressing critique: The pause logic relies heavily on CPA alone and may miss upper-funnel value.
 - Expected impact: Expected to improve efficiency by removing a weak spend pocket, with a possible short-term dip in volume.
 - Timeframe: 3–7 days
-- Theoretical gain: £6,875.00
-- Adjusted expected gain: £3,437.50
 - Risk: Last-click bias could make the campaign look worse than it is.
 - What to monitor: Monitor total conversions, blended CPA, and whether any lost volume shows up elsewhere.
 - Confidence: Medium
@@ -34,8 +30,6 @@ Source: `sample_ads_data.csv`
 - Reason: This campaign clears the profile threshold on CPA and ROAS, so it is the best candidate for extra budget. Addressing critique: The scale decision assumes past efficiency will hold at a larger spend level.
 - Expected impact: Expected to increase conversions by roughly 10–15% with CPA staying broadly stable if the additional budget absorbs cleanly.
 - Timeframe: 7–14 days
-- Theoretical gain: £3,543.51
-- Adjusted expected gain: £1,771.75
 - Risk: ROAS may be inflated if conversion lag is unresolved.
 - What to monitor: Monitor CPA, ROAS, conversion volume, and impression share for saturation.
 - Confidence: Medium
@@ -51,19 +45,14 @@ Source: `sample_ads_data.csv`
 - Account ROAS is 1.93x before changes.
 - Projected uplift from the three decisions: £9,369.25 adjusted revenue gain.
 
-## Methodology
-- Analyst segments data by campaign group and benchmarks CPA / ROAS.
-- Strategist proposes one reallocation, one pause, and one scale move.
-- Critic challenges each move once; strategist refines once.
-- Projections use ROAS deltas, budget shift size, and a 0.5 realism factor.
-- Outputs are estimates, not guarantees.
+## How to read this report
+This report uses campaign performance data to identify likely areas of inefficient spend and suggest practical budget decisions. Recommendations are directional and should be reviewed alongside business context such as margin, customer value, attribution, and current priorities.
 
-## Confidence & Limitations
-- Confidence quality: 5/5.
-- Brand scaling may face saturation, so ROAS gains may not scale linearly.
-- Cross-channel moves are directional and can be distorted by attribution windows.
-- Forecasts assume the source and target campaigns behave roughly like their current ROAS profile.
-- The projection is a simplified estimate, not a guarantee of revenue uplift.
+## Confidence & limitations
+- Confidence reflects data volume, signal strength, and whether campaign comparisons are like-for-like.
+- This is a snapshot based on the exported dataset.
+- Results may be affected by attribution windows, seasonality, creative fatigue, and missing margin/LTV data.
+- Stronger recommendations require business goals and week-to-week decision tracking.
 
 ## Case Study
 ### Before
@@ -75,8 +64,6 @@ Source: `sample_ads_data.csv`
 - Revenue: £134,909.25
 - ROAS: 2.08x
 - CPA: £59.63
-- Total theoretical gain: £18,738.51
-- Total adjusted expected gain: £9,369.25
 
 ## Graph Mode Trace
 - Flow: Profile Interpreter → Analyst → Strategist Initial → Critic → Strategist Refinement → Synthesizer → Evaluation
