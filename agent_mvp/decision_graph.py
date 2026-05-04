@@ -77,6 +77,8 @@ class DecisionGraph:
             "mode": "graph",
             "currency_code": state.currency_code,
             "currency_symbol": state.currency_symbol,
+            "account_context": (state.profile or {}).get("account_context"),
+            "decision_rules": (state.profile or {}).get("decision_rules", []),
         }
 
         state.trace.append("Analyst")

@@ -1,0 +1,5 @@
+platform,campaign_type,campaign_name,country,spend,conversions,revenue
+Google Ads,Search,Brand Search UK,UK,12000,900,54000
+Google Ads,Display,Prospecting Display UK,UK,15000,120,8000
+Meta Ads,Social,Prospecting Broad UK,UK,18000,300,15000
+Meta Ads,Retargeting,Retargeting Warm UK,UK,7000,500,28000

@@ -27,6 +27,19 @@ CURRENCY_MAP = {
     "eur": ("EUR", "€"),
 }
 
+DEFAULT_ACCOUNT_CONTEXT = (
+    "Assume the dataset represents a performance marketing account spending £10k–£50k/month across Google Ads and Meta Ads unless the data clearly says otherwise."
+)
+
+DECISION_RULES = [
+    "At least 3 comparable campaigns or segments are required.",
+    "Only recommend action when CPA or ROAS differs by at least 20–30%.",
+    "Default budget shifts should be 10–20%; 20–30% only for high-confidence same-context decisions.",
+    "If performance differs by more than 5x, recommend a test rather than an aggressive move.",
+    "A campaign or segment can appear in only one decision.",
+    "If no reliable signal exists, say so instead of forcing a recommendation.",
+]
+
 COLUMN_ALIASES = {
     "campaign": ["campaign"],
     "platform": ["platform"],
@@ -435,6 +448,8 @@ def profile_interpreter(campaigns: List[Campaign], args: argparse.Namespace) -> 
         "profile": {
             "stage": profile.stage,
             "objective": profile.objective,
+            "account_context": DEFAULT_ACCOUNT_CONTEXT,
+            "decision_rules": DECISION_RULES,
         },
         "thresholds": Thresholds(
             acceptable_cpa=acceptable_cpa,
@@ -518,6 +533,8 @@ def analyst(campaigns: List[Campaign], context: Dict[str, Any]) -> Dict[str, Any
         "segments": group_segments,
         "performance": performance,
         "insights": insights,
+        "account_context": context["profile"].get("account_context", DEFAULT_ACCOUNT_CONTEXT),
+        "decision_rules": context["profile"].get("decision_rules", DECISION_RULES),
     })
 
 
@@ -687,6 +704,8 @@ def strategist_refinement(analysis: Dict[str, Any], strategy: Dict[str, Any], cr
         clarity_issue = issue == "clarity_issue"
         realism_issue = issue == "realism_issue"
         confidence_issue = issue == "confidence_issue"
+        outlier_issue = issue == "outlier_issue"
+        minimum_set_issue = issue == "minimum_comparison_set"
 
         if action_type == "reallocate":
             source = campaign_lookup.get(normalize_name(str(action.get("from") or "")))
@@ -732,12 +751,20 @@ def strategist_refinement(analysis: Dict[str, Any], strategy: Dict[str, Any], cr
             updated["reason"] = f"{updated.get('reason', '')} Reduced after causal validation flagged the gap as too small.".strip()
             updated["confidence"] = "Low"
 
+        if outlier_issue and updated.get("type") in {"reallocate", "pause", "scale"}:
+            updated["amount"] = round(min(float(updated.get("amount", 0.0) or 0.0), float(updated.get("amount", 0.0) or 0.0) * 0.1), 2)
+            updated["reason"] = f"{updated.get('reason', '')} Converted to a small test because the gap is extreme.".strip()
+            updated["confidence"] = "Low"
+
         if realism_issue and updated.get("type") in {"reallocate", "pause", "scale"}:
             updated["amount"] = round(float(updated.get("amount", 0.0) or 0.0) * 0.75, 2)
             updated["reason"] = f"{updated.get('reason', '')} Projection was trimmed for realism.".strip()
 
         if confidence_issue and updated.get("confidence") == "High":
             updated["confidence"] = "Medium"
+
+        if minimum_set_issue:
+            set_hold("Refinement paused because the comparison set is too small.")
 
         if low_confidence and updated.get("type") == "scale":
             updated["amount"] = round(float(updated.get("amount", 0.0) or 0.0) * 0.5, 2)
@@ -788,6 +815,20 @@ def critic(analysis: Dict[str, Any], strategy: Dict[str, Any], context: Dict[str
     validation_notes: List[Dict[str, Any]] = []
     seen_campaigns: Dict[str, int] = {}
     approval = "pass"
+
+    if len(campaigns) < 3 or len(analysis.get("segments", [])) < 3:
+        approval = "revise"
+        required_corrections.append({
+            "action_index": 0,
+            "issue": "minimum_comparison_set",
+            "correction": "Wait for at least 3 comparable campaigns or segments before making a recommendation.",
+        })
+        validation_notes.append({
+            "action_index": 0,
+            "severity": "error",
+            "issue": "minimum_comparison_set",
+            "detail": "At least 3 comparable campaigns or segments are required.",
+        })
 
     def campaign_names(action: Dict[str, Any]) -> List[str]:
         names: List[str] = []
@@ -843,6 +884,14 @@ def critic(analysis: Dict[str, Any], strategy: Dict[str, Any], context: Dict[str
                         f"CPA gap between {label(source)} and {label(target)} is only {diff * 100:.0f}%, which is too small to justify a reallocation.",
                         "Only keep the move if the CPA gap is at least 20–30%; otherwise downgrade or remove it.",
                     )
+                if max(source_cpa, target_cpa) / max(min(source_cpa, target_cpa), 0.0001) > 5:
+                    add_note(
+                        idx,
+                        "error",
+                        "outlier_issue",
+                        f"CPA gap between {label(source)} and {label(target)} is greater than 5x; this should be a test, not an aggressive move.",
+                        "Reduce the shift to a small test (≤10%) or convert the decision into a hold.",
+                    )
         elif action_type == "scale" and target:
             if target.roas is not None and analysis["summary"].get("overall_roas") is not None:
                 lift = (target.roas - analysis["summary"]["overall_roas"]) / max(abs(analysis["summary"]["overall_roas"]), 0.0001)
@@ -853,6 +902,14 @@ def critic(analysis: Dict[str, Any], strategy: Dict[str, Any], context: Dict[str
                         "causal_issue",
                         f"{label(target)} does not outperform the blended account by 20%+.",
                         "Only scale when performance is meaningfully better than the account baseline.",
+                    )
+                if target.roas and analysis["summary"].get("overall_roas") and max(target.roas, analysis["summary"]["overall_roas"]) / max(min(target.roas, analysis["summary"]["overall_roas"]), 0.0001) > 5:
+                    add_note(
+                        idx,
+                        "error",
+                        "outlier_issue",
+                        f"ROAS gap for {label(target)} is greater than 5x; this should be a test, not an aggressive scale.",
+                        "Reduce the shift to a small test (≤10%) or convert the decision into a hold.",
                     )
 
         if action_type in {"reallocate", "pause", "scale"}:
