@@ -12,7 +12,7 @@ Pilot landing page for pilot.flangie.co.uk
 1. User submits CSV via site
 2. Submission appears in dashboard
 3. Admin receives notification email with file path
-4. Download or access file
+4. Download or access the CSV from the admin email attachment
 5. Run:
 
 ```bash
@@ -24,3 +24,4 @@ python3 agent_mvp/agent_test.py --graph <file.csv> --output-html report.html
 8. Update status manually for now
 
 Live Vercel function does not run Python. Reports are generated manually/local for now.
+Real file access currently happens via the admin email attachment.

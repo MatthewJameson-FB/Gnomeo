@@ -102,7 +102,7 @@ const resolveSender = () => {
   return process.env.VERCEL_ENV ? 'Gnomeo <reports@gnomeo.nl>' : 'Gnomeo <onboarding@resend.dev>';
 };
 
-const sendResendEmail = async ({ apiKey, to, subject, html, text, reply_to }) => {
+const sendResendEmail = async ({ apiKey, to, subject, html, text, reply_to, attachments }) => {
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -116,6 +116,7 @@ const sendResendEmail = async ({ apiKey, to, subject, html, text, reply_to }) =>
       html,
       text,
       reply_to,
+      attachments,
     }),
   });
 
@@ -162,6 +163,11 @@ const saveUploadedCsv = (file) => {
   fs.writeFileSync(filePath, file?.content ? Buffer.from(file.content, 'utf8') : Buffer.alloc(0));
   return filePath;
 };
+
+const csvAttachment = (filePath, originalFilename) => ({
+  filename: originalFilename || path.basename(filePath),
+  content: fs.readFileSync(filePath).toString('base64'),
+});
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -289,6 +295,7 @@ module.exports = async (req, res) => {
       <p><strong>Saved file path:</strong> ${escapeHtml(savedFilePath)}</p>
       <p><strong>Timestamp:</strong> ${escapeHtml(timestamp || 'not provided')}</p>
       <p>Run analysis manually and send report.</p>
+      <p>The CSV is attached to this email for direct access.</p>
       <p><code>python3 agent_mvp/agent_test.py --graph ${escapeHtml(savedFilePath)}</code></p>
     </div>
   `;
@@ -325,6 +332,7 @@ module.exports = async (req, res) => {
       html: adminHtml,
       text: adminText,
       reply_to: 'matt@gnomeo.nl',
+      attachments: [csvAttachment(savedFilePath, originalFilename || path.basename(savedFilePath))],
     });
     console.log('[gnomeo submit] resend success: admin email');
   } catch (error) {
