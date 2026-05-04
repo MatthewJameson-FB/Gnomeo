@@ -31,6 +31,7 @@ const state = {
   rows: [],
   selectedId: null,
   detail: null,
+  lastSynced: null,
 };
 
 function authHeaders() {
@@ -102,11 +103,14 @@ function renderSummary() {
     acc[row.status || 'received'] = (acc[row.status || 'received'] || 0) + 1;
     return acc;
   }, {});
+  const incoming = byStatus.received || 0;
   els.summary.innerHTML = `
+    ${incoming ? `<div class="summary-callout">${esc(incoming)} submission${incoming === 1 ? '' : 's'} waiting in Supabase.</div>` : ''}
     <div><span>Total submissions</span><strong>${esc(total)}</strong></div>
     <div><span>Received</span><strong>${esc(byStatus.received || 0)}</strong></div>
     <div><span>Report ready</span><strong>${esc(byStatus.report_ready || 0)}</strong></div>
     <div><span>Report sent</span><strong>${esc(byStatus.report_sent || 0)}</strong></div>
+    <div><span>Synced</span><strong>${esc(state.lastSynced ? fmtDate(state.lastSynced) : '—')}</strong></div>
   `;
 }
 
@@ -464,6 +468,7 @@ async function loadRows() {
   try {
     const data = await apiFetch('/api/admin/crm?view=list');
     state.rows = Array.isArray(data.submissions) ? data.submissions : [];
+    state.lastSynced = new Date().toISOString();
     renderSummary();
     renderFilters();
     renderTable();

@@ -266,7 +266,15 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); box-sha
   background: #f8fafc;
   border: 1px solid var(--border);
 }
-.summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.summary-callout {
+  grid-column: 1 / -1;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #eef4ff;
+  color: #2347d7;
+  font-weight: 700;
+}
+.summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
 .summary { padding: 12px 14px; }
 .summary strong { display: block; font-size: 22px; }
 .summary span { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
