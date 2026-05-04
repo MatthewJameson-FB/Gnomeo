@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import csv
 import html
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from statistics import median
@@ -15,6 +16,16 @@ ROOT = Path(__file__).resolve().parent
 DEFAULT_INPUT = ROOT / "sample_ads_data.csv"
 OUTPUT_REPORT = ROOT / "output_report.md"
 OUTPUT_HTML = ROOT / "output_report.html"
+
+CURRENT_CURRENCY_CODE = "GBP"
+CURRENT_CURRENCY_SYMBOL = "£"
+CURRENT_CURRENCY_SOURCE = "default"
+
+CURRENCY_MAP = {
+    "gbp": ("GBP", "£"),
+    "usd": ("USD", "$"),
+    "eur": ("EUR", "€"),
+}
 
 COLUMN_ALIASES = {
     "campaign": ["campaign"],
@@ -33,6 +44,7 @@ COLUMN_ALIASES = {
     "cpc": ["cpc"],
     "cpa": ["cpa"],
     "roas": ["roas"],
+    "currency": ["currency", "currency_code", "currency_symbol"],
 }
 
 
@@ -117,13 +129,76 @@ def _clean_key(value: str) -> str:
 def _parse_float(value: str) -> Optional[float]:
     if value is None:
         return None
-    cleaned = value.strip().replace(",", "").replace("£", "").replace("$", "")
+    cleaned = value.strip().replace(",", "")
+    for _, symbol in CURRENCY_MAP.values():
+        cleaned = cleaned.replace(symbol, "")
     if cleaned == "":
         return None
     try:
         return float(cleaned)
     except ValueError:
         return None
+
+
+def set_currency_context(code: str, symbol: str, source: str = "detected") -> None:
+    global CURRENT_CURRENCY_CODE, CURRENT_CURRENCY_SYMBOL, CURRENT_CURRENCY_SOURCE
+    CURRENT_CURRENCY_CODE = code or "GBP"
+    CURRENT_CURRENCY_SYMBOL = symbol or "£"
+    CURRENT_CURRENCY_SOURCE = source or "detected"
+
+
+def detect_currency(path: Path) -> Dict[str, str]:
+    try:
+        with path.open(newline="", encoding="utf-8") as fh:
+            reader = csv.DictReader(fh)
+            fieldnames = reader.fieldnames or []
+            headers = [str(name or "") for name in fieldnames]
+            lower_headers = [name.lower() for name in headers]
+
+            header_hints = [
+                ("GBP", "£", hdr) for hdr in headers if "gbp" in hdr.lower() or "£" in hdr
+            ] + [
+                ("USD", "$", hdr) for hdr in headers if "usd" in hdr.lower() or "$" in hdr
+            ] + [
+                ("EUR", "€", hdr) for hdr in headers if "eur" in hdr.lower() or "€" in hdr
+            ]
+            if header_hints:
+                code, symbol, source = header_hints[0]
+                return {"currency_code": code, "currency_symbol": symbol, "currency_source": f"header:{source}"}
+
+            currency_column = _find_column(fieldnames, COLUMN_ALIASES["currency"])
+            if currency_column:
+                for row in reader:
+                    raw = (row.get(currency_column) or "").strip().lower()
+                    if not raw:
+                        continue
+                    if raw in CURRENCY_MAP:
+                        code, symbol = CURRENCY_MAP[raw]
+                        return {"currency_code": code, "currency_symbol": symbol, "currency_source": f"column:{currency_column}"}
+                    if raw in {"£", "$", "€"}:
+                        symbol_to_code = {v[1]: k for k, v in CURRENCY_MAP.items()}
+                        code = symbol_to_code.get(raw, "gbp").upper()
+                        return {"currency_code": code, "currency_symbol": raw, "currency_source": f"column:{currency_column}"}
+                    for code_key, (code, symbol) in CURRENCY_MAP.items():
+                        if code_key in raw or code.lower() in raw or symbol in raw:
+                            return {"currency_code": code, "currency_symbol": symbol, "currency_source": f"column:{currency_column}"}
+
+            fh.seek(0)
+            reader = csv.DictReader(fh)
+            sample_rows = []
+            for _, row in zip(range(10), reader):
+                sample_rows.append(row)
+            for row in sample_rows:
+                joined = " ".join(str(v or "") for v in row.values())
+                if "€" in joined or "eur" in joined.lower():
+                    return {"currency_code": "EUR", "currency_symbol": "€", "currency_source": "sample-data"}
+                if "$" in joined or "usd" in joined.lower():
+                    return {"currency_code": "USD", "currency_symbol": "$", "currency_source": "sample-data"}
+                if "£" in joined or "gbp" in joined.lower():
+                    return {"currency_code": "GBP", "currency_symbol": "£", "currency_source": "sample-data"}
+    except Exception:
+        pass
+    return {"currency_code": "GBP", "currency_symbol": "£", "currency_source": "default"}
 
 
 def _parse_int(value: str) -> int:
@@ -144,6 +219,10 @@ def _row_text(row: Dict[str, str], column: Optional[str]) -> str:
     if not column:
         return ""
     return (row.get(column, "") or "").strip()
+
+
+def attach_currency(data: Dict[str, Any]) -> Dict[str, Any]:
+    return {**data, **currency_payload()}
 
 
 def load_campaigns(path: Path) -> List[Campaign]:
@@ -228,7 +307,15 @@ def label(c: Campaign) -> str:
 def fmt_money(value: Optional[float]) -> str:
     if value is None:
         return "n/a"
-    return f"£{value:,.2f}"
+    return f"{CURRENT_CURRENCY_SYMBOL}{value:,.2f}"
+
+
+def currency_label() -> str:
+    return f"{CURRENT_CURRENCY_CODE} ({CURRENT_CURRENCY_SYMBOL})"
+
+
+def currency_payload() -> Dict[str, str]:
+    return {"currency_code": CURRENT_CURRENCY_CODE, "currency_symbol": CURRENT_CURRENCY_SYMBOL, "currency_source": CURRENT_CURRENCY_SOURCE}
 
 
 def fmt_rate(value: Optional[float]) -> str:
@@ -357,6 +444,7 @@ def profile_interpreter(campaigns: List[Campaign], args: argparse.Namespace) -> 
             source=source,
         ),
         "roas_source": roas_source,
+        **currency_payload(),
     }
 
 
@@ -422,7 +510,7 @@ def analyst(campaigns: List[Campaign], context: Dict[str, Any]) -> Dict[str, Any
     if performance["wasted_share"] is not None:
         insights.append(f"Wasted spend: {fmt_money(performance['wasted_spend'])} ({performance['wasted_share'] * 100:.1f}%)")
 
-    return {
+    return attach_currency({
         "profile": context["profile"],
         "campaigns": campaigns,
         "summary": summary,
@@ -430,7 +518,7 @@ def analyst(campaigns: List[Campaign], context: Dict[str, Any]) -> Dict[str, Any
         "segments": group_segments,
         "performance": performance,
         "insights": insights,
-    }
+    })
 
 
 # -----------------------------
@@ -532,7 +620,7 @@ def strategist_initial(analysis: Dict[str, Any], context: Dict[str, Any]) -> Dic
         )
 
     base_confidence = "Low" if len(winners) == 0 or len(losers) == 0 else ("High" if len(winners) >= 2 and len(losers) >= 1 else "Medium")
-    return {"actions": actions[:3], "confidence": base_confidence}
+    return attach_currency({"actions": actions[:3], "confidence": base_confidence})
 
 
 # -----------------------------
@@ -581,7 +669,7 @@ def strategist_refinement(analysis: Dict[str, Any], strategy: Dict[str, Any], cr
             "addressed_criticisms": ["Insufficient signal for further movement."],
         })
 
-    return {"actions": refined_actions[:3], "confidence": "Low" if low_confidence else strategy.get("confidence", "Medium")}
+    return attach_currency({"actions": refined_actions[:3], "confidence": "Low" if low_confidence else strategy.get("confidence", "Medium")})
 
 
 # -----------------------------
@@ -703,7 +791,7 @@ def synthesizer(analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Di
 
     lines.extend(["", "## Strategist"])
     for item in strategy["actions"][:3]:
-        lines.append(f"- {item['action']} | £ amount: {fmt_money(item.get('amount', 0.0))} | Reason: {item['reason']}")
+        lines.append(f"- {item['action']} | Amount: {fmt_money(item.get('amount', 0.0))} | Reason: {item['reason']}")
         if item.get("addressed_criticisms"):
             for criticism in item["addressed_criticisms"]:
                 lines.append(f"  - Addresses: {criticism}")
@@ -731,7 +819,7 @@ def synthesizer(analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Di
             confidence = "Low"
 
         lines.append(
-            f"{idx}. Action: {action['action']}\n   £ amount: {fmt_money(action.get('amount', 0.0))}\n   Reason: {action['reason']}\n   Expected impact: {action.get('expected_impact', 'n/a')}\n   Timeframe: {action.get('timeframe', 'n/a')}\n   Source ROAS: {fmt_x(sim['source_roas'])}\n   Target ROAS: {fmt_x(sim['target_roas'])}\n   Delta: {fmt_x(sim['delta'])}\n   Assumptions: {', '.join(sim['assumptions'])}\n   Risk: {risk}\n   What to monitor: {action.get('monitor', 'n/a')}\n   Confidence: {confidence}"
+            f"{idx}. Action: {action['action']}\n   Amount: {fmt_money(action.get('amount', 0.0))}\n   Reason: {action['reason']}\n   Expected impact: {action.get('expected_impact', 'n/a')}\n   Timeframe: {action.get('timeframe', 'n/a')}\n   Source ROAS: {fmt_x(sim['source_roas'])}\n   Target ROAS: {fmt_x(sim['target_roas'])}\n   Delta: {fmt_x(sim['delta'])}\n   Assumptions: {', '.join(sim['assumptions'])}\n   Risk: {risk}\n   What to monitor: {action.get('monitor', 'n/a')}\n   Confidence: {confidence}"
         )
 
     lines.extend(["", "## Flow control"])
@@ -739,6 +827,7 @@ def synthesizer(analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Di
     lines.append("- Only one critique round is used, and only one strategist refinement follows it.")
     lines.append("- Maximum total passes = 2 strategist passes; no recursive or open-ended loops.")
     lines.append("- Synthesizer is final authority; no post-output revision path exists.")
+    lines.append(f"- All values shown in {currency_label()}.")
 
     lines.extend(["", "## Case study", "### Before"])
     before = simulation["before"]
@@ -783,14 +872,14 @@ def evaluate_output(strategy: Dict[str, Any], critique: Dict[str, Any]) -> Dict[
     overall = round((actionability + financial_clarity + risk_awareness + confidence_quality) / 4)
     overall = max(1, min(5, overall))
 
-    return {
+    return attach_currency({
         "actionability": {
             "score": actionability,
             "reason": "All 3 decisions are concrete actions with explicit implementation steps." if actionability >= 4 else "Some actions are still too generic.",
         },
         "financial_clarity": {
             "score": financial_clarity,
-            "reason": "Each decision includes a numeric £ amount and visible budget direction." if financial_clarity >= 4 else "Financial impact is under-specified.",
+            "reason": "Each decision includes a numeric amount and visible budget direction." if financial_clarity >= 4 else "Financial impact is under-specified.",
         },
         "risk_awareness": {
             "score": risk_awareness,
@@ -804,7 +893,7 @@ def evaluate_output(strategy: Dict[str, Any], critique: Dict[str, Any]) -> Dict[
             "score": overall,
             "reason": "The output is structured, specific, and client-ready enough for a first-pass decision packet." if overall >= 4 else "The output still needs more refinement before client use.",
         },
-    }
+    })
 
 
 def format_expected_impact(action: Dict[str, Any], summary: Dict[str, Any]) -> str:
@@ -875,7 +964,7 @@ def enrich_decisions(strategy: Dict[str, Any], analysis: Dict[str, Any]) -> Dict
         updated["basis_for_amount"] = basis_for_amount(action, summary)
         updated["monitor"] = post_action_monitor(action)
         enriched_actions.append(updated)
-    return {**strategy, "actions": enriched_actions[:3]}
+    return attach_currency({**strategy, "actions": enriched_actions[:3]})
 
 
 def normalize_name(value: str) -> str:
@@ -986,7 +1075,7 @@ def simulate_projections(strategy: Dict[str, Any], analysis: Dict[str, Any]) -> 
     impact_low = total_expected_gain * 0.75
     impact_high = total_expected_gain * 1.25
 
-    return {
+    return attach_currency({
         "decisions": decisions,
         "before": {
             "revenue": summary["total_revenue"] or 0.0,
@@ -1001,7 +1090,7 @@ def simulate_projections(strategy: Dict[str, Any], analysis: Dict[str, Any]) -> 
         "total_expected_gain": total_expected_gain,
         "impact_low": impact_low,
         "impact_high": impact_high,
-    }
+    })
 
 
 def render_evaluation(evaluation: Dict[str, Any]) -> str:
@@ -1047,6 +1136,8 @@ def _build_decision_rows(strategy: Dict[str, Any], analysis: Dict[str, Any], sim
         target_metric_value = sim.get("target_cpa") if metric_name == "CPA" else sim.get("target_roas")
         current_spend = sim.get("source_spend") if action.get("type") in {"reallocate", "pause"} else sim.get("target_spend")
         confidence, confidence_reason = _decision_confidence(sim, analysis)
+        impact_low_value = abs(float(sim.get("adjusted_expected_gain", 0.0) or 0.0)) * 0.75
+        impact_high_value = abs(float(sim.get("adjusted_expected_gain", 0.0) or 0.0)) * 1.25
         if action.get("type") == "reallocate":
             campaign_line = f"{sim.get('source_campaign')} → {sim.get('target_campaign')}"
             action_line = f"Reduce {fmt_money(float(action.get('amount', 0.0) or 0.0))} from {sim.get('source_campaign')} → increase {sim.get('target_campaign')} by {fmt_money(float(action.get('amount', 0.0) or 0.0))}"
@@ -1075,6 +1166,8 @@ def _build_decision_rows(strategy: Dict[str, Any], analysis: Dict[str, Any], sim
             "confidence": confidence,
             "confidence_reason": confidence_reason,
             "impact_range": _estimated_impact_range(abs(float(sim.get("adjusted_expected_gain", 0.0) or 0.0))),
+            "impact_low_value": impact_low_value,
+            "impact_high_value": impact_high_value,
         })
     rows = sorted(rows, key=lambda row: row["amount"], reverse=True)
     for idx, row in enumerate(rows, 1):
@@ -1085,13 +1178,15 @@ def _build_decision_rows(strategy: Dict[str, Any], analysis: Dict[str, Any], sim
 def build_marketer_content(source_label: str, analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Dict[str, Any], simulation: Dict[str, Any]) -> Dict[str, Any]:
     perf = analysis["performance"]
     decisions = _build_decision_rows(strategy, analysis, simulation)
-    total_low = sum(float(d["impact_range"].split("–")[0].replace("£", "").replace(",", "")) for d in decisions)
-    total_high = sum(float(d["impact_range"].split("–")[1].replace("£", "").replace(",", "")) for d in decisions)
+    total_low = sum(float(d["impact_low_value"]) for d in decisions)
+    total_high = sum(float(d["impact_high_value"]) for d in decisions)
     top_names = ", ".join(label(c) for c in (perf.get("top_30") or [])[:2]) or "n/a"
     bottom_names = ", ".join(label(c) for c in (perf.get("bottom_30") or [])[:2]) or "n/a"
     wasted_pct = perf["wasted_share"] * 100 if perf["wasted_share"] is not None else None
     return {
         "source_name": source_label,
+        "currency_code": CURRENT_CURRENCY_CODE,
+        "currency_symbol": CURRENT_CURRENCY_SYMBOL,
         "wasted_share_pct": wasted_pct,
         "wasted_spend": perf["wasted_spend"],
         "current_roas": analysis["summary"].get("overall_roas"),
@@ -1173,6 +1268,7 @@ def render_html_report(source_label: str, content: Dict[str, Any]) -> str:
 
     <h2>Executive Summary</h2>
     <p>{esc(content['summary_line'])}</p>
+    <p class="muted">All values shown in {esc(content['currency_code'])} ({esc(content['currency_symbol'])}).</p>
 
     <h2>Key Decisions (prioritised)</h2>
     <div class=\"cards\">{''.join(decision_cards)}</div>
@@ -1201,6 +1297,7 @@ def build_report_text(source_label: str, content: Dict[str, Any]) -> str:
         "",
         "## Executive Summary",
         content["summary_line"],
+        f"All values shown in {content['currency_code']} ({content['currency_symbol']}).",
         f"- Wasted spend: {fmt_money(content['wasted_spend'])}",
         f"- Current ROAS: {fmt_x(content['current_roas'])}",
         f"- Estimated impact: {fmt_money(content['impact_low'])}–{fmt_money(content['impact_high'])}",
@@ -1241,11 +1338,11 @@ def marketer(source_context: Dict[str, Any], analysis: Dict[str, Any], strategy:
     source_value = str(source_context.get("source") or source_context.get("csv_path") or "dataset")
     source_label = Path(source_value).name if source_value else "dataset"
     content = build_marketer_content(source_label, analysis, strategy, critique, simulation)
-    return {
+    return attach_currency({
         "content": content,
         "final_report_text": build_report_text(source_label, content),
         "final_report_html": render_html_report(source_label, content),
-    }
+    })
 
 
 def render_graph_mode_appendix(state: Any) -> str:
@@ -1315,6 +1412,11 @@ def main() -> None:
     source = Path(args.csv_path).expanduser().resolve()
     if not source.exists():
         raise SystemExit(f"Missing data file: {source}")
+
+    currency = detect_currency(source)
+    set_currency_context(currency["currency_code"], currency["currency_symbol"], currency.get("currency_source", "detected"))
+    if currency.get("currency_source") == "default":
+        print("[gnomeo currency] currency not detected; defaulting to GBP (£)", file=sys.stderr)
 
     campaigns = load_campaigns(source)
 

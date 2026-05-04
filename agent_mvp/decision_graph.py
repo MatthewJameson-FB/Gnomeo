@@ -6,6 +6,8 @@ from typing import Any, Callable, Dict, List, Sequence
 
 @dataclass
 class DecisionGraphState:
+    currency_code: str = "GBP"
+    currency_symbol: str = "£"
     profile: Dict[str, Any] | None = None
     normalized_data: Dict[str, Any] | None = None
     analyst_output: Dict[str, Any] | None = None
@@ -36,7 +38,7 @@ class DecisionGraph:
         simulate_projections: Callable[[Dict[str, Any], Dict[str, Any]], Dict[str, Any]],
         synthesizer: Callable[[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]], str],
         evaluate_output: Callable[[Dict[str, Any], Dict[str, Any]], Dict[str, Any]],
-        marketer: Callable[[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], str], Dict[str, Any]] | None = None,
+        marketer: Callable[[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], str], Dict[str, Any]] | None = None,
     ):
         self.profile_interpreter = profile_interpreter
         self.analyst = analyst
@@ -67,10 +69,14 @@ class DecisionGraph:
         state = DecisionGraphState()
         state.trace.append("Profile Interpreter")
         state.profile = self.profile_interpreter(campaigns, args)
+        state.currency_code = str((state.profile or {}).get("currency_code") or "GBP")
+        state.currency_symbol = str((state.profile or {}).get("currency_symbol") or "£")
         state.normalized_data = {
             "campaign_count": len(campaigns),
             "source": getattr(args, "csv_path", None),
             "mode": "graph",
+            "currency_code": state.currency_code,
+            "currency_symbol": state.currency_symbol,
         }
 
         state.trace.append("Analyst")
