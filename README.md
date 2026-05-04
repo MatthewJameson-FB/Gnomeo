@@ -32,3 +32,7 @@ Real file access currently happens via the admin email attachment.
 - Production workflow = email notification + CSV attachment.
 - `data/submissions.json` is local/dev only.
 - The dashboard will need persistent storage later (Supabase, Airtable, Blob, etc.).
+
+## Local Report Tool
+
+Use `agent_mvp/admin_report_tool` locally to upload a CSV, generate a report, preview it, and send it.

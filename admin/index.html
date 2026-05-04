@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gnomeo Outreach Admin</title>
+    <title>Gnomeo Admin</title>
     <link rel="stylesheet" href="admin.css" />
   </head>
   <body class="locked">
@@ -11,7 +11,7 @@
       <form id="gateForm" class="gate-card card">
         <p class="eyebrow">Private access</p>
         <h1>Gnomeo Admin</h1>
-        <p class="subtle">Enter the access password to open the candidate review page.</p>
+        <p class="subtle">Enter the access password to open the internal admin landing page.</p>
         <input id="gateInput" type="password" autocomplete="off" placeholder="Password" />
         <button type="submit">Unlock</button>
         <p id="gateError" class="gate-error" aria-live="polite"></p>
@@ -22,84 +22,58 @@
       <header class="hero">
         <div>
           <p class="eyebrow">Gnomeo</p>
-          <p class="notice">Internal candidate review — do not send messages without manual approval.</p>
-          <h1>Outreach Admin</h1>
-          <p class="subtle">CSV-driven review only. Human approval required before anything is sent.</p>
-        </div>
-        <div class="actions">
-          <a class="pill-link active" href="/admin/">Candidate Review</a>
-          <a class="pill-link" href="/admin/submissions.html">Submissions Dashboard</a>
-          <label class="file-btn">
-            Load candidates.csv
-            <input id="fileInput" type="file" accept=".csv" />
-          </label>
-          <button id="reloadBtn" type="button">Reload sample CSV</button>
+          <p class="notice">Internal admin only. Do not expose customer data publicly.</p>
+          <h1>Gnomeo Admin</h1>
+          <p class="subtle">Submission processing is currently handled manually.</p>
         </div>
       </header>
 
-      <section class="toolbar card">
+      <section class="toolbar card" style="grid-template-columns: 1fr;">
         <div class="field">
-          <label for="searchInput">Search</label>
-          <input id="searchInput" type="search" placeholder="name, role, company" />
-        </div>
-        <div class="field">
-          <label for="categoryFilter">Category</label>
-          <select id="categoryFilter">
-            <option value="all">All</option>
-            <option value="data_partner">Data partner</option>
-            <option value="report_validator">Report validator</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="priorityFilter">Priority</label>
-          <select id="priorityFilter">
-            <option value="all">All</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="statusFilter">Approval</label>
-          <select id="statusFilter">
-            <option value="all">All</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-          </select>
+          <label>Next step</label>
+          <div class="subtle">Use the local report tool to generate and send reports.</div>
         </div>
       </section>
 
-      <section class="meta">
-        <span id="summary">Loading…</span>
+      <section class="grid" style="grid-template-columns: 1fr; margin-top: 16px;">
+        <article class="card candidate">
+          <h2 class="name">Manual processing</h2>
+          <p class="reason">Submission processing is currently handled manually.</p>
+          <p class="source">Use the local report tool to generate and send reports.</p>
+          <p class="source"><a href="/admin/submissions.html">Open submissions dashboard</a></p>
+        </article>
       </section>
-
-      <section id="cards" class="grid" aria-live="polite"></section>
     </main>
 
-    <template id="cardTemplate">
-      <article class="card candidate">
-        <div class="topline">
-          <div>
-            <h2 class="name"></h2>
-            <p class="role-company"></p>
-          </div>
-          <div class="badges">
-            <span class="badge category"></span>
-            <span class="badge priority"></span>
-            <span class="badge status"></span>
-          </div>
-        </div>
-        <p class="reason"></p>
-        <p class="source"><a target="_blank" rel="noreferrer noopener">Source</a></p>
-        <details class="message-wrap">
-          <summary>Suggested message</summary>
-          <pre class="message"></pre>
-          <button class="copy-btn" type="button">Copy message</button>
-        </details>
-      </article>
-    </template>
+    <script>
+      const ADMIN_PASSWORD = "gnomeo-admin";
+      const STORAGE_KEY = "gnomeo-admin-unlocked";
+      const gate = document.getElementById('gate');
+      const gateForm = document.getElementById('gateForm');
+      const gateInput = document.getElementById('gateInput');
+      const gateError = document.getElementById('gateError');
+      const app = document.getElementById('app');
 
-    <script src="admin.js"></script>
+      function unlock() {
+        document.body.classList.remove('locked');
+        gate.classList.add('hidden');
+        app.classList.remove('hidden');
+        sessionStorage.setItem(STORAGE_KEY, '1');
+        gateError.textContent = '';
+      }
+
+      if (sessionStorage.getItem(STORAGE_KEY) === '1') unlock();
+
+      gateForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        if (gateInput.value === ADMIN_PASSWORD) {
+          unlock();
+        } else {
+          gateError.textContent = 'Wrong password.';
+          gateInput.value = '';
+          gateInput.focus();
+        }
+      });
+    </script>
   </body>
 </html>

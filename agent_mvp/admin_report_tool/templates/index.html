@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gnomeo Local Report Tool</title>
+    <style>
+      body { font-family: Arial, sans-serif; max-width: 900px; margin: 0 auto; padding: 32px 20px; color: #0f172a; background: #f7f8fb; }
+      .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+      label { display: block; margin-bottom: 12px; font-weight: 600; }
+      input, textarea { width: 100%; box-sizing: border-box; margin-top: 6px; padding: 10px; border-radius: 10px; border: 1px solid #cbd5e1; font: inherit; }
+      textarea { min-height: 100px; }
+      button, .button { display: inline-block; padding: 10px 14px; border-radius: 999px; border: 1px solid #1d4ed8; background: #1d4ed8; color: white; text-decoration: none; cursor: pointer; font: inherit; }
+      .muted { color: #64748b; }
+      .error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+      .success { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+      pre { white-space: pre-wrap; word-break: break-word; background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px; border-radius: 12px; }
+      .row { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
+      @media (max-width: 720px) { .row { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Gnomeo Local Report Tool</h1>
+      <p class="muted">Local-only. Upload a CSV, generate a report, preview it, and send it via Resend.</p>
+      <p class="muted">Runs at <code>http://localhost:5050</code>.</p>
+    </div>
+
+    {% if error %}
+    <div class="card error">
+      <strong>Error:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    {% if result %}
+    <div class="card success">
+      <strong>Success.</strong> Report generated and emailed.
+      <div style="margin-top: 10px;">
+        <a class="button" href="{{ result.preview_url }}" target="_blank" rel="noreferrer noopener">Open preview</a>
+      </div>
+      <p class="muted" style="margin-top: 10px;">Saved: {{ result.report_html_path }}</p>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <form method="post" enctype="multipart/form-data">
+        <div class="row">
+          <label>
+            Recipient email
+            <input type="email" name="recipient_email" required value="{{ form.recipient_email }}" />
+          </label>
+          <label>
+            Client ID (optional)
+            <input type="text" name="client_id" value="{{ form.client_id }}" />
+          </label>
+        </div>
+
+        <label>
+          CSV upload
+          <input type="file" name="csv_file" accept=".csv,text/csv" required />
+        </label>
+
+        <label>
+          Notes (optional)
+          <textarea name="notes">{{ form.notes }}</textarea>
+        </label>
+
+        <button type="submit">Generate + send report</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <strong>Workflow</strong>
+      <ol>
+        <li>Download CSV from admin email attachment</li>
+        <li>Open this local tool</li>
+        <li>Upload CSV</li>
+        <li>Enter recipient email</li>
+        <li>Generate + send report</li>
+        <li>Review preview link</li>
+      </ol>
+    </div>
+  </body>
+</html>
