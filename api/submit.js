@@ -90,7 +90,7 @@ const sendResendEmail = async ({ apiKey, to, subject, html, text }) => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'Gnomeo <reports@gnomeo.nl>',
+      from: 'Gnomeo <onboarding@resend.dev>',
       to: Array.isArray(to) ? to : [to],
       subject,
       html,
