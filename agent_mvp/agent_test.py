@@ -1409,6 +1409,19 @@ def _decision_confidence(action: Dict[str, Any], analysis: Dict[str, Any], sim: 
     return label, reason
 
 
+def _implementation_guidance(confidence: str, metric_name: str) -> str:
+    if confidence == "High":
+        shift = "20–30%"
+    elif confidence == "Medium":
+        shift = "10–20%"
+    else:
+        shift = "≤10%"
+    return (
+        f"Roll out in {shift} increments. Monitor {metric_name} over 3–7 days. "
+        f"If performance holds, scale further. If performance degrades, revert."
+    )
+
+
 def _priority_from_rank(rank: int) -> str:
     return {1: "High", 2: "Medium"}.get(rank, "Low")
 
@@ -1457,6 +1470,7 @@ def _build_decision_rows(strategy: Dict[str, Any], analysis: Dict[str, Any], sim
             "confidence": confidence,
             "confidence_reason": confidence_reason,
             "confidence_reason_detailed": confidence_reason,
+            "implementation": _implementation_guidance(confidence, metric_name),
             "impact_range": _estimated_impact_range(abs(float(sim.get("adjusted_expected_gain", 0.0) or 0.0))),
             "impact_low_value": impact_low_value,
             "impact_high_value": impact_high_value,
@@ -1517,6 +1531,7 @@ def render_html_report(source_label: str, content: Dict[str, Any]) -> str:
           <p><strong>Estimated impact:</strong> {esc(decision['impact_range'])}</p>
           <p><strong>Confidence:</strong> {esc(decision['confidence'])}</p>
           <p><strong>Reason:</strong> {esc(decision['confidence_reason'])}</p>
+          <p><strong>Implementation:</strong> {esc(decision['implementation'])}</p>
         </div>
         """)
 
@@ -1607,6 +1622,7 @@ def build_report_text(source_label: str, content: Dict[str, Any]) -> str:
             f"- Estimated impact: {decision['impact_range']}",
             f"- Confidence: {decision['confidence']}",
             f"- Reason: {decision['confidence_reason']}",
+            f"- Implementation: {decision['implementation']}",
         ])
     lines.extend([
         "",
