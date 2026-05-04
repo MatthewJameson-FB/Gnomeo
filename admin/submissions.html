@@ -10,7 +10,7 @@
     <div id="gate" class="gate">
       <form id="gateForm" class="gate-card card">
         <p class="eyebrow">Private access</p>
-        <h1>Gnomeo CRM</h1>
+        <h1>Gnomeo Admin</h1>
         <p class="subtle">Enter the access password to open the submissions dashboard.</p>
         <input id="gateInput" type="password" autocomplete="off" placeholder="Password" />
         <button type="submit">Unlock</button>
@@ -21,14 +21,14 @@
     <main id="app" class="shell hidden">
       <header class="hero">
         <div>
-          <p class="eyebrow">Gnomeo</p>
+          <p class="eyebrow">Gnomeo Admin</p>
           <p class="notice warning">Internal dashboard only. Do not expose real customer data publicly.</p>
-          <h1>Report Ops CRM</h1>
+          <h1>Submissions</h1>
           <p class="subtle">Reloading pulls the latest data from Supabase.</p>
         </div>
         <div class="actions">
-          <a class="pill-link" href="/admin/">Admin Home</a>
           <a class="pill-link active" href="/admin/submissions.html">Submissions</a>
+          <a class="pill-link" href="http://localhost:6060" target="_blank" rel="noreferrer">Local Runner</a>
           <button id="reloadBtn" class="secondary" type="button">Reload from Supabase</button>
           <button id="openManualBtn" class="secondary" type="button">Add manual submission</button>
         </div>
@@ -75,16 +75,17 @@
         <div class="card table-card">
           <div id="emptyState" class="empty-state hidden">
             <h2>No submissions yet.</h2>
-            <p>Submit a CSV from the homepage to test the full flow.</p>
+            <p>Submit a CSV from the homepage.</p>
           </div>
           <table class="table">
             <thead>
               <tr>
                 <th>Customer email</th>
+                <th>Company</th>
                 <th>Filename</th>
                 <th>Status</th>
-                <th>Created</th>
-                <th>Notes</th>
+                <th>Created at</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="tableBody"></tbody>

@@ -142,11 +142,12 @@ function renderTable() {
 
   els.tableBody.innerHTML = filtered.map((row) => `
     <tr data-id="${esc(row.id)}" class="row-link">
-      <td>${esc(row.customer_email || '—')}<div class="small">${customerBadge(row.customer_status)}</div></td>
+      <td>${esc(row.customer_email || '—')}</td>
+      <td>${esc(row.customer_company || '—')}</td>
       <td>${esc(row.original_filename || '—')}</td>
       <td>${statusBadge(row.status)}</td>
       <td>${esc(fmtDate(row.created_at))}</td>
-      <td>${esc(row.notes || '—')}</td>
+      <td><button class="secondary table-action-btn" type="button" data-open-row="${esc(row.id)}">Open</button></td>
     </tr>
   `).join('');
 
@@ -156,6 +157,12 @@ function renderTable() {
 
   els.tableBody.querySelectorAll('tr[data-id]').forEach((row) => {
     row.addEventListener('click', () => openDetail(row.getAttribute('data-id')));
+  });
+  els.tableBody.querySelectorAll('[data-open-row]').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      openDetail(button.getAttribute('data-open-row'));
+    });
   });
 }
 
@@ -189,7 +196,23 @@ function detailTemplate(detail) {
   const customer = detail.customer || {};
   const submission = detail.submission || {};
   const latestReport = detail.reports?.[0] || null;
+  const reportRecipient = customer.email || '';
   return `
+    <div class="detail-hero">
+      <div>
+        <p class="eyebrow">Customer</p>
+        <div class="detail-email">${esc(customer.email || 'No customer email found')}</div>
+        <div class="detail-hero-meta">
+          <div><span>Company</span><strong>${esc(customer.company || '—')}</strong></div>
+          <div><span>Submission status</span><strong>${statusBadge(submission.status)}</strong></div>
+          <div><span>Customer status</span><strong>${customerBadge(customer.status)}</strong></div>
+        </div>
+      </div>
+      <div class="detail-hero-actions">
+        <button id="copyEmailBtn" class="secondary" type="button" ${customer.email ? '' : 'disabled'}>Copy email</button>
+      </div>
+    </div>
+
     <div class="status-box">
       <div class="badges">
         ${statusBadge(submission.status)}
@@ -261,9 +284,9 @@ function detailTemplate(detail) {
 
       <div class="full">
         <label>Send report</label>
-        <p class="small">Recipient: ${esc(customer.email || '—')}</p>
+        ${customer.email ? `<p class="small">Report will be sent to: ${esc(customer.email)}</p>` : '<p class="small error-text">No customer email found — cannot send report.</p>'}
         <div class="actions-row">
-          <button id="sendReportBtn" class="secondary" type="button" ${latestReport ? '' : 'disabled'}>Send report email</button>
+          <button id="sendReportBtn" class="secondary" type="button" ${latestReport && customer.email ? '' : 'disabled'}>Send report email</button>
         </div>
       </div>
 
@@ -331,6 +354,7 @@ async function openDetail(id) {
   els.detailContent.innerHTML = detailTemplate(data);
 
   const latestReport = data.reports?.[0] || null;
+  const copyEmailBtn = document.getElementById('copyEmailBtn');
   const downloadCsvBtn = document.getElementById('downloadCsvBtn');
   const chooseReportBtn = document.getElementById('chooseReportBtn');
   const viewReportBtn = document.getElementById('viewReportBtn');
@@ -343,6 +367,17 @@ async function openDetail(id) {
   const reportDropzone = document.getElementById('reportDropzone');
   const reportFeedback = document.getElementById('reportFeedback');
   const chosenReportName = document.getElementById('chosenReportName');
+
+  copyEmailBtn?.addEventListener('click', async () => {
+    const email = data.customer?.email || '';
+    if (!email) return;
+    try {
+      await navigator.clipboard.writeText(email);
+      setBanner('Customer email copied.', 'good');
+    } catch {
+      setBanner('Unable to copy email — please copy it manually.', 'warning');
+    }
+  });
 
   downloadCsvBtn?.addEventListener('click', async () => {
     const res = await fetch(`/api/admin/file?kind=csv&submission_id=${encodeURIComponent(id)}`, { headers: authHeaders() });

@@ -204,6 +204,21 @@ button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
 }
 .empty-detail strong { display: block; margin-bottom: 6px; }
 .empty-detail p { margin: 0; color: var(--muted); }
+.detail-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid #dbe4ff;
+  border-radius: 16px;
+  background: #f8fbff;
+}
+.detail-email { font-size: 24px; font-weight: 800; line-height: 1.1; margin: 2px 0 10px; word-break: break-word; }
+.detail-hero-meta { display: flex; gap: 14px; flex-wrap: wrap; }
+.detail-hero-meta span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.detail-hero-actions { display: flex; }
+.error-text { color: var(--bad); }
 .field { display: flex; flex-direction: column; gap: 6px; }
 label { font-size: 13px; color: var(--muted); }
 input, select, textarea {
@@ -312,6 +327,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); box-sha
 .dropzone .actions-row { align-items: center; }
 .report-note { margin: 0; }
 .upload-cta { min-height: 52px; font-size: 16px; font-weight: 800; }
+.table-action-btn { min-height: 36px; padding: 8px 12px; }
 
 .modal {
   position: fixed;
@@ -360,4 +376,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); box-sha
   .actions-row > * { width: 100%; }
   .detail-grid.compact, .detail-grid { grid-template-columns: 1fr; }
   .report-head { flex-direction: column; }
+  .detail-hero { flex-direction: column; }
+  .detail-email { font-size: 20px; }
+  .detail-hero-actions, .detail-hero-actions > * { width: 100%; }
 }

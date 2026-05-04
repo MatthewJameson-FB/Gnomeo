@@ -54,6 +54,7 @@ const bundleSubmission = (submission, customers, reports, emailEvents) => {
   const customer = customers.find((item) => item.id === submission.customer_id) || null;
   const submissionReports = reports.filter((item) => item.submission_id === submission.id);
   const submissionEvents = emailEvents.filter((item) => item.submission_id === submission.id);
+  const latestReport = submissionReports[0] || null;
   return {
     submission,
     customer,
@@ -65,7 +66,11 @@ const bundleSubmission = (submission, customers, reports, emailEvents) => {
     status: submission.status,
     created_at: submission.created_at,
     customer_email: customer?.email || '',
+    customer_company: customer?.company || '',
     customer_status: customer?.status || 'lead',
+    submission_status: submission.status,
+    report_file_url: latestReport?.report_file_url || '',
+    report_id: latestReport?.id || '',
   };
 };
 
