@@ -627,35 +627,136 @@ def strategist_initial(analysis: Dict[str, Any], context: Dict[str, Any]) -> Dic
 # Layer 3b: STRATEGIST (refinement pass)
 # -----------------------------
 
+def _normalize_campaign_name(value: str) -> str:
+    return normalize_name(value)
+
+
+def _campaign_keys(action: Dict[str, Any]) -> List[str]:
+    keys: List[str] = []
+    for field in ("from", "to", "campaign"):
+        value = action.get(field)
+        if value:
+            keys.append(_normalize_campaign_name(str(value)))
+    return [key for key in keys if key]
+
+
+def _pick_campaign(campaigns: List[Campaign], used: set[str], *, prefer_winners: bool, exclude: set[str] | None = None) -> Optional[Campaign]:
+    exclude = exclude or set()
+    pool = [c for c in campaigns if _normalize_campaign_name(label(c)) not in used and _normalize_campaign_name(label(c)) not in exclude]
+    if not pool:
+        return None
+    if prefer_winners:
+        return sorted(pool, key=lambda c: ((c.roas or -1.0), -(c.spend or 0.0)), reverse=True)[0]
+    return sorted(pool, key=lambda c: ((c.cpa if c.cpa is not None else -1.0), (c.spend or 0.0)), reverse=True)[0]
+
+
 def strategist_refinement(analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
     refined_actions: List[Dict[str, Any]] = []
-    critique_map = {item["action"]: item for item in critique["critiques"]}
+    corrections = critique.get("required_corrections", []) if isinstance(critique, dict) else []
+    corrections_by_index = {item.get("action_index"): item for item in corrections if isinstance(item, dict) and item.get("action_index") is not None}
     low_confidence = strategy.get("confidence") == "Low"
+    used_campaigns: set[str] = set()
 
-    for action in strategy["actions"][:3]:
-        critique_item = critique_map.get(action["action"])
+    campaigns = analysis.get("campaigns", [])
+    campaign_lookup = build_campaign_lookup(campaigns)
+    winners = list(analysis.get("performance", {}).get("top_30", []))
+    losers = list(analysis.get("performance", {}).get("bottom_30", []))
+
+    for idx, action in enumerate(strategy.get("actions", [])[:3], 1):
+        correction = corrections_by_index.get(idx, {})
         updated = dict(action)
+        action_type = updated.get("type")
 
-        if critique_item:
-            updated["reason"] = f"{action['reason']} Addressing critique: {critique_item['challenge']}"
-            updated["addressed_criticisms"] = [
-                critique_item["flawed_assumption"],
-                critique_item["weak_signal"],
-                critique_item["attribution_risk"],
-            ]
+        def mark_used_from_action(act: Dict[str, Any]) -> None:
+            for key in _campaign_keys(act):
+                used_campaigns.add(key)
 
-        if low_confidence and action["type"] == "scale":
-            updated["amount"] = round(action["amount"] * 0.5, 2)
-            updated["action"] = action["action"].replace("Scale ", "Scale cautiously: ")
-            updated["reason"] = f"{updated['reason']} Reduced due to low confidence in the signal."
+        def set_hold(reason: str) -> None:
+            updated.clear()
+            updated.update({
+                "type": "hold",
+                "action": "Hold budget and monitor the current mix",
+                "amount": 0.0,
+                "reason": reason,
+                "confidence": "Low",
+            })
+
+        issue = correction.get("issue")
+        duplicate_issue = issue == "duplicate_campaign"
+        causal_issue = issue == "causal_issue"
+        clarity_issue = issue == "clarity_issue"
+        realism_issue = issue == "realism_issue"
+        confidence_issue = issue == "confidence_issue"
+
+        if action_type == "reallocate":
+            source = campaign_lookup.get(normalize_name(str(action.get("from") or "")))
+            target = campaign_lookup.get(normalize_name(str(action.get("to") or "")))
+            if source and _normalize_campaign_name(label(source)) in used_campaigns:
+                source = _pick_campaign(campaigns, used_campaigns, prefer_winners=False)
+            if target and (_normalize_campaign_name(label(target)) in used_campaigns or (source and _normalize_campaign_name(label(target)) == _normalize_campaign_name(label(source)))):
+                target = _pick_campaign(campaigns, used_campaigns | ({_normalize_campaign_name(label(source))} if source else set()), prefer_winners=True)
+            if source and target and _normalize_campaign_name(label(source)) != _normalize_campaign_name(label(target)):
+                updated["from"] = label(source)
+                updated["to"] = label(target)
+                updated["action"] = f"Move {fmt_money(updated['amount'])} from {label(source)} to {label(target)}"
+                updated["source_campaign"] = label(source)
+                updated["target_campaign"] = label(target)
+            elif duplicate_issue or clarity_issue:
+                set_hold("Refinement could not find a unique reallocation path.")
+        elif action_type == "pause":
+            source = campaign_lookup.get(normalize_name(str(action.get("campaign") or "")))
+            if source and _normalize_campaign_name(label(source)) in used_campaigns:
+                source = _pick_campaign(campaigns, used_campaigns, prefer_winners=False)
+            if source:
+                updated["campaign"] = label(source)
+                updated["action"] = f"Pause or cut {label(source)} by {fmt_money(updated['amount'])}"
+                updated["source_campaign"] = label(source)
+            elif duplicate_issue or clarity_issue:
+                set_hold("Refinement could not find a unique pause candidate.")
+        elif action_type == "scale":
+            target = campaign_lookup.get(normalize_name(str(action.get("campaign") or "")))
+            if target and _normalize_campaign_name(label(target)) in used_campaigns:
+                target = _pick_campaign(campaigns, used_campaigns, prefer_winners=True)
+            if target:
+                updated["campaign"] = label(target)
+                updated["action"] = f"Scale {label(target)} by {fmt_money(updated['amount'])}"
+                updated["target_campaign"] = label(target)
+            elif duplicate_issue or clarity_issue:
+                set_hold("Refinement could not find a unique scale candidate.")
+
+        if updated.get("type") != "hold":
+            mark_used_from_action(updated)
+
+        if causal_issue and updated.get("type") in {"reallocate", "scale"}:
+            updated["amount"] = round(float(updated.get("amount", 0.0) or 0.0) * 0.5, 2)
+            updated["reason"] = f"{updated.get('reason', '')} Reduced after causal validation flagged the gap as too small.".strip()
             updated["confidence"] = "Low"
-        elif low_confidence and action["type"] == "reallocate":
-            updated["amount"] = round(action["amount"] * 0.5, 2)
-            updated["action"] = action["action"].replace("Move ", "Move cautiously: ")
-            updated["reason"] = f"{updated['reason']} Reduced due to low confidence in the signal."
-            updated["confidence"] = "Low"
-        elif critique_item and action["type"] == "pause":
+
+        if realism_issue and updated.get("type") in {"reallocate", "pause", "scale"}:
+            updated["amount"] = round(float(updated.get("amount", 0.0) or 0.0) * 0.75, 2)
+            updated["reason"] = f"{updated.get('reason', '')} Projection was trimmed for realism.".strip()
+
+        if confidence_issue and updated.get("confidence") == "High":
             updated["confidence"] = "Medium"
+
+        if low_confidence and updated.get("type") == "scale":
+            updated["amount"] = round(float(updated.get("amount", 0.0) or 0.0) * 0.5, 2)
+            updated["action"] = updated["action"].replace("Scale ", "Scale cautiously: ")
+            updated["reason"] = f"{updated.get('reason', '')} Reduced due to low confidence in the signal.".strip()
+            updated["confidence"] = "Low"
+        elif low_confidence and updated.get("type") == "reallocate":
+            updated["amount"] = round(float(updated.get("amount", 0.0) or 0.0) * 0.5, 2)
+            updated["action"] = updated["action"].replace("Move ", "Move cautiously: ")
+            updated["reason"] = f"{updated.get('reason', '')} Reduced due to low confidence in the signal.".strip()
+            updated["confidence"] = "Low"
+        elif updated.get("type") == "pause" and updated.get("confidence") == "High":
+            updated["confidence"] = "Medium"
+
+        if updated.get("type") != "hold":
+            if updated.get("amount") is None:
+                updated["amount"] = 0.0
+            updated["reason"] = updated.get("reason", "")
+            updated["addressed_criticisms"] = updated.get("addressed_criticisms", [])
 
         refined_actions.append(updated)
 
@@ -676,72 +777,145 @@ def strategist_refinement(analysis: Dict[str, Any], strategy: Dict[str, Any], cr
 # Layer 4: CRITIC
 # -----------------------------
 
+
 def critic(analysis: Dict[str, Any], strategy: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
     thresholds: Thresholds = analysis["thresholds"]
     perf = analysis["performance"]
+    campaigns = analysis.get("campaigns", [])
+    campaign_lookup = build_campaign_lookup(campaigns)
     critiques: List[Dict[str, Any]] = []
+    required_corrections: List[Dict[str, Any]] = []
+    validation_notes: List[Dict[str, Any]] = []
+    seen_campaigns: Dict[str, int] = {}
+    approval = "pass"
 
-    for action in strategy["actions"][:3]:
-        if action["type"] == "reallocate":
-            source_name = action.get("from", "unknown source")
-            critiques.append(
-                {
-                    "action": action["action"],
-                    "challenge": f"The move assumes {source_name} is structurally weak rather than temporarily noisy.",
-                    "flawed_assumption": "Recent underperformance may not persist.",
-                    "weak_signal": "Campaign-level rollups can hide ad-level or audience-level pockets of strength.",
-                    "attribution_risk": "Platform attribution windows may overstate the destination campaign's advantage.",
-                }
+    def campaign_names(action: Dict[str, Any]) -> List[str]:
+        names: List[str] = []
+        for field in ("from", "to", "campaign"):
+            value = action.get(field)
+            if value:
+                names.append(normalize_name(str(value)))
+        return [name for name in names if name]
+
+    def add_note(index: int, severity: str, issue: str, detail: str, correction: str | None = None) -> None:
+        nonlocal approval
+        note = {"action_index": index, "severity": severity, "issue": issue, "detail": detail}
+        validation_notes.append(note)
+        if severity == "error":
+            approval = "revise"
+            if correction:
+                required_corrections.append({"action_index": index, "issue": issue, "correction": correction})
+
+    for idx, action in enumerate(strategy.get("actions", [])[:3], 1):
+        names = campaign_names(action)
+        action_type = action.get("type")
+        amount = float(action.get("amount", 0.0) or 0.0)
+        source = campaign_lookup.get(normalize_name(str(action.get("from") or action.get("campaign") or "")))
+        target = campaign_lookup.get(normalize_name(str(action.get("to") or action.get("campaign") or "")))
+
+        duplicate_names = [name for name in names if name in seen_campaigns]
+        for name in names:
+            seen_campaigns[name] = idx
+        if duplicate_names:
+            add_note(
+                idx,
+                "error",
+                "duplicate_campaign",
+                f"Campaign(s) used more than once: {', '.join(sorted(set(duplicate_names)))}.",
+                "Choose unique campaigns for this decision or convert it to a hold.",
             )
-        elif action["type"] == "pause":
-            critiques.append(
-                {
-                    "action": action["action"],
-                    "challenge": "The pause logic relies heavily on CPA alone and may miss upper-funnel value.",
-                    "flawed_assumption": "High CPA always means low value.",
-                    "weak_signal": "The dataset does not include margin, lag, or assisted conversion data.",
-                    "attribution_risk": "Last-click bias could make the campaign look worse than it is.",
-                }
-            )
-        elif action["type"] == "scale":
-            critiques.append(
-                {
-                    "action": action["action"],
-                    "challenge": "The scale decision assumes past efficiency will hold at a larger spend level.",
-                    "flawed_assumption": "Winning at current spend guarantees scaling efficiency.",
-                    "weak_signal": "The sample is small enough that one campaign can dominate the ranking.",
-                    "attribution_risk": "ROAS may be inflated if conversion lag is unresolved.",
-                }
-            )
+
+        if action_type == "reallocate" and (not action.get("from") or not action.get("to") or amount <= 0):
+            add_note(idx, "error", "clarity_issue", "Reallocation is missing a campaign or £ amount.", "Add a campaign name and explicit £ movement.")
+        elif action_type in {"pause", "scale"} and (not action.get("campaign") or amount <= 0):
+            add_note(idx, "error", "clarity_issue", f"{action_type.title()} is missing a campaign or £ amount.", "Add a campaign name and explicit £ amount.")
+
+        if action_type == "reallocate" and source and target and source is not target:
+            source_cpa = source.cpa
+            target_cpa = target.cpa
+            if source_cpa and target_cpa:
+                diff = abs(source_cpa - target_cpa) / max(source_cpa, target_cpa)
+                if diff < 0.25:
+                    add_note(
+                        idx,
+                        "error",
+                        "causal_issue",
+                        f"CPA gap between {label(source)} and {label(target)} is only {diff * 100:.0f}%, which is too small to justify a reallocation.",
+                        "Only keep the move if the CPA gap is at least 20–30%; otherwise downgrade or remove it.",
+                    )
+        elif action_type == "scale" and target:
+            if target.roas is not None and analysis["summary"].get("overall_roas") is not None:
+                lift = (target.roas - analysis["summary"]["overall_roas"]) / max(abs(analysis["summary"]["overall_roas"]), 0.0001)
+                if lift < 0.20:
+                    add_note(
+                        idx,
+                        "error",
+                        "causal_issue",
+                        f"{label(target)} does not outperform the blended account by 20%+.",
+                        "Only scale when performance is meaningfully better than the account baseline.",
+                    )
+
+        if action_type in {"reallocate", "pause", "scale"}:
+            estimated_gain = abs(float(action.get("adjusted_expected_gain") or 0.0))
+            if estimated_gain and estimated_gain > amount * 3:
+                add_note(
+                    idx,
+                    "error",
+                    "realism_issue",
+                    f"Projected impact {fmt_money(estimated_gain)} is more than 3x the budget move {fmt_money(amount)}.",
+                    "Reduce the projection or trim the budget move until impact stays within a 3x multiple.",
+                )
+
+        decision_spend = amount
+        if action_type in {"reallocate", "pause"} and source is not None:
+            decision_spend = float(getattr(source, "spend", amount) or amount)
+        elif action_type == "scale" and target is not None:
+            decision_spend = float(getattr(target, "spend", amount) or amount)
+
+        meaningful_spend = decision_spend >= max(1000.0, (analysis["summary"].get("total_spend") or 0.0) * 0.05)
+        if action_type == "reallocate" and source and target and source.cpa and target.cpa:
+            consistent = abs(source.cpa - target.cpa) / max(source.cpa, target.cpa) >= 0.25
+        elif action_type == "pause" and source:
+            consistent = (source.roas is not None and analysis["summary"].get("overall_roas") is not None and source.roas <= analysis["summary"]["overall_roas"] * 0.8) or (source.cpa is not None and analysis["summary"].get("overall_cpa") is not None and source.cpa >= analysis["summary"]["overall_cpa"] * 1.25)
+        elif action_type == "scale" and target and analysis["summary"].get("overall_roas") is not None:
+            consistent = target.roas is not None and target.roas >= analysis["summary"]["overall_roas"] * 1.2
         else:
-            critiques.append(
-                {
-                    "action": action["action"],
-                    "challenge": "Holding budget is safe, but it also delays action on obvious signal.",
-                    "flawed_assumption": "Inaction is neutral when the data already shows spread.",
-                    "weak_signal": "The hold only makes sense if the dataset is too thin to trust.",
-                    "attribution_risk": "None added; the bigger issue is missed opportunity.",
-                }
+            consistent = action.get("confidence") != "Low" and action_type in {"reallocate", "pause", "scale"}
+        if action.get("confidence") == "High" and not (meaningful_spend and consistent):
+            add_note(
+                idx,
+                "error",
+                "confidence_issue",
+                "High confidence is not supported by meaningful spend or consistent performance.",
+                "Downgrade the confidence to Medium unless the spend and signal are clearly strong.",
             )
+        elif action.get("confidence") == "High" and meaningful_spend and consistent:
+            validation_notes.append({"action_index": idx, "severity": "info", "issue": "confidence_valid", "detail": "High confidence is supported by spend and consistency."})
 
-    if perf["wasted_share"] is not None and perf["wasted_share"] > 0.20:
         critiques.append(
             {
-                "action": "Portfolio-level note",
-                "challenge": "A meaningful share of spend sits in CPA outliers, so the strategist should be conservative about the pause/scale split.",
-                "flawed_assumption": "The whole account behaves like the average campaign.",
-                "weak_signal": "Outliers are large enough to skew the benchmark.",
-                "attribution_risk": "Cross-channel averaging may blur meaningful platform differences.",
+                "action": action.get("action"),
+                "challenge": "Structured validation applied.",
+                "flawed_assumption": "See validation notes.",
+                "weak_signal": "See validation notes.",
+                "attribution_risk": "See validation notes.",
             }
         )
 
-    return {"critiques": critiques[:3]}
+    if perf["wasted_share"] is not None and perf["wasted_share"] > 0.20:
+        validation_notes.append({"action_index": 0, "severity": "warning", "issue": "portfolio_note", "detail": "A meaningful share of spend sits in CPA outliers, so the strategist should stay conservative."})
+
+    return {
+        "approval": approval,
+        "validation_notes": validation_notes,
+        "required_corrections": required_corrections,
+        "critiques": critiques[:3],
+    }
 
 
 # -----------------------------
 # Layer 5: SYNTHESIZER
 # -----------------------------
-
 def synthesizer(analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Dict[str, Any], simulation: Dict[str, Any]) -> str:
     summary = analysis["summary"]
     perf = analysis["performance"]
@@ -1021,6 +1195,9 @@ def simulate_decision(action: Dict[str, Any], analysis: Dict[str, Any], campaign
     delta = target_roas - source_roas
     theoretical_gain = spend * delta
     expected_gain = theoretical_gain * 0.5
+    cap = spend * 3.0
+    if abs(expected_gain) > cap:
+        expected_gain = cap if expected_gain >= 0 else -cap
 
     current_revenue = total_revenue
     projected_revenue = max(0.0, current_revenue + expected_gain)
