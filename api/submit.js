@@ -268,6 +268,19 @@ const sendResendEmail = async ({ apiKey, to, subject, html, text, attachments = 
   }
 };
 
+const respondError = (res, statusCode, step, error) =>
+  res.status(statusCode).json({
+    success: false,
+    step,
+    error,
+  });
+
+const respondSuccess = (res, data = {}) =>
+  res.status(200).json({
+    success: true,
+    ...data,
+  });
+
 const buildUserEmail = ({ email, filename, timestamp }) => {
   const intro = `Your Gnomeo analysis for ${escapeHtml(filename)} is ready.`;
   const meta = [
@@ -332,10 +345,13 @@ const buildAdminEmail = ({ email, filename, timestamp, status, details }) => ({
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
-    return res.status(405).json({ error: 'Method not allowed' });
+    return respondError(res, 405, 'method', 'Method not allowed');
   }
 
   const contentType = getHeader(req, 'content-type');
+  console.log('[gnomeo submit] request method:', req.method);
+  console.log('[gnomeo submit] content-type:', contentType || '(missing)');
+
   const rawBuffer = await readRequestBuffer(req);
 
   let body = {};
@@ -350,36 +366,40 @@ module.exports = async (req, res) => {
   }
 
   if (!body || typeof body !== 'object') {
-    return res.status(400).json({ error: 'Invalid request payload' });
+    console.error('[gnomeo submit] invalid payload');
+    return respondError(res, 400, 'request-body', 'Invalid request payload');
   }
 
   const email = String(body.email || '').trim();
   const filename = String(body.filename || uploadedFile?.filename || '').trim();
   const timestamp = String(body.timestamp || '').trim();
 
+  console.log('[gnomeo submit] email received:', Boolean(email));
+  console.log('[gnomeo submit] file received:', Boolean(uploadedFile));
+  console.log('[gnomeo submit] file name:', filename || '(missing)');
+
   if (!email) {
-    return res.status(400).json({ error: 'email is required' });
+    return respondError(res, 400, 'validation', 'Email is required');
   }
 
   const apiKey = process.env.RESEND_API_KEY;
   const adminEmail = process.env.ADMIN_EMAIL;
   if (!apiKey || !adminEmail) {
-    return res.status(500).json({ error: 'Server email configuration is missing' });
+    return respondError(res, 500, 'configuration', 'Server email configuration is missing');
   }
 
   const { workdir, inputPath } = ensureInputFile({ file: uploadedFile, filename });
   const outputReportPath = path.join(workdir, 'output_report.md');
   const outputHtmlPath = path.join(workdir, 'output_report.html');
-
-  let analysisSucceeded = false;
-  let reportMarkdown = '';
-  let reportHtml = '';
-  let agentError = '';
+  const pythonCommand = ['python3', AGENT_SCRIPT, '--graph', inputPath, '--output-report', outputReportPath, '--output-html', outputHtmlPath];
 
   try {
+    console.log('[gnomeo submit] python command being executed:', pythonCommand.join(' '));
     runAgent({ inputPath, outputReportPath, outputHtmlPath });
-    reportMarkdown = fs.readFileSync(outputReportPath, 'utf8');
-    reportHtml = fs.existsSync(outputHtmlPath)
+    console.log('[gnomeo submit] report generation success');
+
+    const reportMarkdown = fs.readFileSync(outputReportPath, 'utf8');
+    const reportHtml = fs.existsSync(outputHtmlPath)
       ? fs.readFileSync(outputHtmlPath, 'utf8')
       : convert_report_to_html(reportMarkdown);
     if (!fs.existsSync(outputHtmlPath)) {
@@ -400,8 +420,7 @@ module.exports = async (req, res) => {
       text: userEmail.text,
       attachments: [attachment],
     });
-
-    analysisSucceeded = true;
+    console.log('[gnomeo submit] resend success: user email');
 
     try {
       const adminSuccess = buildAdminEmail({ email, filename, timestamp, status: 'completed' });
@@ -412,36 +431,49 @@ module.exports = async (req, res) => {
         text: adminSuccess.text,
         html: adminSuccess.html,
       });
+      console.log('[gnomeo submit] resend success: admin email');
     } catch (adminError) {
-      console.error('Gnomeo admin notification failed:', adminError);
+      console.error('[gnomeo submit] resend failure: admin email', adminError);
     }
+
+    return respondSuccess(res, {
+      step: 'complete',
+      reportHtmlPath: outputHtmlPath,
+    });
   } catch (error) {
-    agentError = error instanceof Error ? error.message : String(error || 'Unknown error');
+    const agentError = error instanceof Error ? error.message : String(error || 'Unknown error');
+    console.error('[gnomeo submit] report generation failure:', agentError);
 
     const fallback = buildFallbackEmail({ filename: filename || path.basename(inputPath) });
-    await sendResendEmail({
-      apiKey,
-      to: email,
-      subject: fallback.subject,
-      html: fallback.html,
-      text: fallback.text,
-    });
+    try {
+      await sendResendEmail({
+        apiKey,
+        to: email,
+        subject: fallback.subject,
+        html: fallback.html,
+        text: fallback.text,
+      });
+      console.log('[gnomeo submit] resend success: fallback user email');
+    } catch (fallbackEmailError) {
+      console.error('[gnomeo submit] resend failure: fallback user email', fallbackEmailError);
+    }
 
-    await sendResendEmail({
-      apiKey,
-      to: adminEmail,
-      subject: 'Gnomeo report generation failed',
-      text: buildAdminEmail({ email, filename: filename || path.basename(inputPath), timestamp, status: 'failed', details: agentError }).text,
-      html: buildAdminEmail({ email, filename: filename || path.basename(inputPath), timestamp, status: 'failed', details: agentError }).html,
-    });
+    const adminFailure = buildAdminEmail({ email, filename: filename || path.basename(inputPath), timestamp, status: 'failed', details: agentError });
+    try {
+      await sendResendEmail({
+        apiKey,
+        to: adminEmail,
+        subject: adminFailure.subject,
+        text: adminFailure.text,
+        html: adminFailure.html,
+      });
+      console.log('[gnomeo submit] resend success: admin failure email');
+    } catch (adminError) {
+      console.error('[gnomeo submit] resend failure: admin failure email', adminError);
+    }
+
+    return respondError(res, 500, 'report-generation', agentError);
   }
-
-  return res.status(200).json({
-    ok: true,
-    analysisSucceeded,
-    reportMarkdown: analysisSucceeded ? reportMarkdown : null,
-    reportHtmlPath: analysisSucceeded ? outputHtmlPath : null,
-  });
 };
 
 module.exports.convert_report_to_html = convert_report_to_html;

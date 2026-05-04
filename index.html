@@ -563,8 +563,19 @@
           body: payload,
         })
           .then(async (response) => {
-            if (!response.ok) {
-              throw new Error(await response.text());
+            const raw = await response.text();
+            let data = null;
+
+            try {
+              data = raw ? JSON.parse(raw) : null;
+            } catch {
+              data = null;
+            }
+
+            if (!response.ok || data?.success === false) {
+              const step = data?.step || `http-${response.status}`;
+              const error = data?.error || raw || 'Unknown backend error';
+              throw new Error(`step=${step}; error=${error}`);
             }
 
             console.log('Free Analysis Option A submission', payload);
@@ -580,12 +591,16 @@
             success.textContent = "Thanks — we’ve received your request. Your report is being generated and emailed now.";
             success.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           })
-          .catch(() => {
+          .catch((error) => {
             success.style.display = 'block';
             success.style.background = '#fef2f2';
             success.style.color = '#991b1b';
             success.style.borderColor = '#fecaca';
-            success.textContent = 'Something went wrong. Please email hello@gnomeo.nl directly.';
+            const message = String(error || 'step=unknown; error=Unknown error');
+            const match = /step=([^;]+);\s*error=(.*)$/.exec(message);
+            success.textContent = match
+              ? `Submission failed at ${match[1]}: ${match[2]}`
+              : `Submission failed: ${message}`;
             success.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           });
       });
