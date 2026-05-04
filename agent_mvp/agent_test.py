@@ -1314,7 +1314,12 @@ def main() -> None:
     parser.add_argument("--acceptable-cpa", type=float, default=None, help="Override acceptable CPA")
     parser.add_argument("--acceptable-roas", type=float, default=None, help="Override acceptable ROAS")
     parser.add_argument("--graph", action="store_true", help="Use the lightweight graph orchestration layer")
+    parser.add_argument("--output-report", default=str(OUTPUT_REPORT), help="Path for the generated markdown report")
+    parser.add_argument("--output-html", default=str(OUTPUT_HTML), help="Path for the generated HTML report")
     args = parser.parse_args()
+
+    output_report = Path(args.output_report).expanduser().resolve()
+    output_html = Path(args.output_html).expanduser().resolve()
 
     source = Path(args.csv_path).expanduser().resolve()
     if not source.exists():
@@ -1361,14 +1366,14 @@ def main() -> None:
         report = build_report_text(source, analysis, enriched_strategy, critique, final, evaluation, simulation)
         html_report = render_html_report(source, analysis, enriched_strategy, critique, evaluation, simulation)
 
-    OUTPUT_REPORT.write_text(report, encoding="utf-8")
-    OUTPUT_HTML.write_text(html_report, encoding="utf-8")
+    output_report.write_text(report, encoding="utf-8")
+    output_html.write_text(html_report, encoding="utf-8")
 
     print("Gnomeo agent MVP test")
     print("API mode: local mock (no remote calls)")
     print(f"Data source: {source}")
-    print(f"Report written: {OUTPUT_REPORT}")
-    print(f"HTML written: {OUTPUT_HTML}")
+    print(f"Report written: {output_report}")
+    print(f"HTML written: {output_html}")
     print_section("PROFILE INTERPRETER", profile_context)
     print_section("ANALYST", analysis)
     print_section("STRATEGIST (initial)", strategy_initial)

@@ -552,21 +552,15 @@
         }
 
         const timestamp = new Date().toISOString();
-        const payload = {
-          email: emailValue,
-          filename: file.name,
-          timestamp,
-        };
+        const payload = new FormData();
+        payload.append('email', emailValue);
+        payload.append('filename', file.name);
+        payload.append('timestamp', timestamp);
+        payload.append('csv-file', file, file.name);
 
-        // TODO: connect the submission payload to agent_test.py.
-        // TODO: pass the uploaded CSV into the report workflow and generate output_report.html.
-        // TODO: trigger the customer follow-up email after the report is ready.
         fetch('/api/submit', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
+          body: payload,
         })
           .then(async (response) => {
             if (!response.ok) {
@@ -583,7 +577,7 @@
             success.style.background = '#ecfdf5';
             success.style.color = '#065f46';
             success.style.borderColor = '#a7f3d0';
-            success.textContent = "Thanks — we’ve received your request. We’ll run the analysis and send your report within 24 hours.";
+            success.textContent = "Thanks — we’ve received your request. Your report is being generated and emailed now.";
             success.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           })
           .catch(() => {

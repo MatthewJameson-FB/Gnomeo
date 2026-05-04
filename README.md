@@ -6,4 +6,4 @@ Pilot landing page for pilot.flangie.co.uk
 
 - Set `RESEND_API_KEY` in Vercel with your Resend API key.
 - Set `ADMIN_EMAIL` in Vercel to the inbox that should receive new submission alerts.
-- Manual workflow: when a submission email arrives, open the CSV data later, run the report by hand, and reply to the user with the result.
+- The submission endpoint now runs the agent synchronously, generates `output_report.md` + `output_report.html`, emails the report to the user, and keeps the admin notification email.
