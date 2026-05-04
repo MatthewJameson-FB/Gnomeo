@@ -25,3 +25,10 @@ python3 agent_mvp/agent_test.py --graph <file.csv> --output-html report.html
 
 Live Vercel function does not run Python. Reports are generated manually/local for now.
 Real file access currently happens via the admin email attachment.
+
+## Storage Notes
+
+- Vercel filesystem is read-only in production.
+- Production workflow = email notification + CSV attachment.
+- `data/submissions.json` is local/dev only.
+- The dashboard will need persistent storage later (Supabase, Airtable, Blob, etc.).

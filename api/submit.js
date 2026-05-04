@@ -3,6 +3,7 @@ const path = require('path');
 
 const DATA_PATH = path.join(process.cwd(), 'data', 'submissions.json');
 const TMP_DIR = '/tmp';
+const IS_PRODUCTION = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
 
 const getHeader = (req, name) => {
   const target = String(name).toLowerCase();
@@ -226,14 +227,17 @@ module.exports = async (req, res) => {
     timestamp,
   });
 
-  try {
-    const submissions = readSubmissions();
-    submissions.unshift(submission);
-    writeSubmissions(submissions);
-    console.log('[gnomeo submit] submission stored:', submission.submission_id);
-  } catch (error) {
-    console.error('[gnomeo submit] submission store failed:', error);
-    return respondError(res, 500, 'submission-log', error instanceof Error ? error.message : String(error));
+  if (!IS_PRODUCTION) {
+    try {
+      const submissions = readSubmissions();
+      submissions.unshift(submission);
+      writeSubmissions(submissions);
+      console.log('[gnomeo submit] submission stored:', submission.submission_id);
+    } catch (error) {
+      console.error('[gnomeo submit] submission store failed (non-blocking):', error);
+    }
+  } else {
+    console.log('[gnomeo submit] skipping local submission log in production');
   }
 
   const userSubject = 'We’re analysing your ad account';
