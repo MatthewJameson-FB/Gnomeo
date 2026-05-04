@@ -1,9 +1,20 @@
 const fs = require('fs');
 const path = require('path');
+const { randomUUID } = require('crypto');
+const { parseMultipartForm } = require('./_multipart');
+const {
+  ensureConfig,
+  restSingle,
+  restInsert,
+  restUpdate,
+  storageUpload,
+} = require('./_supabase');
 
 const DATA_PATH = path.join(process.cwd(), 'data', 'submissions.json');
-const TMP_DIR = '/tmp';
 const IS_PRODUCTION = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
+const HAS_SUPABASE = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+const CSV_BUCKET = 'submissions';
+const ADMIN_PASSWORD_FALLBACK = 'gnomeo-admin';
 
 const getHeader = (req, name) => {
   const target = String(name).toLowerCase();
@@ -17,60 +28,6 @@ const readRequestBuffer = async (req) => {
   const chunks = [];
   for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   return Buffer.concat(chunks);
-};
-
-const parseContentDisposition = (value = '') => {
-  const result = {};
-  for (const part of value.split(';')) {
-    const [rawKey, rawValue] = part.split('=');
-    if (!rawValue) continue;
-    result[rawKey.trim().toLowerCase()] = rawValue.trim().replace(/^"|"$/g, '');
-  }
-  return result;
-};
-
-const parseMultipartForm = (buffer, contentType) => {
-  const boundaryMatch = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(contentType || '');
-  if (!boundaryMatch) return { fields: {}, file: null };
-
-  const boundary = boundaryMatch[1] || boundaryMatch[2];
-  const segments = buffer.toString('utf8').split(`--${boundary}`);
-  const fields = {};
-  let file = null;
-
-  for (const segment of segments) {
-    const trimmed = segment.replace(/^\r?\n/, '').replace(/\r?\n$/, '');
-    if (!trimmed || trimmed === '--') continue;
-
-    const splitIndex = trimmed.indexOf('\r\n\r\n');
-    if (splitIndex === -1) continue;
-
-    const headerLines = trimmed.slice(0, splitIndex).split('\r\n');
-    const value = trimmed.slice(splitIndex + 4).replace(/\r\n$/, '');
-    const headers = {};
-
-    for (const line of headerLines) {
-      const idx = line.indexOf(':');
-      if (idx === -1) continue;
-      headers[line.slice(0, idx).trim().toLowerCase()] = line.slice(idx + 1).trim();
-    }
-
-    const disposition = parseContentDisposition(headers['content-disposition']);
-    if (!disposition.name) continue;
-
-    if (disposition.filename) {
-      file = {
-        fieldName: disposition.name,
-        filename: disposition.filename,
-        contentType: headers['content-type'] || 'text/csv',
-        content: value,
-      };
-    } else {
-      fields[disposition.name] = value;
-    }
-  }
-
-  return { fields, file };
 };
 
 const parseJsonBody = async (req, rawBuffer) => {
@@ -126,9 +83,7 @@ const sendResendEmail = async ({ apiKey, to, subject, html, text, reply_to, atta
   }
 };
 
-const ensureDataDir = () => {
-  fs.mkdirSync(path.dirname(DATA_PATH), { recursive: true });
-};
+const ensureDataDir = () => fs.mkdirSync(path.dirname(DATA_PATH), { recursive: true });
 
 const readSubmissions = () => {
   try {
@@ -148,27 +103,68 @@ const writeSubmissions = (submissions) => {
   fs.writeFileSync(DATA_PATH, `${JSON.stringify(submissions, null, 2)}\n`);
 };
 
-const createSubmission = ({ email, originalFilename, savedFilePath, timestamp }) => ({
-  submission_id: `sub_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-  user_email: email,
+const localLogSubmission = (entry) => {
+  if (IS_PRODUCTION) return;
+  try {
+    const submissions = readSubmissions();
+    submissions.unshift(entry);
+    writeSubmissions(submissions);
+    console.log('[gnomeo submit] submission stored:', entry.submission_id);
+  } catch (error) {
+    console.error('[gnomeo submit] submission store failed (non-blocking):', error);
+  }
+};
+
+const createSubmissionRecord = ({ submissionId, customerId, originalFilename, csvPath, timestamp }) => ({
+  id: submissionId,
+  customer_id: customerId,
   original_filename: originalFilename || 'not provided',
-  uploaded_file_path: savedFilePath,
-  timestamp: timestamp || new Date().toISOString(),
+  csv_file_url: csvPath,
+  status: 'received',
+  created_at: timestamp || new Date().toISOString(),
+  notes: 'Submitted from public form.',
+});
+
+const createLocalLogEntry = ({ submissionId, customerEmail, originalFilename, csvPath, timestamp }) => ({
+  submission_id: submissionId,
+  user_email: customerEmail,
+  original_filename: originalFilename,
+  uploaded_file_path: csvPath,
+  timestamp,
   status: 'received',
   notes: 'Waiting for manual report generation.',
 });
 
-const saveUploadedCsv = (file) => {
-  const timestamp = Date.now();
-  const filePath = path.join(TMP_DIR, `gnomeo-${timestamp}.csv`);
-  fs.writeFileSync(filePath, file?.content ? Buffer.from(file.content, 'utf8') : Buffer.alloc(0));
-  return filePath;
+const cleanFilename = (value) => String(value || 'submission.csv').replace(/[^a-zA-Z0-9._-]+/g, '_');
+
+const upsertCustomer = async ({ email }) => {
+  const existing = await restSingle('customers', { select: '*', email: `eq.${email}`, limit: 1 });
+  if (existing) return existing;
+  const [created] = await restInsert('customers', {
+    id: randomUUID(),
+    email,
+    company: null,
+    status: 'lead',
+    notes: 'Created from public submission form.',
+  });
+  return created;
 };
 
-const csvAttachment = (filePath, originalFilename) => ({
-  filename: originalFilename || path.basename(filePath),
-  content: fs.readFileSync(filePath).toString('base64'),
-});
+const logEmailEvent = async ({ customerId, submissionId, type, status }) => {
+  if (!HAS_SUPABASE) return;
+  try {
+    await restInsert('email_events', {
+      id: randomUUID(),
+      customer_id: customerId,
+      submission_id: submissionId,
+      type,
+      status,
+      sent_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('[gnomeo submit] email event log failed (non-blocking):', error);
+  }
+};
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -204,40 +200,65 @@ module.exports = async (req, res) => {
   console.log('[gnomeo submit] file received:', Boolean(uploadedFile));
   console.log('[gnomeo submit] file name:', originalFilename || '(missing)');
 
-  if (!email) {
-    return respondError(res, 400, 'validation', 'Email is required');
-  }
-  if (!uploadedFile) {
-    return respondError(res, 400, 'file-upload', 'CSV file is required');
-  }
+  if (!email) return respondError(res, 400, 'validation', 'Email is required');
+  if (!uploadedFile) return respondError(res, 400, 'file-upload', 'CSV file is required');
 
   const apiKey = process.env.RESEND_API_KEY;
   const adminEmail = process.env.ADMIN_EMAIL;
   if (!apiKey || !adminEmail) {
     return respondError(res, 500, 'configuration', 'Server email configuration is missing');
   }
+  if (IS_PRODUCTION && !HAS_SUPABASE) {
+    return respondError(res, 500, 'configuration', 'Supabase configuration is missing');
+  }
 
-  const savedFilePath = saveUploadedCsv(uploadedFile);
-  console.log('[gnomeo submit] saved file path:', savedFilePath);
+  const submissionId = randomUUID();
+  const csvBuffer = Buffer.from(uploadedFile.content || '', 'latin1');
+  let csvPath = `local/${submissionId}/${cleanFilename(originalFilename)}`;
+  let customer = { id: randomUUID(), email };
 
-  const submission = createSubmission({
-    email,
-    originalFilename,
-    savedFilePath,
-    timestamp,
-  });
+  if (HAS_SUPABASE) {
+    ensureConfig();
+    customer = await upsertCustomer({ email });
+    csvPath = `submissions/${submissionId}/${cleanFilename(originalFilename)}`;
 
-  if (!IS_PRODUCTION) {
+    await storageUpload({
+      bucket: CSV_BUCKET,
+      objectPath: csvPath,
+      content: csvBuffer,
+      contentType: uploadedFile.contentType || 'text/csv',
+      upsert: true,
+    });
+
+    const submissionRecord = createSubmissionRecord({
+      submissionId,
+      customerId: customer.id,
+      originalFilename,
+      csvPath,
+      timestamp: timestamp || new Date().toISOString(),
+    });
+
+    await restInsert('submissions', submissionRecord);
+
     try {
-      const submissions = readSubmissions();
-      submissions.unshift(submission);
-      writeSubmissions(submissions);
-      console.log('[gnomeo submit] submission stored:', submission.submission_id);
-    } catch (error) {
-      console.error('[gnomeo submit] submission store failed (non-blocking):', error);
+      localLogSubmission(createLocalLogEntry({
+        submissionId,
+        customerEmail: email,
+        originalFilename,
+        csvPath,
+        timestamp: timestamp || new Date().toISOString(),
+      }));
+    } catch {
+      // non-blocking local/dev log only
     }
   } else {
-    console.log('[gnomeo submit] skipping local submission log in production');
+    localLogSubmission(createLocalLogEntry({
+      submissionId,
+      customerEmail: email,
+      originalFilename,
+      csvPath,
+      timestamp: timestamp || new Date().toISOString(),
+    }));
   }
 
   const userSubject = 'We’re analysing your ad account';
@@ -285,22 +306,24 @@ module.exports = async (req, res) => {
   const adminSubject = 'New Gnomeo Free Analysis Submission';
   const adminText = [
     `User email: ${email}`,
+    `Submission ID: ${submissionId}`,
     `Original filename: ${originalFilename || 'not provided'}`,
-    `Saved file path: ${savedFilePath}`,
+    `CSV storage path: ${csvPath}`,
     `Timestamp: ${timestamp || 'not provided'}`,
     'Run analysis manually and send report.',
-    `Download or access this file and run: python3 agent_mvp/agent_test.py --graph ${savedFilePath}`,
+    `Download or access this file and run: python3 agent_mvp/agent_test.py --graph ${csvPath}`,
   ].join('\n');
 
   const adminHtml = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;">
       <p><strong>User email:</strong> ${escapeHtml(email)}</p>
+      <p><strong>Submission ID:</strong> ${escapeHtml(submissionId)}</p>
       <p><strong>Original filename:</strong> ${escapeHtml(originalFilename || 'not provided')}</p>
-      <p><strong>Saved file path:</strong> ${escapeHtml(savedFilePath)}</p>
+      <p><strong>CSV storage path:</strong> ${escapeHtml(csvPath)}</p>
       <p><strong>Timestamp:</strong> ${escapeHtml(timestamp || 'not provided')}</p>
       <p>Run analysis manually and send report.</p>
       <p>The CSV is attached to this email for direct access.</p>
-      <p><code>python3 agent_mvp/agent_test.py --graph ${escapeHtml(savedFilePath)}</code></p>
+      <p><code>python3 agent_mvp/agent_test.py --graph ${escapeHtml(csvPath)}</code></p>
     </div>
   `;
 
@@ -315,15 +338,9 @@ module.exports = async (req, res) => {
       reply_to: 'matt@gnomeo.nl',
     });
     console.log('[gnomeo submit] resend success: user email');
+    await logEmailEvent({ customerId: customer.id, submissionId, type: 'submission_confirmation', status: 'sent' });
   } catch (error) {
     console.error('[gnomeo submit] resend failure: user email', error);
-    const submissions = readSubmissions();
-    const entry = submissions.find((item) => item.submission_id === submission.submission_id);
-    if (entry) {
-      entry.status = 'failed';
-      entry.notes = `User email failed: ${error instanceof Error ? error.message : String(error)}`;
-      writeSubmissions(submissions);
-    }
     return respondError(res, 502, 'user-email', error instanceof Error ? error.message : String(error));
   }
 
@@ -336,25 +353,25 @@ module.exports = async (req, res) => {
       html: adminHtml,
       text: adminText,
       reply_to: 'matt@gnomeo.nl',
-      attachments: [csvAttachment(savedFilePath, originalFilename || path.basename(savedFilePath))],
+      attachments: [
+          {
+          filename: originalFilename || path.basename(csvPath),
+          content: csvBuffer.toString('base64'),
+          content_type: uploadedFile.contentType || 'text/csv',
+        },
+      ],
     });
     console.log('[gnomeo submit] resend success: admin email');
+    await logEmailEvent({ customerId: customer.id, submissionId, type: 'submission_notification', status: 'sent' });
   } catch (error) {
     console.error('[gnomeo submit] resend failure: admin email', error);
-    const submissions = readSubmissions();
-    const entry = submissions.find((item) => item.submission_id === submission.submission_id);
-    if (entry) {
-      entry.status = 'failed';
-      entry.notes = `Admin email failed: ${error instanceof Error ? error.message : String(error)}`;
-      writeSubmissions(submissions);
-    }
     return respondError(res, 502, 'admin-email', error instanceof Error ? error.message : String(error));
   }
 
   return respondSuccess(res, {
     step: 'emails-sent',
-    submission_id: submission.submission_id,
-    saved_file_reference: savedFilePath,
+    submission_id: submissionId,
+    csv_file_url: csvPath,
     original_filename: originalFilename,
   });
 };

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gnomeo Submission Detail</title>
+    <link rel="stylesheet" href="submissions.css" />
+  </head>
+  <body class="locked">
+    <div id="gate" class="gate">
+      <form id="gateForm" class="gate-card card">
+        <p class="eyebrow">Private access</p>
+        <h1>Submission Detail</h1>
+        <p class="subtle">Enter the access password to view and manage a single submission.</p>
+        <input id="gateInput" type="password" autocomplete="off" placeholder="Password" />
+        <button type="submit">Unlock</button>
+        <p id="gateError" class="gate-error" aria-live="polite"></p>
+      </form>
+    </div>
+
+    <main id="app" class="shell hidden">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Gnomeo CRM</p>
+          <p class="notice warning">Internal dashboard only. Do not expose real customer data publicly.</p>
+          <h1>Submission Detail</h1>
+          <p class="subtle">Upload a generated report, update status, and send the report email.</p>
+        </div>
+        <div class="actions">
+          <a class="pill-link" href="/admin/">Admin Home</a>
+          <a class="pill-link" href="/admin/submissions.html">Back to submissions</a>
+        </div>
+      </header>
+
+      <section id="detail" class="card detail-card"></section>
+    </main>
+
+    <script src="auth.js"></script>
+    <script src="submission.js"></script>
+  </body>
+</html>

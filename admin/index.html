@@ -35,45 +35,20 @@
         </div>
       </section>
 
-      <section class="grid" style="grid-template-columns: 1fr; margin-top: 16px;">
+      <section class="grid" style="grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 16px;">
         <article class="card candidate">
-          <h2 class="name">Manual processing</h2>
-          <p class="reason">Submission processing is currently handled manually.</p>
-          <p class="source">Use the local report tool to generate and send reports.</p>
+          <h2 class="name">Report CRM</h2>
+          <p class="reason">Manage submissions, upload generated reports, and send customer emails.</p>
           <p class="source"><a href="/admin/submissions.html">Open submissions dashboard</a></p>
+        </article>
+        <article class="card candidate">
+          <h2 class="name">Local report tool</h2>
+          <p class="reason">Run reports locally, then upload the generated file into the admin CRM.</p>
+          <p class="source">Use agent_mvp/admin_report_tool locally.</p>
         </article>
       </section>
     </main>
 
-    <script>
-      const ADMIN_PASSWORD = "gnomeo-admin";
-      const STORAGE_KEY = "gnomeo-admin-unlocked";
-      const gate = document.getElementById('gate');
-      const gateForm = document.getElementById('gateForm');
-      const gateInput = document.getElementById('gateInput');
-      const gateError = document.getElementById('gateError');
-      const app = document.getElementById('app');
-
-      function unlock() {
-        document.body.classList.remove('locked');
-        gate.classList.add('hidden');
-        app.classList.remove('hidden');
-        sessionStorage.setItem(STORAGE_KEY, '1');
-        gateError.textContent = '';
-      }
-
-      if (sessionStorage.getItem(STORAGE_KEY) === '1') unlock();
-
-      gateForm.addEventListener('submit', (event) => {
-        event.preventDefault();
-        if (gateInput.value === ADMIN_PASSWORD) {
-          unlock();
-        } else {
-          gateError.textContent = 'Wrong password.';
-          gateInput.value = '';
-          gateInput.focus();
-        }
-      });
-    </script>
+    <script src="auth.js"></script>
   </body>
 </html>

@@ -3,16 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gnomeo Submissions Dashboard</title>
-    <link rel="stylesheet" href="admin.css" />
+    <title>Gnomeo CRM Submissions</title>
     <link rel="stylesheet" href="submissions.css" />
   </head>
   <body class="locked">
     <div id="gate" class="gate">
       <form id="gateForm" class="gate-card card">
         <p class="eyebrow">Private access</p>
-        <h1>Submissions Dashboard</h1>
-        <p class="subtle">Enter the access password to view Free Analysis submissions.</p>
+        <h1>Gnomeo CRM</h1>
+        <p class="subtle">Enter the access password to open the submissions dashboard.</p>
         <input id="gateInput" type="password" autocomplete="off" placeholder="Password" />
         <button type="submit">Unlock</button>
         <p id="gateError" class="gate-error" aria-live="polite"></p>
@@ -24,81 +23,65 @@
         <div>
           <p class="eyebrow">Gnomeo</p>
           <p class="notice warning">Internal dashboard only. Do not expose real customer data publicly.</p>
-          <h1>Free Analysis Submissions</h1>
-          <p class="subtle">Local/dev dashboard only for now. Production submissions arrive by admin email attachment.</p>
+          <h1>Report Ops CRM</h1>
+          <p class="subtle">Production submissions arrive via email attachment and are tracked in Supabase.</p>
         </div>
         <div class="actions">
-          <a class="pill-link" href="/admin/">Candidate Review</a>
-          <a class="pill-link active" href="/admin/submissions.html">Submissions Dashboard</a>
+          <a class="pill-link" href="/admin/">Admin Home</a>
+          <a class="pill-link active" href="/admin/submissions.html">Submissions</a>
         </div>
       </header>
 
-      <section class="toolbar card stats" id="stats"></section>
+      <section class="summary card" id="summary"></section>
 
-      <section class="card workflow-card">
-        <div class="workflow-head">
-          <div>
-            <h2>Manual workflow</h2>
-            <p class="subtle">Real file access currently happens via the admin email attachment. Use that CSV to run analysis locally, review the output, then send the report manually.</p>
-          </div>
-          <button id="reloadBtn" type="button">Reload submissions</button>
+      <section class="toolbar card">
+        <div class="field">
+          <label for="searchInput">Search</label>
+          <input id="searchInput" type="search" placeholder="email, filename, notes" />
+        </div>
+        <div class="field">
+          <label for="statusFilter">Submission status</label>
+          <select id="statusFilter">
+            <option value="all">All</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="customerStatusFilter">Customer status</label>
+          <select id="customerStatusFilter">
+            <option value="all">All</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button id="reloadBtn" type="button">Reload</button>
         </div>
       </section>
 
-      <section id="list" class="submissions-grid" aria-live="polite"></section>
+      <section class="dashboard-grid">
+        <div class="card">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Customer email</th>
+                <th>Filename</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+
+        <aside class="detail-card card">
+          <h2>Submission detail</h2>
+          <p class="subtle" id="detailHint">Select a submission to manage it.</p>
+          <div id="detailContent" class="hidden"></div>
+        </aside>
+      </section>
     </main>
 
-    <template id="submissionTemplate">
-      <article class="card submission-card">
-        <div class="topline">
-          <div>
-            <p class="submission-id"></p>
-            <h2 class="filename"></h2>
-            <p class="meta-line"></p>
-          </div>
-          <div class="badges">
-            <span class="badge status"></span>
-          </div>
-        </div>
-
-        <div class="details-grid">
-          <div>
-            <p class="label">User email</p>
-            <p class="value user-email"></p>
-          </div>
-          <div>
-            <p class="label">Original filename</p>
-            <p class="value original-filename"></p>
-          </div>
-          <div>
-            <p class="label">Saved file path</p>
-            <p class="value file-path"></p>
-          </div>
-          <div>
-            <p class="label">Notes</p>
-            <p class="value notes"></p>
-          </div>
-        </div>
-
-        <div class="command-box">
-          <p class="label">Suggested command</p>
-          <pre class="command"></pre>
-        </div>
-
-        <div class="checklist">
-          <p class="label">Action checklist</p>
-          <ol>
-            <li>Download/access CSV</li>
-            <li>Run local analysis</li>
-            <li>Generate HTML report</li>
-            <li>Review report</li>
-            <li>Send report email</li>
-            <li>Mark as sent</li>
-          </ol>
-        </div>
-      </article>
-    </template>
-
+    <script src="auth.js"></script>
     <script src="submissions.js"></script>
   </body>
 </html>
