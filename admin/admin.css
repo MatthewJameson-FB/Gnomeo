@@ -82,6 +82,24 @@ h1 {
 
 .subtle, .meta, .role-company, .reason, .source { color: var(--muted); }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.pill-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+}
+.pill-link.active {
+  background: #eef4ff;
+  border-color: #c9d9ff;
+  color: #2347d7;
+}
 button, .file-btn, input, select {
   font: inherit;
   border-radius: 12px;

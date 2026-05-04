@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gnomeo Submissions Dashboard</title>
+    <link rel="stylesheet" href="admin.css" />
+    <link rel="stylesheet" href="submissions.css" />
+  </head>
+  <body class="locked">
+    <div id="gate" class="gate">
+      <form id="gateForm" class="gate-card card">
+        <p class="eyebrow">Private access</p>
+        <h1>Submissions Dashboard</h1>
+        <p class="subtle">Enter the access password to view Free Analysis submissions.</p>
+        <input id="gateInput" type="password" autocomplete="off" placeholder="Password" />
+        <button type="submit">Unlock</button>
+        <p id="gateError" class="gate-error" aria-live="polite"></p>
+      </form>
+    </div>
+
+    <main id="app" class="shell hidden">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Gnomeo</p>
+          <p class="notice warning">Internal dashboard only. Do not expose real customer data publicly.</p>
+          <h1>Free Analysis Submissions</h1>
+          <p class="subtle">Track incoming CSV uploads and carry out manual report processing.</p>
+        </div>
+        <div class="actions">
+          <a class="pill-link" href="/admin/">Candidate Review</a>
+          <a class="pill-link active" href="/admin/submissions.html">Submissions Dashboard</a>
+        </div>
+      </header>
+
+      <section class="toolbar card stats" id="stats"></section>
+
+      <section class="card workflow-card">
+        <div class="workflow-head">
+          <div>
+            <h2>Manual workflow</h2>
+            <p class="subtle">Use the saved file path to run analysis locally, review the output, then send the report manually.</p>
+          </div>
+          <button id="reloadBtn" type="button">Reload submissions</button>
+        </div>
+      </section>
+
+      <section id="list" class="submissions-grid" aria-live="polite"></section>
+    </main>
+
+    <template id="submissionTemplate">
+      <article class="card submission-card">
+        <div class="topline">
+          <div>
+            <p class="submission-id"></p>
+            <h2 class="filename"></h2>
+            <p class="meta-line"></p>
+          </div>
+          <div class="badges">
+            <span class="badge status"></span>
+          </div>
+        </div>
+
+        <div class="details-grid">
+          <div>
+            <p class="label">User email</p>
+            <p class="value user-email"></p>
+          </div>
+          <div>
+            <p class="label">Original filename</p>
+            <p class="value original-filename"></p>
+          </div>
+          <div>
+            <p class="label">Saved file path</p>
+            <p class="value file-path"></p>
+          </div>
+          <div>
+            <p class="label">Notes</p>
+            <p class="value notes"></p>
+          </div>
+        </div>
+
+        <div class="command-box">
+          <p class="label">Suggested command</p>
+          <pre class="command"></pre>
+        </div>
+
+        <div class="checklist">
+          <p class="label">Action checklist</p>
+          <ol>
+            <li>Download/access CSV</li>
+            <li>Run local analysis</li>
+            <li>Generate HTML report</li>
+            <li>Review report</li>
+            <li>Send report email</li>
+            <li>Mark as sent</li>
+          </ol>
+        </div>
+      </article>
+    </template>
+
+    <script src="submissions.js"></script>
+  </body>
+</html>

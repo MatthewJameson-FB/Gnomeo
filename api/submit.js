@@ -1,6 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 
+const DATA_PATH = path.join(process.cwd(), 'data', 'submissions.json');
+const TMP_DIR = '/tmp';
+
 const getHeader = (req, name) => {
   const target = String(name).toLowerCase();
   for (const [key, value] of Object.entries(req.headers || {})) {
@@ -121,12 +124,43 @@ const sendResendEmail = async ({ apiKey, to, subject, html, text, reply_to }) =>
   }
 };
 
+const ensureDataDir = () => {
+  fs.mkdirSync(path.dirname(DATA_PATH), { recursive: true });
+};
+
+const readSubmissions = () => {
+  try {
+    if (!fs.existsSync(DATA_PATH)) return [];
+    const raw = fs.readFileSync(DATA_PATH, 'utf8').trim();
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.error('[gnomeo submit] submissions read failed:', error);
+    return [];
+  }
+};
+
+const writeSubmissions = (submissions) => {
+  ensureDataDir();
+  fs.writeFileSync(DATA_PATH, `${JSON.stringify(submissions, null, 2)}\n`);
+};
+
+const createSubmission = ({ email, originalFilename, savedFilePath, timestamp }) => ({
+  submission_id: `sub_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+  user_email: email,
+  original_filename: originalFilename || 'not provided',
+  uploaded_file_path: savedFilePath,
+  timestamp: timestamp || new Date().toISOString(),
+  status: 'received',
+  notes: 'Waiting for manual report generation.',
+});
+
 const saveUploadedCsv = (file) => {
   const timestamp = Date.now();
-  const filePath = path.join('/tmp', `gnomeo-${timestamp}.csv`);
-  const originalFilename = String(file?.filename || '');
+  const filePath = path.join(TMP_DIR, `gnomeo-${timestamp}.csv`);
   fs.writeFileSync(filePath, file?.content ? Buffer.from(file.content, 'utf8') : Buffer.alloc(0));
-  return { filePath, originalFilename };
+  return filePath;
 };
 
 module.exports = async (req, res) => {
@@ -166,20 +200,35 @@ module.exports = async (req, res) => {
   if (!email) {
     return respondError(res, 400, 'validation', 'Email is required');
   }
-
   if (!uploadedFile) {
     return respondError(res, 400, 'file-upload', 'CSV file is required');
   }
 
   const apiKey = process.env.RESEND_API_KEY;
   const adminEmail = process.env.ADMIN_EMAIL;
-
   if (!apiKey || !adminEmail) {
     return respondError(res, 500, 'configuration', 'Server email configuration is missing');
   }
 
-  const saved = saveUploadedCsv(uploadedFile);
-  console.log('[gnomeo submit] saved file path:', saved.filePath);
+  const savedFilePath = saveUploadedCsv(uploadedFile);
+  console.log('[gnomeo submit] saved file path:', savedFilePath);
+
+  const submission = createSubmission({
+    email,
+    originalFilename,
+    savedFilePath,
+    timestamp,
+  });
+
+  try {
+    const submissions = readSubmissions();
+    submissions.unshift(submission);
+    writeSubmissions(submissions);
+    console.log('[gnomeo submit] submission stored:', submission.submission_id);
+  } catch (error) {
+    console.error('[gnomeo submit] submission store failed:', error);
+    return respondError(res, 500, 'submission-log', error instanceof Error ? error.message : String(error));
+  }
 
   const userSubject = 'We’re analysing your ad account';
   const userText = [
@@ -227,20 +276,20 @@ module.exports = async (req, res) => {
   const adminText = [
     `User email: ${email}`,
     `Original filename: ${originalFilename || 'not provided'}`,
-    `Saved file path: ${saved.filePath}`,
+    `Saved file path: ${savedFilePath}`,
     `Timestamp: ${timestamp || 'not provided'}`,
     'Run analysis manually and send report.',
-    `Download or access this file and run: python3 agent_mvp/agent_test.py --graph ${saved.filePath}`,
+    `Download or access this file and run: python3 agent_mvp/agent_test.py --graph ${savedFilePath}`,
   ].join('\n');
 
   const adminHtml = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;">
       <p><strong>User email:</strong> ${escapeHtml(email)}</p>
       <p><strong>Original filename:</strong> ${escapeHtml(originalFilename || 'not provided')}</p>
-      <p><strong>Saved file path:</strong> ${escapeHtml(saved.filePath)}</p>
+      <p><strong>Saved file path:</strong> ${escapeHtml(savedFilePath)}</p>
       <p><strong>Timestamp:</strong> ${escapeHtml(timestamp || 'not provided')}</p>
       <p>Run analysis manually and send report.</p>
-      <p><code>python3 agent_mvp/agent_test.py --graph ${escapeHtml(saved.filePath)}</code></p>
+      <p><code>python3 agent_mvp/agent_test.py --graph ${escapeHtml(savedFilePath)}</code></p>
     </div>
   `;
 
@@ -257,6 +306,13 @@ module.exports = async (req, res) => {
     console.log('[gnomeo submit] resend success: user email');
   } catch (error) {
     console.error('[gnomeo submit] resend failure: user email', error);
+    const submissions = readSubmissions();
+    const entry = submissions.find((item) => item.submission_id === submission.submission_id);
+    if (entry) {
+      entry.status = 'failed';
+      entry.notes = `User email failed: ${error instanceof Error ? error.message : String(error)}`;
+      writeSubmissions(submissions);
+    }
     return respondError(res, 502, 'user-email', error instanceof Error ? error.message : String(error));
   }
 
@@ -273,12 +329,20 @@ module.exports = async (req, res) => {
     console.log('[gnomeo submit] resend success: admin email');
   } catch (error) {
     console.error('[gnomeo submit] resend failure: admin email', error);
+    const submissions = readSubmissions();
+    const entry = submissions.find((item) => item.submission_id === submission.submission_id);
+    if (entry) {
+      entry.status = 'failed';
+      entry.notes = `Admin email failed: ${error instanceof Error ? error.message : String(error)}`;
+      writeSubmissions(submissions);
+    }
     return respondError(res, 502, 'admin-email', error instanceof Error ? error.message : String(error));
   }
 
   return respondSuccess(res, {
     step: 'emails-sent',
-    savedFilePath: saved.filePath,
-    originalFilename,
+    submission_id: submission.submission_id,
+    saved_file_reference: savedFilePath,
+    original_filename: originalFilename,
   });
 };

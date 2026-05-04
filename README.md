@@ -10,15 +10,17 @@ Pilot landing page for pilot.flangie.co.uk
 ## Manual Report Workflow
 
 1. User submits CSV via site
-2. Admin receives notification email with file path
-3. Download or access file
-4. Run:
+2. Submission appears in dashboard
+3. Admin receives notification email with file path
+4. Download or access file
+5. Run:
 
 ```bash
 python3 agent_mvp/agent_test.py --graph <file.csv> --output-html report.html
 ```
 
-5. Review output
-6. Email report back to user
+6. Review output
+7. Email report back to user
+8. Update status manually for now
 
 Live Vercel function does not run Python. Reports are generated manually/local for now.
