@@ -74,6 +74,7 @@ class DecisionGraph:
         state.normalized_data = {
             "campaign_count": len(campaigns),
             "source": getattr(args, "csv_path", None),
+            "ingestion_contract": getattr(args, "ingestion_contract", None),
             "mode": "graph",
             "currency_code": state.currency_code,
             "currency_symbol": state.currency_symbol,

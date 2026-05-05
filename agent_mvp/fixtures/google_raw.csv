@@ -1,0 +1,4 @@
+Campaign,Campaign type,Cost,Clicks,Conversions,Conversion value,Device
+Brand Search | Exact,Search,12000,5400,420,46800,Mobile
+Non-Brand Search | Core,Search,18000,6400,260,28600,Desktop
+YouTube Remarketing,Video,5000,1890,52,6890,Tablet

@@ -1,0 +1,4 @@
+Campaign,Campaign type,Cost micros,Clicks,Conversions,Conversion value
+Search A,Search,1200000000,5400,420,46800
+Search B,Search,1800000000,6400,260,28600
+Search C,Search,500000000,1890,52,6890

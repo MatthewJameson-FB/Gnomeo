@@ -85,10 +85,18 @@ def main() -> int:
             ],
             cwd=AGENT_TEST.parent,
             check=True,
+            capture_output=True,
+            text=True,
         )
     except PermissionError:
         fail("Move the CSV into ~/Gnomeo/free_reports/inbox first.")
     except subprocess.CalledProcessError as error:
+        stderr = (error.stderr or "").strip()
+        stdout = (error.stdout or "").strip()
+        if stderr:
+            fail(stderr)
+        if stdout:
+            fail(stdout)
         fail(f"Report processing failed: {error}")
 
     print(f"HTML report path: {output_html}")
