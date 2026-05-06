@@ -6,7 +6,7 @@
     <title>Gnomeo.nl</title>
     <meta
       name="description"
-      content="Stop wasting ad budget. Gnomeo.nl turns Google Ads and Meta Ads data into clear budget decisions."
+      content="Independent analysis for Google Ads and Meta Ads exports. Gnomeo reviews messy spend data and recommends where to cut, scale, hold, or test."
     />
 
     <style>
@@ -181,6 +181,10 @@
         color: var(--muted);
         font-size: 14px;
         margin-top: 18px;
+        max-width: 760px;
+        margin-left: auto;
+        margin-right: auto;
+        line-height: 1.45;
       }
 
       section {
@@ -264,6 +268,77 @@
         display: inline-block;
         font-size: 1.05rem;
         margin-bottom: 8px;
+      }
+
+      .report-preview {
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      }
+
+      .report-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 0 0 16px;
+      }
+
+      .report-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .preview-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .preview-card {
+        padding: 16px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: #fff;
+        box-shadow: none;
+      }
+
+      .preview-card strong {
+        display: block;
+        margin: 8px 0 6px;
+        font-size: 1rem;
+        letter-spacing: -0.02em;
+      }
+
+      .preview-card p {
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .preview-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 5px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .preview-tag.cut { background: #fef2f2; color: #b91c1c; }
+      .preview-tag.scale { background: #ecfdf5; color: #047857; }
+      .preview-tag.hold { background: #eff6ff; color: #1d4ed8; }
+      .preview-tag.test { background: #f5f3ff; color: #6d28d9; }
+
+      .preview-note {
+        margin-top: 14px;
+        color: var(--muted);
+        font-size: 13px;
       }
 
       .decision-card {
@@ -460,6 +535,7 @@
         .cta-row { justify-content: center; }
         .trust { text-align: center; }
         .grid-4 { grid-template-columns: 1fr; }
+        .preview-grid { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -476,14 +552,13 @@
       <main id="top">
         <section class="hero">
           <img class="hero-logo" src="/gnomeo-logo.png?v=3" alt="Gnomeo logo" />
-          <h1>Gnomeo</h1>
-          <p class="subhead">Stop wasting ad budget.</p>
-          <p class="subhead">See exactly what to cut, scale, and test next.</p>
+          <h1>Independent analysis for Google Ads and Meta Ads spend</h1>
+          <p class="subhead">Upload exported campaign data. Gnomeo reviews the signal across Google Ads and Meta Ads, then recommends where to cut, scale, hold, or test based on what looks trustworthy.</p>
           <div class="cta-row">
             <a class="button" href="#contact">Upload your data → get your report</a>
             <a class="button ghost" href="#how-it-works">See how it works</a>
           </div>
-          <div class="trust">Built for marketers and founders spending £10k–£50k/month on paid media.</div>
+          <div class="trust">Gnomeo does not manage campaigns or buy media. It independently reviews exported ad data and highlights where spend looks wasted, under-scaled, or too uncertain to trust.</div>
         </section>
 
         <section id="how-it-works">
@@ -497,20 +572,50 @@
 
         <section>
           <div class="grid-2">
-            <div class="card method-box">
-              <div class="section-head" style="text-align:left; margin-bottom:14px;">
-                <h2 style="font-size:1.45rem;">Example report snapshot</h2>
-                <p style="font-size:13px; margin-top:4px;">Based on sample data</p>
+            <div class="card report-preview">
+              <div class="section-head" style="text-align:left; margin-bottom:12px;">
+                <h2 style="font-size:1.45rem;">Example decisions from a sample ecommerce account</h2>
+                <p style="font-size:13px; margin-top:4px;">Based on sample Google Ads and Meta Ads exports</p>
               </div>
-              <ul class="example-list">
-                <li>~25% of budget is underperforming and can be reallocated.</li>
-                <li>£24,250 wasted spend identified in low-efficiency campaigns.</li>
-                <li>Current ROAS: 1.75x, with safer moves focused on cut / hold / scale decisions.</li>
-              </ul>
+              <div class="report-meta">
+                <span class="report-pill">UK skincare ecommerce brand</span>
+                <span class="report-pill">Monthly ad spend: £57,300.00</span>
+                <span class="report-pill">Current ROAS: ~1.19x</span>
+                <span class="report-pill">Estimated wasted spend: £14,325.00</span>
+              </div>
+              <div class="preview-grid">
+                <article class="preview-card">
+                  <span class="preview-tag cut">Reduce waste</span>
+                  <strong>Reduce £2,400.00 from Meta Prospecting Broad UK → move budget into Google Brand Search</strong>
+                  <p>Estimated impact: £3,735.00–£6,225.00</p>
+                </article>
+                <article class="preview-card">
+                  <span class="preview-tag scale">Scale winner</span>
+                  <strong>Increase Brand Search | Exact by £1,200.00</strong>
+                  <p>Current spend: £12,000.00 · Estimated impact: £696.99–£1,161.64</p>
+                </article>
+                <article class="preview-card">
+                  <span class="preview-tag scale">Scale winner</span>
+                  <strong>Increase Meta Retargeting | Warm Visitors by £600.00</strong>
+                  <p>Current spend: £6,000.00 · Estimated impact: £397.21–£662.02</p>
+                </article>
+                <article class="preview-card">
+                  <span class="preview-tag hold">Monitor</span>
+                  <strong>Monitor New Collection Launch before increasing budget when signal is thin</strong>
+                  <p>Sample data only — conservative calls stay cautious when the gap is small.</p>
+                </article>
+                <article class="preview-card">
+                  <span class="preview-tag test">Controlled test</span>
+                  <strong>Run a controlled test on Non-Brand Search | Core when CPA/ROAS is unclear</strong>
+                  <p>Mixed signals need a test, not a bigger bet.</p>
+                </article>
+              </div>
+              <p class="preview-note">Sample data only. Real exports can be more conservative when signal quality is thin.</p>
             </div>
             <div class="card offer">
               <strong>Built for messy ad exports</strong>
               <p>Upload campaign-level Google Ads or Meta Ads data. Gnomeo flags what to cut, scale, or hold — and tells you when the data is too thin to trust.</p>
+              <p style="margin-top:14px; color: var(--text);">Gnomeo reviews Google Ads and Meta Ads exports independently — without platform incentives, media buying, or automated campaign changes.</p>
             </div>
           </div>
         </section>
