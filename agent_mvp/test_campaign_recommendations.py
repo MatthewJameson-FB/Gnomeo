@@ -65,15 +65,23 @@ def main() -> int:
         )
         stdout = proc.stdout
         report_text = report_md.read_text(encoding="utf-8")
+        report_html_text = report_html.read_text(encoding="utf-8")
 
-    lowered = (stdout + "\n" + report_text).lower()
+    lowered = (stdout + "\n" + report_text + "\n" + report_html_text).lower()
     if "account baseline" in lowered:
         failures.append("final report still references account baseline")
-    if "campaign(s):" not in lowered:
-        failures.append("final report is missing campaign lines")
+    for heading in ["Executive Summary", "Account Snapshot", "Top Priorities", "Key Decisions", "Signal Notes / Conservative Calls", "Data Quality & Caveats"]:
+        if heading.lower() not in lowered:
+            failures.append(f"final report is missing {heading}")
+    if "rationale:" not in lowered:
+        failures.append("final report is missing decision rationales")
+    if "signal label:" not in lowered:
+        failures.append("final report is missing signal labels")
+    if "audit safeguards reduced" not in lowered and "signal quality was not strong enough" not in lowered:
+        failures.append("final report is missing conservative notes")
     if not re.search(r"Current spend:\s*£(?!0\.00)[0-9]", report_text):
         failures.append("no decision shows current spend above £0.00")
-    if "£0.00–£0.00" in report_text:
+    if "£0.00–£0.00" in report_text or "£0.00–£0.00" in report_html_text:
         failures.append("fake zero impact range still appears in the report")
     if "Wasted spend:" not in report_text:
         failures.append("summary is missing wasted spend")

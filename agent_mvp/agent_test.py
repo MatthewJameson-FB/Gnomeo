@@ -505,6 +505,77 @@ def synthesize_report(analysis: Dict[str, Any], strategy: Dict[str, Any], critiq
 
 def build_marketer_content(source_label: str, analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Dict[str, Any], simulation: Dict[str, Any], audit_result: Dict[str, Any] | None = None) -> Dict[str, Any]:
     perf = analysis["performance"]
+    summary = analysis["summary"]
+    audit_result = audit_result or {}
+    audit_status = audit_result.get("status", "pass")
+    audit_warnings = list(audit_result.get("audit_warnings") or [])
+    audit_blocking_errors = list(audit_result.get("blocking_errors") or [])
+    audit_user_message = audit_result.get("user_message", "Recommendation audit passed.")
+
+    total_spend = float(summary.get("total_spend") or 0.0)
+    total_revenue = float(summary.get("total_revenue") or 0.0)
+    revenue_available = bool(summary.get("revenue_available"))
+    current_roas = summary.get("overall_roas")
+    current_cpa = summary.get("overall_cpa")
+    campaign_count = int(summary.get("campaign_count") or 0)
+    waste_amount = float(perf.get("wasted_spend") or summary.get("wasted_spend") or total_spend * 0.25)
+    waste_share = perf.get("wasted_share") if perf.get("wasted_share") is not None else summary.get("wasted_share")
+    top_names = ", ".join(label(c) for c in (perf.get("top_30") or [])[:2]) or "n/a"
+    bottom_names = ", ".join(label(c) for c in (perf.get("bottom_30") or [])[:2]) or "n/a"
+
+    warning_blob = " ".join(audit_warnings).lower()
+
+    def decision_signal_label(action_type: str, raw_confidence: str, impact_available: bool, decision_warnings: list[str]) -> str:
+        warning_text = " ".join(decision_warnings).lower()
+        if action_type == "monitor":
+            return "Monitor"
+        if action_type == "test":
+            return "Needs test"
+        if raw_confidence == "High" and not any(token in warning_text for token in ("downgrad", "outlier handling", "capped")):
+            return "High confidence"
+        if action_type in {"reallocate", "pause", "reduce", "scale"}:
+            return "Moderate confidence"
+        if not impact_available:
+            return "Thin signal"
+        if raw_confidence in {"High", "Medium"}:
+            return "Moderate confidence"
+        return "Thin signal"
+
+    def decision_rationale(action_type: str, decision: Dict[str, Any], signal_label: str) -> str:
+        metric_text = decision.get("metric_text") or "the available signal"
+        current_spend_text = fmt_money(decision.get("current_spend")) if isinstance(decision.get("current_spend"), (int, float)) else None
+        impact_range = decision.get("impact_range") or "Impact not estimated"
+        if action_type in {"reallocate", "pause", "reduce"}:
+            base = "Spend is meaningful and performance is weaker than the account average, so Gnomeo recommends reallocating budget toward a stronger signal rather than increasing total spend."
+        elif action_type == "scale":
+            base = "This campaign shows stronger efficiency than the account baseline. Gnomeo recommends a controlled increase rather than an aggressive scale."
+        elif action_type == "test":
+            base = "The available signal is not strong enough for a confident budget move. Gnomeo recommends running a controlled test before changing spend."
+        else:
+            base = "The available signal is not strong enough for a confident budget move. Gnomeo recommends watching performance before changing spend."
+
+        extra_bits = [f"Metric context: {metric_text}."]
+        if current_spend_text:
+            extra_bits.append(f"Current spend: {current_spend_text}.")
+        if impact_range != "Impact not estimated":
+            extra_bits.append(f"Estimated impact: {impact_range}.")
+        return f"{base} {' '.join(extra_bits)}"
+
+    def conservative_note(action_type: str, signal_label: str, decision: Dict[str, Any], decision_warnings: list[str]) -> str:
+        warning_text = " ".join(decision_warnings).lower()
+        if signal_label == "Thin signal":
+            return "Signal quality was not strong enough for a bolder move."
+        if any(token in warning_text for token in ("downgrad", "outlier handling", "capped")):
+            return "Audit safeguards reduced the aggressiveness of this recommendation."
+        return ""
+
+    def build_priority(title: str, decision: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "title": title,
+            "detail": decision.get("action_line") or decision.get("campaign_line") or "Review the campaign and keep the move small.",
+            "confidence": decision.get("signal_label") or decision.get("confidence") or "Moderate confidence",
+        }
+
     decisions = []
     for action, sim in zip(strategy.get("actions", [])[:3], simulation.get("decisions", [])[:3]):
         action_type = _action_type(action)
@@ -538,7 +609,24 @@ def build_marketer_content(source_label: str, analysis: Dict[str, Any], strategy
             campaign_line = f"{sim.get('target_campaign') or sim.get('source_campaign') or campaign_hint}"
             action_line = f"Increase {campaign_line} by {fmt_money(float(action.get('amount', 0.0) or 0.0))}"
             metric_text = f"{metric_name} {fmt_money(target_metric_value) if metric_name == 'CPA' else fmt_x(target_metric_value)}"
+
         confidence, confidence_reason = _decision_confidence(action, analysis, sim)
+        impact_value = abs(float(sim.get("adjusted_expected_gain", 0.0) or 0.0))
+        impact_available = action_type not in {"monitor", "test"} and impact_value > 0
+        if action_type in {"monitor", "test"} or not impact_available:
+            impact_range = "Impact not estimated"
+            impact_low_value = None
+            impact_high_value = None
+        else:
+            impact_range = _estimated_impact_range(impact_value)
+            impact_low_value = impact_value * 0.75
+            impact_high_value = impact_value * 1.25
+
+        decision_warnings = [warning for warning in audit_warnings if normalize_name(campaign_line) in normalize_name(warning) or normalize_name(campaign_line.split(" → ")[0]) in normalize_name(warning)]
+        signal_label = decision_signal_label(action_type, confidence, impact_available, decision_warnings)
+        rationale = decision_rationale(action_type, {"campaign_line": campaign_line, "metric_text": metric_text, "current_spend": current_spend, "impact_range": impact_range}, signal_label)
+        conservative = conservative_note(action_type, signal_label, {"campaign_line": campaign_line}, decision_warnings)
+
         decisions.append({
             "type": action.get("type") or action.get("action"),
             "source": sim.get("source_campaign") or action.get("from") or action.get("campaign") or action.get("campaign_or_segment") or campaign_hint or "Unassigned",
@@ -553,50 +641,128 @@ def build_marketer_content(source_label: str, analysis: Dict[str, Any], strategy
             "amount": float(action.get("amount", 0.0) or 0.0),
             "priority": None,
             "confidence": confidence,
+            "signal_label": signal_label,
             "confidence_reason": confidence_reason,
+            "confidence_grade": confidence,
             "confidence_reason_detailed": confidence_reason,
+            "rationale": rationale,
+            "conservative_note": conservative,
+            "audit_note": "; ".join(decision_warnings) if decision_warnings else "",
             "implementation": _implementation_guidance(confidence, metric_name),
-            "impact_range": _estimated_impact_range(abs(float(sim.get("adjusted_expected_gain", 0.0) or 0.0))),
-            "impact_low_value": abs(float(sim.get("adjusted_expected_gain", 0.0) or 0.0)) * 0.75,
-            "impact_high_value": abs(float(sim.get("adjusted_expected_gain", 0.0) or 0.0)) * 1.25,
+            "impact_range": impact_range,
+            "impact_low_value": impact_low_value,
+            "impact_high_value": impact_high_value,
         })
+
     decisions = sorted(decisions, key=lambda row: row["amount"], reverse=True)
     for idx, row in enumerate(decisions, 1):
         row["priority"] = _priority_from_rank(idx)
 
-    audit_result = audit_result or {}
-    audit_status = audit_result.get("status", "pass")
-    audit_warnings = list(audit_result.get("audit_warnings") or [])
-    audit_blocking_errors = list(audit_result.get("blocking_errors") or [])
-    audit_user_message = audit_result.get("user_message", "Recommendation audit passed.")
-    wasted_pct = perf["wasted_share"] * 100 if perf["wasted_share"] is not None else None
-    summary_line = audit_user_message if audit_status == "blocked" else (f"~{wasted_pct:.0f}% of budget is underperforming and can be reallocated." if wasted_pct is not None else "Underperforming spend is present but the share is unclear.")
-    top_names = ", ".join(label(c) for c in (perf.get("top_30") or [])[:2]) or "n/a"
-    bottom_names = ", ".join(label(c) for c in (perf.get("bottom_30") or [])[:2]) or "n/a"
-    impact_low_value = sum(float(d["impact_low_value"]) for d in decisions)
-    impact_high_value = sum(float(d["impact_high_value"]) for d in decisions)
-    impact_available = any(float(d.get("current_spend") or 0.0) > 0 and float(d.get("impact_high_value") or 0.0) > 0 for d in decisions)
+    top_reduce = next((d for d in decisions if d["type"] in {"reallocate", "pause", "reduce"}), None)
+    top_scale = next((d for d in decisions if d["type"] == "scale"), None)
+    top_monitor = next((d for d in decisions if d["type"] in {"monitor", "test"}), None)
+
+    top_priorities: list[Dict[str, Any]] = []
+    if top_reduce:
+        top_priorities.append(build_priority("Reduce or reallocate the clearest waste candidate", top_reduce))
+    if top_scale:
+        top_priorities.append(build_priority("Scale the strongest winner carefully", top_scale))
+    if top_monitor:
+        top_priorities.append(build_priority("Keep thin-signal campaigns in monitor/test mode", top_monitor))
+    if len(top_priorities) < 3:
+        top_priorities.append({
+            "title": "Stay conservative until signal quality improves",
+            "detail": audit_user_message if audit_warnings or audit_blocking_errors else "No additional caution flags were raised, but gradual rollout is still the safest default.",
+            "confidence": "Monitor",
+        })
+
+    summary_paragraphs = []
+    if campaign_count:
+        if waste_share is not None:
+            summary_paragraphs.append(f"Gnomeo reviewed {campaign_count} campaigns and found {fmt_money(waste_amount)} of estimated waste ({waste_share * 100:.1f}% of spend).")
+        else:
+            summary_paragraphs.append(f"Gnomeo reviewed {campaign_count} campaigns and found {fmt_money(waste_amount)} of estimated waste.")
+    if current_roas is not None:
+        summary_paragraphs.append(f"The account is currently running at {fmt_x(current_roas)} ROAS.")
+    elif current_cpa is not None:
+        summary_paragraphs.append(f"The account is currently running at {fmt_money(current_cpa)} CPA.")
+    if top_reduce and top_scale:
+        summary_paragraphs.append(f"The clearest move is to shift budget from {top_reduce['campaign_line']} toward {top_scale['campaign_line']}.")
+    if top_monitor:
+        summary_paragraphs.append("Some campaigns stay in monitor or test mode because the export is too thin to trust safely.")
+    if not summary_paragraphs:
+        summary_paragraphs.append("Gnomeo found a small number of clear moves, but keeps the analysis conservative when signal quality is mixed.")
+    executive_summary = " ".join(summary_paragraphs)
+
+    account_snapshot = [
+        {"label": "Spend analysed", "value": fmt_money(total_spend)},
+        {"label": "Revenue analysed", "value": fmt_money(total_revenue) if revenue_available else "n/a"},
+        {"label": "Current ROAS", "value": fmt_x(current_roas) if current_roas is not None else "n/a"},
+        {"label": "Current CPA", "value": fmt_money(current_cpa) if current_cpa is not None else "n/a"},
+        {"label": "Campaigns analysed", "value": str(campaign_count)},
+        {"label": "Wasted spend", "value": fmt_money(waste_amount)},
+    ]
+
+    signal_notes = []
+    for decision in decisions:
+        note = decision.get("conservative_note")
+        if note:
+            signal_notes.append(f"{decision['campaign_line']}: {note}")
+    if any(decision["signal_label"] in {"Monitor", "Needs test"} for decision in decisions):
+        signal_notes.append("Monitor/test items stay in that mode until the signal is stronger.")
+    if audit_warnings:
+        signal_notes.extend(audit_warnings[:3])
+    signal_notes = list(dict.fromkeys(signal_notes)) or ["No extra caution flags beyond the standard audit checks."]
+
+    caveats = [
+        f"Audit status: {audit_status}.",
+        audit_user_message,
+        f"Top performers: {top_names}",
+        f"Bottom performers: {bottom_names}",
+    ]
+    if audit_warnings:
+        caveats.extend(audit_warnings)
+    if audit_blocking_errors:
+        caveats.extend(audit_blocking_errors)
+    caveats.extend([
+        "Confidence reflects data volume, consistency, and missing context such as margin and attribution.",
+        "This is a snapshot based on the exported dataset.",
+        "Results may shift with seasonality, creative fatigue, and lagged conversions.",
+        "Recheck after the next spend cycle.",
+    ])
+    caveats = list(dict.fromkeys(caveats))
+
+    impact_values = [float(d["impact_low_value"]) for d in decisions if isinstance(d.get("impact_low_value"), (int, float)) and d.get("impact_low_value") is not None]
+    impact_high_values = [float(d["impact_high_value"]) for d in decisions if isinstance(d.get("impact_high_value"), (int, float)) and d.get("impact_high_value") is not None]
+    impact_low = sum(impact_values) if impact_values else None
+    impact_high = sum(impact_high_values) if impact_high_values else None
+
     return {
         "source_name": source_label,
         "currency_code": CURRENT_CURRENCY_CODE,
         "currency_symbol": CURRENT_CURRENCY_SYMBOL,
-        "wasted_share_pct": wasted_pct,
-        "wasted_spend": perf["wasted_spend"],
-        "current_roas": analysis["summary"].get("overall_roas"),
+        "executive_summary": executive_summary,
+        "account_snapshot": account_snapshot,
+        "top_priorities": top_priorities[:3],
         "decisions": decisions,
-        "impact_low": impact_low_value if impact_available or impact_low_value > 0 else None,
-        "impact_high": impact_high_value if impact_available or impact_high_value > 0 else None,
-        "impact_available": impact_available or impact_low_value > 0 or impact_high_value > 0,
-        "top_names": top_names,
-        "bottom_names": bottom_names,
-        "summary_line": summary_line,
+        "signal_notes": signal_notes,
+        "caveats": caveats,
+        "wasted_share_pct": waste_share * 100 if waste_share is not None else None,
+        "wasted_spend": waste_amount,
+        "current_roas": current_roas,
+        "impact_low": impact_low,
+        "impact_high": impact_high,
+        "impact_available": bool(impact_values or impact_high_values),
+        "summary_line": executive_summary,
         "audit_status": audit_status,
         "audit_user_message": audit_user_message,
         "audit_warnings": audit_warnings,
         "audit_blocking_errors": audit_blocking_errors,
-        "methodology": "This analysis compares campaign efficiency and reallocates budget toward areas with stronger historical performance, while adjusting for execution risk." if audit_status != "blocked" else "Decision engine output was blocked by the recommendation audit layer.",
-        "insights": list(analysis.get("insights", [])) + [
-            f"Wasted spend: {fmt_money(perf['wasted_spend'])}" + (f" ({wasted_pct:.1f}%)" if wasted_pct is not None else ""),
+        "methodology": "This analysis compares campaign efficiency and reallocates budget toward areas with stronger historical performance, while adjusting for execution risk.",
+        "insights": [
+            f"Top performers: {top_names}",
+            f"Bottom performers: {bottom_names}",
+            f"Wasted spend: {fmt_money(waste_amount)}" + (f" ({waste_share * 100:.1f}%)" if waste_share is not None else ""),
         ],
         "confidence_notes": [
             "Confidence reflects data volume, consistency, and missing context such as margin and attribution.",
@@ -614,145 +780,170 @@ def render_markdown_report(source_label: str, content: Dict[str, Any]) -> str:
         f"Source file: {source_label}",
         "",
         "## Executive Summary",
-        content["summary_line"],
-        f"All values shown in {content['currency_code']} ({content['currency_symbol']}).",
-        "",
-        "## Key Decisions",
     ]
+    lines.extend(content["executive_summary"].split(". "))
+    lines.append("")
+    lines.append("## Account Snapshot")
+    for item in content["account_snapshot"]:
+        lines.append(f"- {item['label']}: {item['value']}")
+    lines.append("")
+    lines.append("## Top Priorities")
+    for idx, item in enumerate(content["top_priorities"], 1):
+        lines.append(f"{idx}. {item['title']}")
+        lines.append(f"   - {item['detail']}")
+        lines.append(f"   - Signal: {item['confidence']}")
+    lines.append("")
+    lines.append("## Key Decisions")
     for idx, decision in enumerate(content["decisions"], 1):
         lines.extend([
-            f"{idx}. {decision['action_line']}",
-            f"   - Priority: {decision['priority']}",
-            f"   - Campaign(s): {decision['campaign_line']}",
-            f"   - Current spend: {fmt_money(decision['current_spend']) if isinstance(decision['current_spend'], (int, float)) else 'n/a'}",
-            f"   - Key metric: {decision['metric_text']}",
-            f"   - Estimated impact: {decision['impact_range']}",
-            f"   - Confidence: {decision['confidence']}",
-            f"   - Reason: {decision['confidence_reason']}",
-            f"   - Implementation: {decision['implementation']}",
+            f"### {idx}. {decision['action_line']}",
+            f"- Priority: {decision['priority']}",
+            f"- Signal label: {decision['signal_label']}",
+            f"- Confidence: {decision['confidence_grade']}",
+            f"- Campaign(s): {decision['campaign_line']}",
+            f"- Current spend: {fmt_money(decision['current_spend']) if isinstance(decision['current_spend'], (int, float)) else 'n/a'}",
+            f"- Key metric: {decision['metric_text']}",
+            f"- Estimated impact: {decision['impact_range']}",
+            f"- Rationale: {decision['rationale']}",
+            f"- Implementation: {decision['implementation']}",
         ])
-    lines.extend([
-        "",
-        "## Recommendation Audit",
-        f"Status: {content.get('audit_status', 'pass')}",
-        f"Message: {content.get('audit_user_message', 'Recommendation audit passed.')}",
-    ])
-    if content.get("audit_warnings"):
-        lines.append("Warnings:")
-        lines.extend(f"- {item}" for item in content["audit_warnings"])
-    if content.get("audit_blocking_errors"):
-        lines.append("Blocking errors:")
-        lines.extend(f"- {item}" for item in content["audit_blocking_errors"])
-    lines.extend([
-        "",
-        "## Expected Impact",
-        f"Estimated impact: {_impact_summary(content.get('impact_low'), content.get('impact_high'))}",
-        f"Current waste: {fmt_money(content['wasted_spend'])}",
-        "",
-        "## Key Insights",
-    ])
-    lines.extend(f"- {item}" for item in content["insights"])
-    lines.extend([
-        "",
-        "## How to read this report",
-        content["methodology"],
-        "",
-        "## Confidence & Limitations",
-    ])
-    lines.extend(f"- {item}" for item in content["confidence_notes"])
-    return "\n".join(lines) + "\n"
+        if decision.get("conservative_note"):
+            lines.append(f"- Why Gnomeo stayed conservative: {decision['conservative_note']}")
+        if decision.get("audit_note"):
+            lines.append(f"- Audit note: {decision['audit_note']}")
+        lines.append("")
+    lines.append("## Signal Notes / Conservative Calls")
+    lines.extend(f"- {item}" for item in content["signal_notes"])
+    lines.append("")
+    lines.append("## Data Quality & Caveats")
+    lines.extend(f"- {item}" for item in content["caveats"])
+    return "\n".join(lines).strip() + "\n"
 
 
 def render_html_report(source_label: str, content: Dict[str, Any]) -> str:
-    decision_cards = []
-    for idx, decision in enumerate(content["decisions"], 1):
-        current_spend_text = fmt_money(decision['current_spend']) if isinstance(decision['current_spend'], (int, float)) else "n/a"
-        decision_cards.append(f"""
-        <div class=\"card\">
-          <div class=\"decision-title\">{idx}. {esc(decision['action_line'])}</div>
-          <p><strong>Priority:</strong> {esc(decision['priority'])}</p>
-          <p><strong>Campaign(s):</strong> {esc(decision['campaign_line'])}</p>
-          <p><strong>Current spend:</strong> {esc(current_spend_text)}</p>
-          <p><strong>Key metric:</strong> {esc(decision['metric_text'])}</p>
-          <p><strong>Estimated impact:</strong> {esc(decision['impact_range'])}</p>
-          <p><strong>Confidence:</strong> {esc(decision['confidence'])}</p>
-          <p><strong>Reason:</strong> {esc(decision['confidence_reason'])}</p>
-          <p><strong>Implementation:</strong> {esc(decision['implementation'])}</p>
+    summary_cards = "".join(
+        f"""
+        <div class="stat-card">
+          <div class="label">{esc(item['label'])}</div>
+          <div class="value">{esc(item['value'])}</div>
         </div>
-        """)
+        """
+        for item in content["account_snapshot"]
+    )
+    priority_cards = "".join(
+        f"""
+        <article class="card priority-card">
+          <span class="chip chip-priority">{esc(item['confidence'])}</span>
+          <h3>{esc(item['title'])}</h3>
+          <p>{esc(item['detail'])}</p>
+        </article>
+        """
+        for item in content["top_priorities"]
+    )
+    decision_cards = "".join(
+        f"""
+        <article class="card decision-card">
+          <div class="chip-row">
+            <span class="chip chip-action">{esc(decision['type'].title())}</span>
+            <span class="chip chip-signal">{esc(decision['signal_label'])}</span>
+            <span class="chip chip-priority">{esc(decision['priority'])}</span>
+          </div>
+          <h3>{esc(decision['action_line'])}</h3>
+          <p class="decision-meta"><strong>Campaign(s):</strong> {esc(decision['campaign_line'])}</p>
+          <p class="decision-meta"><strong>Current spend:</strong> {esc(fmt_money(decision['current_spend']) if isinstance(decision['current_spend'], (int, float)) else 'n/a')}</p>
+          <p class="decision-meta"><strong>Key metric:</strong> {esc(decision['metric_text'])}</p>
+          <p class="decision-meta"><strong>Estimated impact:</strong> {esc(decision['impact_range'])}</p>
+          <p class="decision-meta"><strong>Rationale:</strong> {esc(decision['rationale'])}</p>
+          <p class="decision-meta"><strong>Implementation:</strong> {esc(decision['implementation'])}</p>
+          {f'<p class="decision-note"><strong>Why Gnomeo stayed conservative:</strong> {esc(decision["conservative_note"])}</p>' if decision.get('conservative_note') else ''}
+          {f'<p class="decision-note"><strong>Audit note:</strong> {esc(decision["audit_note"])}</p>' if decision.get('audit_note') else ''}
+        </article>
+        """
+        for decision in content["decisions"]
+    )
+    signal_notes = "".join(f"<li>{esc(item)}</li>" for item in content["signal_notes"])
+    caveats = "".join(f"<li>{esc(item)}</li>" for item in content["caveats"])
     logo_src = report_logo_data_uri()
     logo_html = f'<img class="report-logo" src="{logo_src}" alt="Gnomeo logo" />' if logo_src else ""
     return f"""<!doctype html>
-<html lang=\"en\">
+<html lang="en">
 <head>
-  <meta charset=\"utf-8\" />
-  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gnomeo Agent MVP Report</title>
   <style>
-    :root {{ --bg:#fff; --text:#101828; --muted:#667085; --line:#eaecf0; --accent:#2563eb; }}
+    :root {{ --bg:#fff; --text:#101828; --muted:#667085; --line:#eaecf0; --accent:#2563eb; --soft:#f8fafc; }}
     * {{ box-sizing:border-box; }}
-    body {{ margin:0; background:var(--bg); color:var(--text); font:15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; }}
-    .wrap {{ max-width:840px; margin:0 auto; padding:40px 24px 72px; }}
+    body {{ margin:0; background:var(--bg); color:var(--text); font:15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
+    .wrap {{ max-width:980px; margin:0 auto; padding:40px 24px 72px; }}
     .report-logo {{ display:block; width:180px; max-width:55vw; height:auto; object-fit:contain; margin:0 auto 18px; }}
-    h1 {{ font-size:30px; margin:0 0 10px; text-align:center; }}
-    h2 {{ font-size:22px; margin:32px 0 14px; }}
+    h1 {{ font-size:30px; margin:0 0 10px; text-align:center; letter-spacing:-0.04em; }}
+    h2 {{ font-size:22px; margin:32px 0 14px; letter-spacing:-0.03em; }}
+    h3 {{ margin:0 0 8px; font-size:17px; }}
     p {{ margin:0 0 10px; }}
     .muted {{ color:var(--muted); }}
-    .summary {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin:18px 0 0; }}
-    .stat, .card {{ border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 1px 2px rgba(16,24,40,.04); }}
-    .stat {{ padding:16px; }}
-    .stat .label {{ color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }}
-    .stat .value {{ font-size:22px; font-weight:700; margin-top:4px; }}
-    .cards {{ display:grid; gap:16px; }}
-    .card {{ padding:18px; }}
-    .decision-title {{ font-weight:700; font-size:16px; margin-bottom:10px; }}
-    .highlight {{ color:var(--accent); font-weight:800; }}
+    .section-block {{ margin-top:28px; }}
+    .summary-grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }}
+    .priority-grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }}
+    .decision-grid {{ display:grid; gap:14px; }}
+    .card {{ border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 1px 2px rgba(16,24,40,.04); padding:18px; }}
+    .stat-card {{ border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 1px 2px rgba(16,24,40,.04); padding:16px; }}
+    .label {{ color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; }}
+    .value {{ font-size:22px; font-weight:700; letter-spacing:-0.03em; }}
+    .chip-row {{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }}
+    .chip {{ display:inline-flex; align-items:center; padding:4px 9px; border-radius:999px; font-size:12px; font-weight:700; line-height:1; }}
+    .chip-action {{ background:#eff6ff; color:#1d4ed8; }}
+    .chip-signal {{ background:#f8fafc; color:#475467; border:1px solid var(--line); }}
+    .chip-priority {{ background:#fef3c7; color:#92400e; }}
+    .decision-card h3 {{ margin-top:0; }}
+    .decision-meta, .decision-note {{ margin:0 0 8px; color:var(--text); }}
+    .decision-note {{ padding-top:8px; border-top:1px solid var(--line); color:var(--muted); }}
     ul {{ margin:8px 0 0 20px; padding:0; }}
     li {{ margin-bottom:6px; }}
+    .summary-card {{ border:1px solid var(--line); border-radius:18px; background:var(--soft); padding:18px; }}
+    .summary-card p:last-child {{ margin-bottom:0; }}
   </style>
 </head>
 <body>
-  <div class=\"wrap\">
+  <div class="wrap">
     {logo_html}
     <h1>Gnomeo Agent MVP Report</h1>
-      <p class=\"muted\">Source file: {esc(source_label)}</p>
-    <div class=\"summary\">
-      <div class=\"stat\"><div class=\"label\">Budget underperforming</div><div class=\"value\">{esc(content['summary_line'])}</div></div>
-      <div class=\"stat\"><div class=\"label\">Wasted spend</div><div class=\"value\">{esc(fmt_money(content['wasted_spend']))}</div></div>
-      <div class=\"stat\"><div class=\"label\">Current ROAS</div><div class=\"value\">{esc(fmt_x(content['current_roas']))}</div></div>
-      <div class=\"stat\"><div class=\"label\">Estimated impact</div><div class=\"value highlight\">{esc(fmt_money(content['impact_low']))}–{esc(fmt_money(content['impact_high']))}</div></div>
-    </div>
+    <p class="muted" style="text-align:center;">Source file: {esc(source_label)}</p>
 
-    <h2>Executive Summary</h2>
-    <p>{esc(content['summary_line'])}</p>
-    <p class="muted">All values shown in {esc(content['currency_code'])} ({esc(content['currency_symbol'])}).</p>
+    <section class="section-block">
+      <h2>Executive Summary</h2>
+      <div class="summary-card">
+        {''.join(f'<p>{esc(part.strip())}</p>' for part in content['executive_summary'].split('. ') if part.strip())}
+      </div>
+    </section>
 
-    <h2>Key Decisions (prioritised)</h2>
-    <div class=\"cards\">{''.join(decision_cards)}</div>
+    <section class="section-block">
+      <h2>Account Snapshot</h2>
+      <div class="summary-grid">{summary_cards}</div>
+    </section>
 
-    <h2>Recommendation Audit</h2>
-    <p><strong>Status:</strong> {esc(content.get('audit_status', 'pass'))}</p>
-    <p><strong>Message:</strong> {esc(content.get('audit_user_message', 'Recommendation audit passed.'))}</p>
-    {f"<p><strong>Warnings:</strong></p><ul>{''.join(f'<li>{esc(item)}</li>' for item in content.get('audit_warnings', []))}</ul>" if content.get('audit_warnings') else ''}
-    {f"<p><strong>Blocking errors:</strong></p><ul>{''.join(f'<li>{esc(item)}</li>' for item in content.get('audit_blocking_errors', []))}</ul>" if content.get('audit_blocking_errors') else ''}
+    <section class="section-block">
+      <h2>Top Priorities</h2>
+      <div class="priority-grid">{priority_cards}</div>
+    </section>
 
-    <h2>Expected Impact</h2>
-    <p><strong>Estimated impact:</strong> {esc(_impact_summary(content.get('impact_low'), content.get('impact_high')))}</p>
-    <p><strong>Current waste:</strong> {esc(fmt_money(content['wasted_spend']))}</p>
+    <section class="section-block">
+      <h2>Key Decisions</h2>
+      <div class="decision-grid">{decision_cards}</div>
+    </section>
 
-    <h2>Key Insights</h2>
-    <ul>{''.join(f'<li>{esc(item)}</li>' for item in content['insights'])}</ul>
+    <section class="section-block">
+      <h2>Signal Notes / Conservative Calls</h2>
+      <div class="card"><ul>{signal_notes}</ul></div>
+    </section>
 
-    <h2>How to read this report</h2>
-    <p>{esc(content['methodology'])}</p>
-
-    <h2>Confidence &amp; Limitations</h2>
-    <ul>{''.join(f'<li>{esc(item)}</li>' for item in content['confidence_notes'])}</ul>
+    <section class="section-block">
+      <h2>Data Quality &amp; Caveats</h2>
+      <div class="card"><ul>{caveats}</ul></div>
+    </section>
   </div>
 </body>
 </html>"""
-
-
 def marketer(source_context: Dict[str, Any], analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Dict[str, Any], simulation: Dict[str, Any], evaluation: Dict[str, Any], synthesizer_text: str) -> Dict[str, Any]:
     source_value = str(source_context.get("source") or source_context.get("csv_path") or "dataset")
     source_label = Path(source_value).name if source_value else "dataset"
@@ -766,8 +957,6 @@ def marketer(source_context: Dict[str, Any], analysis: Dict[str, Any], strategy:
     content = build_marketer_content(source_label, analysis, audited_strategy, critique, audited_simulation, audit_result)
     return {"content": content, "audit_result": audit_result, "final_report_text": render_markdown_report(source_label, content), "final_report_html": render_html_report(source_label, content)}
 
-
-# Graph/UI helpers and main
 
 def render_graph_mode_appendix(state: Any) -> str:
     warnings = getattr(state, "warnings", []) or []
