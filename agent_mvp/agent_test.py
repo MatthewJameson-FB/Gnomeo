@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import html
 import sys
 from dataclasses import dataclass, field
@@ -83,6 +84,15 @@ def currency_label() -> str:
 
 def currency_symbol() -> str:
     return CURRENT_CURRENCY_SYMBOL
+
+
+def report_logo_data_uri() -> str:
+    logo_path = ROOT.parent / "gnomeo-logo.png"
+    try:
+        encoded = base64.b64encode(logo_path.read_bytes()).decode("ascii")
+    except OSError:
+        return ""
+    return f"data:image/png;base64,{encoded}"
 
 
 def fmt_money(value: Any) -> str:
@@ -599,6 +609,8 @@ def render_html_report(source_label: str, content: Dict[str, Any]) -> str:
           <p><strong>Implementation:</strong> {esc(decision['implementation'])}</p>
         </div>
         """)
+    logo_src = report_logo_data_uri()
+    logo_html = f'<img class="report-logo" src="{logo_src}" alt="Gnomeo logo" />' if logo_src else ""
     return f"""<!doctype html>
 <html lang=\"en\">
 <head>
@@ -610,7 +622,8 @@ def render_html_report(source_label: str, content: Dict[str, Any]) -> str:
     * {{ box-sizing:border-box; }}
     body {{ margin:0; background:var(--bg); color:var(--text); font:15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; }}
     .wrap {{ max-width:840px; margin:0 auto; padding:40px 24px 72px; }}
-    h1 {{ font-size:30px; margin:0 0 10px; }}
+    .report-logo {{ display:block; width:180px; max-width:55vw; height:auto; object-fit:contain; margin:0 auto 18px; }}
+    h1 {{ font-size:30px; margin:0 0 10px; text-align:center; }}
     h2 {{ font-size:22px; margin:32px 0 14px; }}
     p {{ margin:0 0 10px; }}
     .muted {{ color:var(--muted); }}
@@ -629,6 +642,7 @@ def render_html_report(source_label: str, content: Dict[str, Any]) -> str:
 </head>
 <body>
   <div class=\"wrap\">
+    {logo_html}
     <h1>Gnomeo Agent MVP Report</h1>
       <p class=\"muted\">Source file: {esc(source_label)}</p>
     <div class=\"summary\">

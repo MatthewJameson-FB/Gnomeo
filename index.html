@@ -99,14 +99,14 @@
       .hero {
         max-width: 920px;
         margin: 0 auto;
-        padding: 96px 0 24px;
+        padding: 88px 0 28px;
         text-align: center;
       }
 
       .hero-logo {
         display: block;
-        width: 140px;
-        max-width: 45vw;
+        width: clamp(180px, 22vw, 220px);
+        max-width: 60vw;
         height: auto;
         object-fit: contain;
         margin: 0 auto 20px;
@@ -135,7 +135,7 @@
 
       .subhead {
         max-width: 760px;
-        margin: 20px auto 0;
+        margin: 18px auto 0;
         font-size: clamp(1.05rem, 2vw, 1.2rem);
         color: var(--muted);
       }
@@ -144,7 +144,7 @@
         display: flex;
         justify-content: center;
         gap: 12px;
-        margin-top: 28px;
+        margin-top: 24px;
         flex-wrap: wrap;
       }
 
@@ -320,7 +320,7 @@
         gap: 8px;
         font-size: 14px;
         color: var(--muted);
-        text-align: left;
+        text-align: center;
       }
 
       input {
@@ -411,11 +411,11 @@
         .nav-cta { min-height: 38px; padding-inline: 14px; font-size: 13px; }
 
         .hero {
-          padding-top: 72px;
-          text-align: left;
+          padding-top: 68px;
+          text-align: center;
         }
-        .cta-row { justify-content: flex-start; }
-        .trust { text-align: left; }
+        .cta-row { justify-content: center; }
+        .trust { text-align: center; }
         .grid-4 { grid-template-columns: 1fr; }
       }
     </style>
