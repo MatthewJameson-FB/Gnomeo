@@ -6,13 +6,44 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parent.parent
-SCENARIO = ROOT / "free_reports" / "inbox" / "20260506_124007_scenario_1_dtc_skincare_meta_google_export.csv"
+sys.path.insert(0, str(ROOT / "agent_mvp"))
+from ingestion import ingest_campaign_export  # noqa: E402
+from agent_test import Campaign, analyst, label, run_profile_interpreter, strategist_initial  # noqa: E402
+
+SCENARIO = ROOT / "agent_mvp" / "fixtures" / "waste_heavy_ecommerce.csv"
+
+
+def _campaigns(path: Path) -> list[Campaign]:
+    ingestion = ingest_campaign_export(path)
+    if not ingestion.valid:
+        raise RuntimeError(f"Ingestion failed: {[issue.message for issue in ingestion.issues]}")
+    return [Campaign(**{k: v for k, v in record.items() if k != "campaign_group"}) for record in ingestion.records]
 
 
 def main() -> int:
     failures: list[str] = []
+
+    campaigns = _campaigns(SCENARIO)
+    profile = run_profile_interpreter(campaigns, SimpleNamespace(business_stage="balanced", objective="efficient growth", acceptable_cpa=None, acceptable_roas=None))
+    analysis = analyst(campaigns, profile)
+    strategy = strategist_initial(analysis, {})
+    actions = strategy.get("actions", [])
+
+    pause_or_reduce = [a for a in actions if a.get("type") in {"pause", "reduce", "reallocate"}]
+    scale_actions = [a for a in actions if a.get("type") == "scale"]
+    if not pause_or_reduce:
+        failures.append("strategist_initial did not produce a pause/reduce/reallocate candidate")
+    if not scale_actions:
+        failures.append("strategist_initial did not produce a scale candidate")
+    if pause_or_reduce and scale_actions:
+        loser = pause_or_reduce[0].get("campaign") or pause_or_reduce[0].get("campaign_or_segment") or pause_or_reduce[0].get("from")
+        winner = scale_actions[0].get("campaign") or scale_actions[0].get("campaign_or_segment") or scale_actions[0].get("to")
+        if loser == winner:
+            failures.append(f"strategist_initial picked the same campaign for winner and loser: {loser}")
+
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
         report_md = tmp / "report.md"
@@ -26,7 +57,6 @@ def main() -> int:
                 str(report_md),
                 "--output-html",
                 str(report_html),
-                "--audit",
             ],
             cwd=ROOT,
             text=True,
@@ -48,7 +78,11 @@ def main() -> int:
     if "Wasted spend:" not in report_text:
         failures.append("summary is missing wasted spend")
 
-    print("Report checks:")
+    print("Pre-audit strategist actions:")
+    for action in actions:
+        print(action)
+
+    print("\nReport checks:")
     print(report_text)
 
     if failures:

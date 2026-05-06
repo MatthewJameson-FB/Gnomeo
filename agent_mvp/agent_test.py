@@ -237,21 +237,51 @@ def analyst(campaigns: List[Campaign], profile: Dict[str, Any]) -> Dict[str, Any
 
 
 def strategist_initial(analysis: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
-    campaigns = analysis.get("campaigns", [])
-    if not campaigns:
+    campaigns = list(analysis.get("campaigns", []) or [])
+    if len(campaigns) < 3:
         return {"actions": [], "confidence": "Low"}
-    sorted_by_roas = sorted(campaigns, key=lambda c: (c.roas or -1.0, c.spend), reverse=True)
-    sorted_by_cpa = sorted(campaigns, key=lambda c: (c.cpa if c.cpa is not None else float("inf"), c.spend))
-    winner = sorted_by_roas[0]
-    loser = sorted_by_cpa[0]
-    total_spend = analysis["summary"]["total_spend"] or 0.0
+
+    summary = analysis.get("summary") or {}
+    total_spend = float(summary.get("total_spend") or 0.0)
+    mode = str(summary.get("analysis_mode") or ("roas" if any(c.roas is not None for c in campaigns) else "cpa")).lower()
+    spend_floor = max(1000.0, total_spend * 0.05)
+
+    def metric(c: Campaign) -> Optional[float]:
+        return c.roas if mode == "roas" else c.cpa
+
+    scored = [c for c in campaigns if metric(c) is not None]
+    if len(scored) < 3:
+        return {"actions": [], "confidence": "Low"}
+
+    if mode == "roas":
+        winner_pool = [c for c in scored if c.spend >= spend_floor]
+        winner_pool = winner_pool or scored
+        winner = max(winner_pool, key=lambda c: (c.roas or -1.0, c.spend))
+        avg_roas = float(summary.get("overall_roas") or 0.0)
+        loser_pool = [c for c in scored if label(c) != label(winner) and c.spend >= spend_floor and c.roas is not None and c.roas < avg_roas * 0.85]
+        if not loser_pool:
+            loser_pool = [c for c in scored if label(c) != label(winner) and c.roas is not None and c.roas < (winner.roas or avg_roas)]
+        loser = max(loser_pool or [c for c in scored if label(c) != label(winner)], key=lambda c: ((c.spend or 0.0) * max(0.0, (avg_roas - (c.roas or 0.0))), c.spend or 0.0), default=None)
+    else:
+        winner_pool = [c for c in scored if c.spend >= spend_floor and c.conversions >= 20]
+        winner_pool = winner_pool or scored
+        winner = min(winner_pool, key=lambda c: (c.cpa if c.cpa is not None else float("inf"), -c.spend))
+        avg_cpa = float(summary.get("overall_cpa") or 0.0)
+        loser_pool = [c for c in scored if label(c) != label(winner) and c.spend >= spend_floor and c.cpa is not None and c.cpa > avg_cpa * 1.15]
+        if not loser_pool:
+            loser_pool = [c for c in scored if label(c) != label(winner) and c.cpa is not None and c.cpa > (winner.cpa or avg_cpa)]
+        loser = max(loser_pool or [c for c in scored if label(c) != label(winner)], key=lambda c: ((c.spend or 0.0) * max(0.0, ((c.cpa or avg_cpa) - avg_cpa)), c.spend or 0.0), default=None)
+
+    if loser is None or label(loser) == label(winner):
+        return {"actions": [{"type": "monitor", "campaign": label(winner), "campaign_or_segment": label(winner), "amount": 0.0, "reason": "Monitor before moving budget.", "confidence": "Low"}], "confidence": "Low"}
+
     actions = []
-    if loser is not winner:
-        actions.append({"type": "reallocate", "from": label(loser), "to": label(winner), "amount": round(min(loser.spend * 0.2, total_spend * 0.1), 2), "reason": "Shift budget from the weaker campaign to the stronger one.", "confidence": "Medium"})
-    actions.append({"type": "pause", "campaign": label(loser), "amount": round(loser.spend * 0.1, 2), "reason": "This campaign is weaker than the account average.", "confidence": "Medium"})
-    actions.append({"type": "scale", "campaign": label(winner), "amount": round(winner.spend * 0.1, 2), "reason": "This campaign is stronger than the account average.", "confidence": "Medium"})
+    if loser.spend > 0 and total_spend > 0:
+        actions.append({"type": "reallocate", "from": label(loser), "to": label(winner), "campaign_or_segment": f"{label(loser)} → {label(winner)}", "amount": round(min(loser.spend * 0.2, total_spend * 0.1), 2), "reason": "Shift budget from the weaker campaign to the stronger one.", "confidence": "Medium"})
+    actions.append({"type": "pause", "campaign": label(loser), "campaign_or_segment": label(loser), "amount": round(loser.spend * 0.1, 2), "reason": "This campaign is weaker than the account average.", "confidence": "Medium"})
+    actions.append({"type": "scale", "campaign": label(winner), "campaign_or_segment": label(winner), "amount": round(winner.spend * 0.1, 2), "reason": "This campaign is stronger than the account average.", "confidence": "Medium"})
     while len(actions) < 3:
-        actions.append({"type": "monitor", "campaign": label(winner), "amount": 0.0, "reason": "Monitor before moving budget.", "confidence": "Low"})
+        actions.append({"type": "monitor", "campaign": label(winner), "campaign_or_segment": label(winner), "amount": 0.0, "reason": "Monitor before moving budget.", "confidence": "Low"})
     return {"actions": actions[:3], "confidence": "Medium"}
 
 
