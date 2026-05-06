@@ -296,7 +296,36 @@
       .preview-grid {
         display: grid;
         gap: 12px;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+
+      .preview-intro {
+        display: grid;
+        gap: 14px;
+        padding: 16px 18px;
+        margin-bottom: 18px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: #fff;
+      }
+
+      .preview-intro h3 {
+        margin: 0 0 6px;
+        font-size: 1.02rem;
+        letter-spacing: -0.03em;
+      }
+
+      .preview-intro p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .preview-trust {
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+        color: var(--text) !important;
+        font-size: 13px !important;
       }
 
       .preview-card {
@@ -571,52 +600,52 @@
         </section>
 
         <section>
-          <div class="grid-2">
-            <div class="card report-preview">
-              <div class="section-head" style="text-align:left; margin-bottom:12px;">
-                <h2 style="font-size:1.45rem;">Example decisions from a sample ecommerce account</h2>
-                <p style="font-size:13px; margin-top:4px;">Based on sample Google Ads and Meta Ads exports</p>
+          <div class="card report-preview">
+            <div class="preview-intro">
+              <div>
+                <h3>Built for messy ad exports</h3>
+                <p>Upload campaign-level Google Ads or Meta Ads data. Gnomeo flags what to cut, scale, or hold — and tells you when the data is too thin to trust.</p>
               </div>
-              <div class="report-meta">
-                <span class="report-pill">UK skincare ecommerce brand</span>
-                <span class="report-pill">Monthly ad spend: £57,300.00</span>
-                <span class="report-pill">Current ROAS: ~1.19x</span>
-                <span class="report-pill">Estimated wasted spend: £14,325.00</span>
-              </div>
-              <div class="preview-grid">
-                <article class="preview-card">
-                  <span class="preview-tag cut">Reduce waste</span>
-                  <strong>Reduce £2,400.00 from Meta Prospecting Broad UK → move budget into Google Brand Search</strong>
-                  <p>Estimated impact: £3,735.00–£6,225.00</p>
-                </article>
-                <article class="preview-card">
-                  <span class="preview-tag scale">Scale winner</span>
-                  <strong>Increase Brand Search | Exact by £1,200.00</strong>
-                  <p>Current spend: £12,000.00 · Estimated impact: £696.99–£1,161.64</p>
-                </article>
-                <article class="preview-card">
-                  <span class="preview-tag scale">Scale winner</span>
-                  <strong>Increase Meta Retargeting | Warm Visitors by £600.00</strong>
-                  <p>Current spend: £6,000.00 · Estimated impact: £397.21–£662.02</p>
-                </article>
-                <article class="preview-card">
-                  <span class="preview-tag hold">Monitor</span>
-                  <strong>Monitor New Collection Launch before increasing budget when signal is thin</strong>
-                  <p>Sample data only — conservative calls stay cautious when the gap is small.</p>
-                </article>
-                <article class="preview-card">
-                  <span class="preview-tag test">Controlled test</span>
-                  <strong>Run a controlled test on Non-Brand Search | Core when CPA/ROAS is unclear</strong>
-                  <p>Mixed signals need a test, not a bigger bet.</p>
-                </article>
-              </div>
-              <p class="preview-note">Sample data only. Real exports can be more conservative when signal quality is thin.</p>
+              <p class="preview-trust">Independent review — no platform incentives, media buying, or automated campaign changes.</p>
             </div>
-            <div class="card offer">
-              <strong>Built for messy ad exports</strong>
-              <p>Upload campaign-level Google Ads or Meta Ads data. Gnomeo flags what to cut, scale, or hold — and tells you when the data is too thin to trust.</p>
-              <p style="margin-top:14px; color: var(--text);">Gnomeo reviews Google Ads and Meta Ads exports independently — without platform incentives, media buying, or automated campaign changes.</p>
+            <div class="section-head" style="text-align:left; margin-bottom:12px;">
+              <h2 style="font-size:1.45rem;">Example decisions from a sample ecommerce account</h2>
+              <p style="font-size:13px; margin-top:4px;">Based on sample Google Ads and Meta Ads exports</p>
             </div>
+            <div class="report-meta">
+              <span class="report-pill">UK skincare ecommerce brand</span>
+              <span class="report-pill">Monthly ad spend: £57,300.00</span>
+              <span class="report-pill">Current ROAS: ~1.19x</span>
+              <span class="report-pill">Estimated wasted spend: £14,325.00</span>
+            </div>
+            <div class="preview-grid">
+              <article class="preview-card">
+                <span class="preview-tag cut">Reduce waste</span>
+                <strong>Reduce £2,400.00 from Meta Prospecting Broad UK → move budget into Google Brand Search</strong>
+                <p>Estimated impact: £3,735.00–£6,225.00</p>
+              </article>
+              <article class="preview-card">
+                <span class="preview-tag scale">Scale winner</span>
+                <strong>Increase Brand Search | Exact by £1,200.00</strong>
+                <p>Current spend: £12,000.00 · Estimated impact: £696.99–£1,161.64</p>
+              </article>
+              <article class="preview-card">
+                <span class="preview-tag scale">Scale winner</span>
+                <strong>Increase Meta Retargeting | Warm Visitors by £600.00</strong>
+                <p>Current spend: £6,000.00 · Estimated impact: £397.21–£662.02</p>
+              </article>
+              <article class="preview-card">
+                <span class="preview-tag hold">Monitor</span>
+                <strong>Monitor New Collection Launch before increasing budget when signal is thin</strong>
+                <p>Sample data only — conservative calls stay cautious when the gap is small.</p>
+              </article>
+              <article class="preview-card">
+                <span class="preview-tag test">Controlled test</span>
+                <strong>Run a controlled test on Non-Brand Search | Core when CPA/ROAS is unclear</strong>
+                <p>Mixed signals need a test, not a bigger bet.</p>
+              </article>
+            </div>
+            <p class="preview-note">Sample data only. Real exports can be more conservative when signal quality is thin.</p>
           </div>
         </section>
 
