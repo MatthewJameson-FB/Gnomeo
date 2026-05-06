@@ -542,27 +542,18 @@ def build_marketer_content(source_label: str, analysis: Dict[str, Any], strategy
         return "Thin signal"
 
     def decision_rationale(action_type: str, decision: Dict[str, Any], signal_label: str) -> str:
-        metric_text = decision.get("metric_text") or "the available signal"
-        current_spend_text = fmt_money(decision.get("current_spend")) if isinstance(decision.get("current_spend"), (int, float)) else None
-        impact_range = decision.get("impact_range") or "Impact not estimated"
         if action_type in {"reallocate", "pause", "reduce"}:
-            base = "Spend is meaningful and performance is weaker than the account average, so Gnomeo recommends reallocating budget toward a stronger signal rather than increasing total spend."
-        elif action_type == "scale":
-            base = "This campaign shows stronger efficiency than the account baseline. Gnomeo recommends a controlled increase rather than an aggressive scale."
-        elif action_type == "test":
-            base = "The available signal is not strong enough for a confident budget move. Gnomeo recommends running a controlled test before changing spend."
-        else:
-            base = "The available signal is not strong enough for a confident budget move. Gnomeo recommends watching performance before changing spend."
-
-        extra_bits = [f"Metric context: {metric_text}."]
-        if current_spend_text:
-            extra_bits.append(f"Current spend: {current_spend_text}.")
-        if impact_range != "Impact not estimated":
-            extra_bits.append(f"Estimated impact: {impact_range}.")
-        return f"{base} {' '.join(extra_bits)}"
+            return "Spend is meaningful and performance is weaker than the account average, so Gnomeo recommends moving budget toward a stronger signal rather than increasing total spend."
+        if action_type == "scale":
+            return "This campaign shows stronger efficiency than the account baseline, so Gnomeo recommends a controlled increase rather than an aggressive scale."
+        if action_type == "test":
+            return "The signal is good enough to explore, but not strong enough for a larger budget move, so Gnomeo recommends a controlled test."
+        return "The signal is still too uneven for a confident budget change, so Gnomeo recommends watching performance before changing spend."
 
     def conservative_note(action_type: str, signal_label: str, decision: Dict[str, Any], decision_warnings: list[str]) -> str:
         warning_text = " ".join(decision_warnings).lower()
+        if action_type in {"monitor", "test"}:
+            return ""
         if signal_label == "Thin signal":
             return "Signal quality was not strong enough for a bolder move."
         if any(token in warning_text for token in ("downgrad", "outlier handling", "capped")):
@@ -658,9 +649,16 @@ def build_marketer_content(source_label: str, analysis: Dict[str, Any], strategy
     for idx, row in enumerate(decisions, 1):
         row["priority"] = _priority_from_rank(idx)
 
-    top_reduce = next((d for d in decisions if d["type"] in {"reallocate", "pause", "reduce"}), None)
-    top_scale = next((d for d in decisions if d["type"] == "scale"), None)
-    top_monitor = next((d for d in decisions if d["type"] in {"monitor", "test"}), None)
+    report_decisions = []
+    for decision in decisions:
+        source_key = normalize_name(str(decision.get("source") or decision.get("campaign_line") or ""))
+        if decision["type"] == "pause" and any(existing["type"] == "reallocate" and normalize_name(str(existing.get("source") or existing.get("campaign_line") or "")) == source_key for existing in report_decisions):
+            continue
+        report_decisions.append(decision)
+
+    top_reduce = next((d for d in report_decisions if d["type"] in {"reallocate", "pause", "reduce"}), None)
+    top_scale = next((d for d in report_decisions if d["type"] == "scale"), None)
+    top_monitor = next((d for d in report_decisions if d["type"] in {"monitor", "test"}), None)
 
     top_priorities: list[Dict[str, Any]] = []
     if top_reduce:
@@ -687,7 +685,7 @@ def build_marketer_content(source_label: str, analysis: Dict[str, Any], strategy
     elif current_cpa is not None:
         summary_paragraphs.append(f"The account is currently running at {fmt_money(current_cpa)} CPA.")
     if top_reduce and top_scale:
-        summary_paragraphs.append(f"The clearest move is to shift budget from {top_reduce['campaign_line']} toward {top_scale['campaign_line']}.")
+        summary_paragraphs.append(f"The clearest move is to shift budget from {top_reduce['campaign_line'].split(' → ')[0]} into {top_scale['campaign_line'].split(' → ')[-1]}.")
     if top_monitor:
         summary_paragraphs.append("Some campaigns stay in monitor or test mode because the export is too thin to trust safely.")
     if not summary_paragraphs:
@@ -704,11 +702,11 @@ def build_marketer_content(source_label: str, analysis: Dict[str, Any], strategy
     ]
 
     signal_notes = []
-    for decision in decisions:
+    for decision in report_decisions:
         note = decision.get("conservative_note")
         if note:
             signal_notes.append(f"{decision['campaign_line']}: {note}")
-    if any(decision["signal_label"] in {"Monitor", "Needs test"} for decision in decisions):
+    if any(decision["signal_label"] in {"Monitor", "Needs test"} for decision in report_decisions):
         signal_notes.append("Monitor/test items stay in that mode until the signal is stronger.")
     if audit_warnings:
         signal_notes.extend(audit_warnings[:3])
@@ -744,7 +742,7 @@ def build_marketer_content(source_label: str, analysis: Dict[str, Any], strategy
         "executive_summary": executive_summary,
         "account_snapshot": account_snapshot,
         "top_priorities": top_priorities[:3],
-        "decisions": decisions,
+        "decisions": report_decisions,
         "signal_notes": signal_notes,
         "caveats": caveats,
         "wasted_share_pct": waste_share * 100 if waste_share is not None else None,
