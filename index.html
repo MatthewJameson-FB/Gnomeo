@@ -96,6 +96,23 @@
         box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
       }
 
+      .mini-links {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin: -2px 4px 4px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .mini-links a {
+        text-decoration: none;
+        padding: 4px 8px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+      }
+      .mini-links a:hover { color: var(--accent-soft); border-color: var(--line); background: rgba(255,255,255,0.65); }
+
       .hero {
         max-width: 920px;
         margin: 0 auto;
@@ -370,6 +387,45 @@
         font-size: 13px;
       }
 
+      .discover-strip {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+        flex-wrap: wrap;
+        margin-top: 6px;
+        background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
+      }
+      .discover-strip strong {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 1.05rem;
+      }
+      .discover-strip p {
+        margin: 0;
+        color: var(--muted);
+      }
+      .discover-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        max-width: 540px;
+      }
+      .discover-links a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 34px;
+        padding: 0 12px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--text);
+        text-decoration: none;
+        font-size: 13px;
+        box-shadow: none;
+      }
+      .discover-links a:hover { border-color: #cfd6e3; color: var(--accent-soft); }
+
       .decision-card {
         border-color: rgba(37, 99, 235, 0.14);
         box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
@@ -523,6 +579,34 @@
         font-size: 14px;
       }
 
+      .footer-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+        padding: 18px 0 6px;
+        border-top: 1px solid var(--line);
+        margin-top: 8px;
+      }
+      .footer-group strong {
+        display: block;
+        margin-bottom: 10px;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text);
+      }
+      .footer-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .footer-links a {
+        text-decoration: none;
+        color: var(--muted);
+        padding: 4px 0;
+      }
+      .footer-links a:hover { color: var(--accent-soft); }
+
       .footer-brand {
         display: inline-flex;
         align-items: center;
@@ -565,6 +649,10 @@
         .trust { text-align: center; }
         .grid-4 { grid-template-columns: 1fr; }
         .preview-grid { grid-template-columns: 1fr; }
+        .discover-strip { display: grid; }
+        .discover-links { max-width: none; }
+        .footer-grid { grid-template-columns: 1fr; }
+        .mini-links { justify-content: center; }
       }
     </style>
   </head>
@@ -577,6 +665,11 @@
         </a>
         <a class="nav-cta" href="#contact">Upload your data</a>
       </header>
+      <div class="mini-links" aria-label="Secondary navigation">
+        <a href="/guides/">Guides</a>
+        <span aria-hidden="true">•</span>
+        <a href="/examples/">Examples</a>
+      </div>
 
       <main id="top">
         <section class="hero">
@@ -596,6 +689,21 @@
           </div>
           <div class="card method-box">
             <p>We analyse performance variance, spend volume, and efficiency signals — then apply a safety check to avoid risky or conflicting recommendations.</p>
+          </div>
+        </section>
+
+        <section class="card discover-strip" aria-labelledby="learn-more-title">
+          <div>
+            <div class="section-head" style="text-align:left; margin-bottom:10px;">
+              <h2 id="learn-more-title" style="font-size:1.45rem;">Learn how Gnomeo reviews exported ad data</h2>
+              <p>Built for messy Google Ads and Meta Ads exports — with conservative, signal-aware recommendations.</p>
+            </div>
+          </div>
+          <div class="discover-links">
+            <a href="/guides/how-to-analyze-meta-ads-exports.html">How to analyze Meta Ads exports</a>
+            <a href="/guides/how-to-identify-wasted-ad-spend.html">How to identify wasted ad spend</a>
+            <a href="/guides/what-is-thin-signal-in-ad-analysis.html">What is thin signal?</a>
+            <a href="/examples/ecommerce-skincare-account-audit.html">Sample ecommerce audit</a>
           </div>
         </section>
 
@@ -702,6 +810,25 @@
       <footer>
         <div class="footer-brand">
           <strong>Gnomeo.nl</strong>
+        </div>
+        <div class="footer-grid">
+          <div class="footer-group">
+            <strong>Guides</strong>
+            <div class="footer-links">
+              <a href="/guides/how-to-analyze-meta-ads-exports.html">Meta Ads exports</a>
+              <a href="/guides/how-to-analyze-google-ads-performance.html">Google Ads performance</a>
+              <a href="/guides/how-to-identify-wasted-ad-spend.html">Wasted ad spend</a>
+              <a href="/guides/what-is-thin-signal-in-ad-analysis.html">Thin signal</a>
+            </div>
+          </div>
+          <div class="footer-group">
+            <strong>Examples</strong>
+            <div class="footer-links">
+              <a href="/examples/ecommerce-skincare-account-audit.html">Ecommerce skincare audit</a>
+              <a href="/examples/high-spend-ecommerce-budget-review.html">High-spend ecommerce review</a>
+              <a href="/">Home</a>
+            </div>
+          </div>
         </div>
         <p class="footer-note">© 2026 Gnomeo.nl</p>
       </footer>
