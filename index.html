@@ -8,6 +8,8 @@
       name="description"
       content="Stop wasting ad budget. Gnomeo.nl turns Google Ads and Meta Ads data into clear budget decisions."
     />
+    <link rel="icon" type="image/png" href="/gnomeo-logo.png?v=3" />
+    <link rel="apple-touch-icon" href="/gnomeo-logo.png?v=3" />
 
     <style>
       :root {
@@ -99,17 +101,17 @@
       .hero {
         max-width: 920px;
         margin: 0 auto;
-        padding: 88px 0 28px;
+        padding: 84px 0 30px;
         text-align: center;
       }
 
       .hero-logo {
         display: block;
-        width: clamp(180px, 22vw, 220px);
-        max-width: 60vw;
+        width: clamp(240px, 30vw, 330px);
+        max-width: 70vw;
         height: auto;
         object-fit: contain;
-        margin: 0 auto 20px;
+        margin: 0 auto 28px;
       }
 
       .eyebrow {
@@ -135,7 +137,7 @@
 
       .subhead {
         max-width: 760px;
-        margin: 18px auto 0;
+        margin: 16px auto 0;
         font-size: clamp(1.05rem, 2vw, 1.2rem);
         color: var(--muted);
       }
@@ -144,7 +146,7 @@
         display: flex;
         justify-content: center;
         gap: 12px;
-        margin-top: 24px;
+        margin-top: 22px;
         flex-wrap: wrap;
       }
 
@@ -320,7 +322,7 @@
         gap: 8px;
         font-size: 14px;
         color: var(--muted);
-        text-align: center;
+        text-align: left;
       }
 
       input {
@@ -411,8 +413,13 @@
         .nav-cta { min-height: 38px; padding-inline: 14px; font-size: 13px; }
 
         .hero {
-          padding-top: 68px;
+          padding-top: 64px;
           text-align: center;
+        }
+        .hero-logo {
+          width: clamp(210px, 56vw, 280px);
+          max-width: 72vw;
+          margin-bottom: 24px;
         }
         .cta-row { justify-content: center; }
         .trust { text-align: center; }
