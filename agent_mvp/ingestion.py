@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 FIELD_ALIASES = {
-    "campaign_name": ["campaign", "campaign_name", "campaign name", "campaignname", "campaign group"],
+    "campaign_name": ["campaign name", "campaign_name", "campaign", "campaignname", "campaign group"],
     "platform": ["platform", "channel", "network"],
     "campaign_type": ["campaign_type", "campaign type", "objective"],
     "country": ["country", "geo", "market", "location", "region"],
@@ -20,25 +20,33 @@ FIELD_ALIASES = {
     "search_term": ["search term", "search_term", "search terms"],
     "device": ["device"],
     "spend": [
-        "spend",
-        "cost",
-        "amount_spent",
         "amount spent",
-        "amount_spent_gbp",
-        "cost_gbp",
+        "amount spent gbp",
+        "amount spent usd",
+        "amount_spent",
         "cost micros",
-        "cost_micros",
-        "monthly_spend_gbp",
-        "ad_spend",
+        "cost micros gbp",
+        "cost micros usd",
+        "cost gbp",
+        "cost usd",
+        "cost",
+        "spend",
+        "monthly spend gbp",
+        "ad spend",
     ],
-    "clicks": ["clicks", "link_clicks", "outbound_clicks"],
+    "clicks": ["link clicks", "outbound clicks", "clicks", "landing page views"],
     "impressions": ["impressions", "impr"],
-    "conversions": ["conversions", "conv", "all_conversions", "results", "purchases", "website_purchases", "purchase", "leads"],
+    "conversions": ["purchases", "website purchases", "leads", "actions", "conversions", "conversion", "results", "all conversions", "purchase conversion count", "purchase"],
     "revenue": [
-        "revenue",
-        "revenue_gbp",
-        "conversion_value",
+        "purchase conversion value",
+        "purchases conversion value",
+        "website purchases conversion value",
+        "total conversion value",
         "conversion value",
+        "conv value",
+        "revenue",
+        "revenue gbp",
+        "conversion_value",
         "conv_value",
         "purchase_value",
         "purchases_conversion_value",
@@ -48,8 +56,8 @@ FIELD_ALIASES = {
     "currency": ["currency", "currency_code", "currency_symbol"],
 }
 
-GOOGLE_SIGNAL_FIELDS = {"cost", "cost_micros", "conversions", "conversion_value", "ad_group", "keyword", "search_term", "device"}
-META_SIGNAL_FIELDS = {"amount_spent", "results", "purchases", "purchase_value", "ad_set_name", "ad_name"}
+GOOGLE_SIGNAL_FIELDS = {"cost", "cost_micros", "conversions", "conversion_value", "conv_value", "ad_group", "keyword", "search_term", "device", "impr"}
+META_SIGNAL_FIELDS = {"amount_spent", "results", "purchases", "purchase_value", "purchase_conversion_value", "conversion_value", "ad_set_name", "ad_name", "link_clicks", "outbound_clicks"}
 GENERIC_SIGNAL_FIELDS = {"platform", "campaign_type", "campaign_name", "country", "spend", "conversions", "revenue"}
 
 STRATEGY_ORDER = [
@@ -186,21 +194,37 @@ class _SegmentAggregate:
         }
 
 
+CURRENCY_SUFFIXES = {"gbp", "usd", "eur", "aud", "cad", "sgd", "nzd", "jpy", "sek", "nok", "dkk", "chf", "zar"}
+HEADER_PARENS_RE = re.compile(r"\([^)]*\)")
+HEADER_SEPARATORS_RE = re.compile(r"[^a-z0-9]+")
+
+
+def _normalize_header(value: str) -> str:
+    text = str(value or "").strip().lower()
+    if not text:
+        return ""
+    text = HEADER_PARENS_RE.sub(" ", text)
+    text = text.replace("&", " and ")
+    text = HEADER_SEPARATORS_RE.sub(" ", text)
+    tokens = [token for token in text.split() if token not in CURRENCY_SUFFIXES]
+    return " ".join(tokens).strip()
+
+
 def _clean_key(value: str) -> str:
-    return str(value or "").strip().lower().replace(" ", "_")
+    return _normalize_header(value).replace(" ", "_")
 
 
 def _find_column(fieldnames: Sequence[str], aliases: Sequence[str]) -> Optional[str]:
-    normalized = {_clean_key(name): name for name in fieldnames}
+    normalized = {_clean_key(name): name for name in fieldnames if _clean_key(name)}
     for alias in aliases:
         key = _clean_key(alias)
-        if key in normalized:
+        if key and key in normalized:
             return normalized[key]
     return None
 
 
 def _find_all_columns(fieldnames: Sequence[str], aliases: Sequence[str]) -> List[str]:
-    normalized = {_clean_key(name): name for name in fieldnames}
+    normalized = {_clean_key(name): name for name in fieldnames if _clean_key(name)}
     found = []
     for alias in aliases:
         key = _clean_key(alias)
