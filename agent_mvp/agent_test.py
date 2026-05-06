@@ -129,7 +129,15 @@ def _implementation_guidance(confidence: str, metric_name: str) -> str:
 
 
 def _estimated_impact_range(amount: float) -> str:
+    if amount <= 0:
+        return "Impact not estimated"
     return f"{fmt_money(max(0.0, amount * 0.75))}–{fmt_money(amount * 1.25)}"
+
+
+def _impact_summary(low: Optional[float], high: Optional[float]) -> str:
+    if low is None or high is None:
+        return "Impact not estimated"
+    return f"{fmt_money(low)}–{fmt_money(high)}"
 
 
 def _safe_float(value: Any) -> Optional[float]:
@@ -137,6 +145,25 @@ def _safe_float(value: Any) -> Optional[float]:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _text(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _action_type(action: Dict[str, Any]) -> str:
+    return normalize_name(_text(action.get("type") or action.get("action")))
+
+
+def _action_campaign(action: Dict[str, Any]) -> str:
+    return _text(
+        action.get("campaign")
+        or action.get("campaign_or_segment")
+        or action.get("source_campaign")
+        or action.get("target_campaign")
+        or action.get("from")
+        or action.get("to")
+    )
 
 
 # Profile / analysis / strategy
@@ -367,16 +394,22 @@ def simulate_decision(action: Dict[str, Any], analysis: Dict[str, Any], campaign
     lookup = {normalize_name(label(c)): c for c in campaigns}
     summary = analysis["summary"]
     spend = float(action.get("amount", 0.0) or 0.0)
+    action_type = _action_type(action)
+    source_name = _text(action.get("from") or action.get("source_campaign") or action.get("campaign") or action.get("campaign_or_segment") or "")
+    target_name = _text(action.get("to") or action.get("target_campaign") or action.get("campaign") or action.get("campaign_or_segment") or "")
     source = None
     target = None
-    if action.get("type") == "reallocate":
-        source = lookup.get(normalize_name(action.get("from", "")))
-        target = lookup.get(normalize_name(action.get("to", "")))
-    elif action.get("type") in {"pause", "reduce"}:
-        source = lookup.get(normalize_name(action.get("campaign", "")))
+    if action_type == "reallocate":
+        source = lookup.get(normalize_name(source_name))
+        target = lookup.get(normalize_name(target_name))
+    elif action_type in {"pause", "reduce"}:
+        source = lookup.get(normalize_name(source_name))
         target = max((c for c in campaigns if c is not source), key=lambda c: c.roas or -1.0, default=None)
-    elif action.get("type") == "scale":
-        target = lookup.get(normalize_name(action.get("campaign", "")))
+    elif action_type == "scale":
+        target = lookup.get(normalize_name(target_name))
+    elif action_type in {"monitor", "test"}:
+        target = lookup.get(normalize_name(target_name or source_name))
+        source = lookup.get(normalize_name(source_name)) or target
     source_roas = source.roas if source and source.roas is not None else summary.get("overall_roas") or 0.0
     target_roas = target.roas if target and target.roas is not None else summary.get("overall_roas") or source_roas
     delta = target_roas - source_roas
@@ -384,8 +417,8 @@ def simulate_decision(action: Dict[str, Any], analysis: Dict[str, Any], campaign
     projected_revenue = max(0.0, (summary["total_revenue"] or 0.0) + gain)
     return {
         **action,
-        "source_campaign": label(source) if source else action.get("from") or action.get("campaign") or "account baseline",
-        "target_campaign": label(target) if target else action.get("to") or action.get("campaign") or "account baseline",
+        "source_campaign": label(source) if source else source_name or target_name,
+        "target_campaign": label(target) if target else target_name or source_name,
         "source_spend": source.spend if source else 0.0,
         "target_spend": target.spend if target else 0.0,
         "source_cpa": source.cpa if source else None,
@@ -444,36 +477,42 @@ def build_marketer_content(source_label: str, analysis: Dict[str, Any], strategy
     perf = analysis["performance"]
     decisions = []
     for action, sim in zip(strategy.get("actions", [])[:3], simulation.get("decisions", [])[:3]):
+        action_type = _action_type(action)
+        campaign_hint = _action_campaign(action)
         metric_name = "CPA" if sim.get("source_cpa") is not None or sim.get("target_cpa") is not None else "ROAS"
         metric_value = sim.get("source_cpa") if metric_name == "CPA" else sim.get("source_roas")
         target_metric_value = sim.get("target_cpa") if metric_name == "CPA" else sim.get("target_roas")
-        current_spend = sim.get("source_spend") if action.get("type") in {"reallocate", "pause", "reduce"} else sim.get("target_spend")
-        if action.get("type") == "reallocate":
-            campaign_line = f"{sim.get('source_campaign')} → {sim.get('target_campaign')}"
-            action_line = f"Reduce {fmt_money(float(action.get('amount', 0.0) or 0.0))} from {sim.get('source_campaign')} → increase {sim.get('target_campaign')} by {fmt_money(float(action.get('amount', 0.0) or 0.0))}"
+        current_spend = sim.get("source_spend") if action_type in {"reallocate", "pause", "reduce"} else sim.get("target_spend")
+        if current_spend in {0, 0.0, None} and action_type in {"reallocate", "pause", "reduce", "scale"}:
+            current_spend = None
+        if action_type == "reallocate":
+            source_name = sim.get("source_campaign") or campaign_hint
+            target_name = sim.get("target_campaign") or campaign_hint
+            campaign_line = f"{source_name} → {target_name}"
+            action_line = f"Reduce {fmt_money(float(action.get('amount', 0.0) or 0.0))} from {source_name} → increase {target_name} by {fmt_money(float(action.get('amount', 0.0) or 0.0))}"
             metric_text = f"{metric_name} {fmt_money(metric_value) if metric_name == 'CPA' else fmt_x(metric_value)} → {fmt_money(target_metric_value) if metric_name == 'CPA' else fmt_x(target_metric_value)}"
-        elif action.get("type") in {"pause", "reduce"}:
-            verb = "Pause" if action.get("type") == "pause" else "Reduce"
-            campaign_line = f"{sim.get('source_campaign')}"
-            action_line = f"{verb} {sim.get('source_campaign')} and free {fmt_money(float(action.get('amount', 0.0) or 0.0))}"
+        elif action_type in {"pause", "reduce"}:
+            verb = "Pause" if action_type == "pause" else "Reduce"
+            campaign_line = f"{sim.get('source_campaign') or campaign_hint}"
+            action_line = f"{verb} {sim.get('source_campaign') or campaign_hint} and free {fmt_money(float(action.get('amount', 0.0) or 0.0))}"
             metric_text = f"{metric_name} {fmt_money(metric_value) if metric_name == 'CPA' else fmt_x(metric_value)}"
-        elif action.get("type") == "test":
-            campaign_line = f"{sim.get('target_campaign') or sim.get('source_campaign')}"
+        elif action_type == "test":
+            campaign_line = f"{sim.get('target_campaign') or sim.get('source_campaign') or campaign_hint}"
             action_line = f"Run a controlled test on {campaign_line}"
             metric_text = f"{metric_name} {fmt_money(target_metric_value) if metric_name == 'CPA' else fmt_x(target_metric_value)}"
-        elif action.get("type") == "monitor":
-            campaign_line = f"{sim.get('target_campaign') or sim.get('source_campaign')}"
+        elif action_type == "monitor":
+            campaign_line = f"{sim.get('target_campaign') or sim.get('source_campaign') or campaign_hint}"
             action_line = f"Monitor {campaign_line} before changing budget"
             metric_text = f"{metric_name} {fmt_money(target_metric_value) if metric_name == 'CPA' else fmt_x(target_metric_value)}"
         else:
-            campaign_line = f"{sim.get('target_campaign')}"
-            action_line = f"Increase {sim.get('target_campaign')} by {fmt_money(float(action.get('amount', 0.0) or 0.0))}"
+            campaign_line = f"{sim.get('target_campaign') or sim.get('source_campaign') or campaign_hint}"
+            action_line = f"Increase {campaign_line} by {fmt_money(float(action.get('amount', 0.0) or 0.0))}"
             metric_text = f"{metric_name} {fmt_money(target_metric_value) if metric_name == 'CPA' else fmt_x(target_metric_value)}"
         confidence, confidence_reason = _decision_confidence(action, analysis, sim)
         decisions.append({
-            "type": action.get("type"),
-            "source": sim.get("source_campaign") or action.get("from") or action.get("campaign") or "Account baseline",
-            "target": sim.get("target_campaign") or action.get("to") or action.get("campaign") or "Account baseline",
+            "type": action.get("type") or action.get("action"),
+            "source": sim.get("source_campaign") or action.get("from") or action.get("campaign") or action.get("campaign_or_segment") or campaign_hint or "Unassigned",
+            "target": sim.get("target_campaign") or action.get("to") or action.get("campaign") or action.get("campaign_or_segment") or campaign_hint or "Unassigned",
             "campaign_line": campaign_line,
             "action_line": action_line,
             "metric_name": metric_name,
@@ -504,6 +543,9 @@ def build_marketer_content(source_label: str, analysis: Dict[str, Any], strategy
     summary_line = audit_user_message if audit_status == "blocked" else (f"~{wasted_pct:.0f}% of budget is underperforming and can be reallocated." if wasted_pct is not None else "Underperforming spend is present but the share is unclear.")
     top_names = ", ".join(label(c) for c in (perf.get("top_30") or [])[:2]) or "n/a"
     bottom_names = ", ".join(label(c) for c in (perf.get("bottom_30") or [])[:2]) or "n/a"
+    impact_low_value = sum(float(d["impact_low_value"]) for d in decisions)
+    impact_high_value = sum(float(d["impact_high_value"]) for d in decisions)
+    impact_available = any(float(d.get("current_spend") or 0.0) > 0 and float(d.get("impact_high_value") or 0.0) > 0 for d in decisions)
     return {
         "source_name": source_label,
         "currency_code": CURRENT_CURRENCY_CODE,
@@ -512,8 +554,9 @@ def build_marketer_content(source_label: str, analysis: Dict[str, Any], strategy
         "wasted_spend": perf["wasted_spend"],
         "current_roas": analysis["summary"].get("overall_roas"),
         "decisions": decisions,
-        "impact_low": sum(float(d["impact_low_value"]) for d in decisions),
-        "impact_high": sum(float(d["impact_high_value"]) for d in decisions),
+        "impact_low": impact_low_value if impact_available or impact_low_value > 0 else None,
+        "impact_high": impact_high_value if impact_available or impact_high_value > 0 else None,
+        "impact_available": impact_available or impact_low_value > 0 or impact_high_value > 0,
         "top_names": top_names,
         "bottom_names": bottom_names,
         "summary_line": summary_line,
@@ -522,9 +565,7 @@ def build_marketer_content(source_label: str, analysis: Dict[str, Any], strategy
         "audit_warnings": audit_warnings,
         "audit_blocking_errors": audit_blocking_errors,
         "methodology": "This analysis compares campaign efficiency and reallocates budget toward areas with stronger historical performance, while adjusting for execution risk." if audit_status != "blocked" else "Decision engine output was blocked by the recommendation audit layer.",
-        "insights": [
-            f"Top performers: {top_names}",
-            f"Bottom performers: {bottom_names}",
+        "insights": list(analysis.get("insights", [])) + [
             f"Wasted spend: {fmt_money(perf['wasted_spend'])}" + (f" ({wasted_pct:.1f}%)" if wasted_pct is not None else ""),
         ],
         "confidence_notes": [
@@ -575,7 +616,7 @@ def render_markdown_report(source_label: str, content: Dict[str, Any]) -> str:
     lines.extend([
         "",
         "## Expected Impact",
-        f"Estimated impact: {fmt_money(content['impact_low'])}–{fmt_money(content['impact_high'])}",
+        f"Estimated impact: {_impact_summary(content.get('impact_low'), content.get('impact_high'))}",
         f"Current waste: {fmt_money(content['wasted_spend'])}",
         "",
         "## Key Insights",
@@ -666,7 +707,7 @@ def render_html_report(source_label: str, content: Dict[str, Any]) -> str:
     {f"<p><strong>Blocking errors:</strong></p><ul>{''.join(f'<li>{esc(item)}</li>' for item in content.get('audit_blocking_errors', []))}</ul>" if content.get('audit_blocking_errors') else ''}
 
     <h2>Expected Impact</h2>
-    <p><strong>Estimated impact:</strong> {esc(fmt_money(content['impact_low']))}–{esc(fmt_money(content['impact_high']))}</p>
+    <p><strong>Estimated impact:</strong> {esc(_impact_summary(content.get('impact_low'), content.get('impact_high')))}</p>
     <p><strong>Current waste:</strong> {esc(fmt_money(content['wasted_spend']))}</p>
 
     <h2>Key Insights</h2>
