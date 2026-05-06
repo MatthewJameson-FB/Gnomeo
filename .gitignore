@@ -1,0 +1,11 @@
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+agent_mvp/.venv/
+agent_mvp/free_report_runner/.venv/
+free_reports/
+agent_mvp/output_report.html
+agent_mvp/output_report.md
+agent_mvp/output_report.json
+*.log
