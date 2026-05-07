@@ -319,6 +319,21 @@ footer {
 
 .footer-note { margin: 0; }
 
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 10px 0 0;
+  font-size: 13px;
+}
+
+.footer-links a {
+  text-decoration: none;
+  color: var(--muted);
+}
+
+.footer-links a:hover { color: var(--accent-soft); }
+
 @media (max-width: 920px) {
   .grid-2,
   .grid-3,
