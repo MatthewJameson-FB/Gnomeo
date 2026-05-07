@@ -8,6 +8,7 @@ const {
   restInsert,
   restUpdate,
   storageUpload,
+  storageDelete,
 } = require('./_supabase');
 
 const DATA_PATH = path.join(process.cwd(), 'data', 'submissions.json');
@@ -163,6 +164,17 @@ const logEmailEvent = async ({ customerId, submissionId, type, status }) => {
     });
   } catch (error) {
     console.error('[gnomeo submit] email event log failed (non-blocking):', error);
+  }
+};
+
+const cleanupSubmissionCsv = async (objectPath) => {
+  if (!IS_PRODUCTION || !HAS_SUPABASE || !objectPath) return false;
+  try {
+    await storageDelete({ bucket: CSV_BUCKET, objectPath });
+    return true;
+  } catch (error) {
+    console.warn('[gnomeo submit] csv cleanup failed (non-blocking):', error);
+    return false;
   }
 };
 
@@ -387,6 +399,7 @@ module.exports = async (req, res) => {
     });
     console.log('[gnomeo submit] resend success: admin email');
     await logEmailEvent({ customerId: customer.id, submissionId, type: 'submission_notification', status: 'sent' });
+    await cleanupSubmissionCsv(csvPath);
   } catch (error) {
     console.error('[gnomeo submit] resend failure: admin email', error);
     return respondError(res, 502, 'admin-email', error instanceof Error ? error.message : String(error));

@@ -108,6 +108,11 @@ const storageDownload = async ({ bucket, objectPath }) => {
   };
 };
 
+const storageDelete = async ({ bucket, objectPath }) => request(`/storage/v1/object/${bucket}/${encodePath(objectPath)}`, {
+  method: 'DELETE',
+  json: true,
+});
+
 const generateId = () => randomUUID();
 
 module.exports = {
@@ -119,6 +124,7 @@ module.exports = {
   restUpdate,
   storageUpload,
   storageDownload,
+  storageDelete,
   ensureConfig,
   SUPABASE_URL,
   SUPABASE_SERVICE_ROLE_KEY,

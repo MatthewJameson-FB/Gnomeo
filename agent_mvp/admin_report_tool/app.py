@@ -120,6 +120,18 @@ def run_agent(csv_path: Path, report_html_path: Path, report_md_path: Path) -> N
     subprocess.run(command, cwd=REPO_ROOT, check=True)
 
 
+def cleanup_temp_files(*paths: Path | None) -> None:
+    for path in paths:
+        if not path:
+            continue
+        try:
+            path.unlink(missing_ok=True)
+        except FileNotFoundError:
+            pass
+        except Exception:
+            continue
+
+
 def send_report_email(recipient_email: str, report_html_path: Path, client_id: str | None, notes: str | None) -> None:
     api_key = os.environ.get("RESEND_API_KEY")
     if not api_key:
@@ -194,27 +206,24 @@ def index():
 
             try:
                 run_agent(upload_path, report_html_path, report_md_path)
+                send_report_email(recipient_email, report_html_path, client_id or None, notes or None)
+                result = {
+                    "recipient_email": recipient_email,
+                    "client_id": client_id,
+                    "notes": notes,
+                    "upload_name": upload.filename,
+                    "upload_path": str(upload_path),
+                    "report_html_path": str(report_html_path),
+                    "preview_url": url_for("generated_file", filename=report_html_path.name),
+                }
             except subprocess.CalledProcessError as exc:
                 error = f"Report generation failed: {exc}"
+            except RuntimeError as exc:
+                error = str(exc)
             except Exception as exc:  # noqa: BLE001
-                error = f"Report generation failed: {exc}"
-            else:
-                try:
-                    send_report_email(recipient_email, report_html_path, client_id or None, notes or None)
-                except RuntimeError as exc:
-                    error = str(exc)
-                except Exception as exc:  # noqa: BLE001
-                    error = f"Email send failed: {exc}"
-                else:
-                    result = {
-                        "recipient_email": recipient_email,
-                        "client_id": client_id,
-                        "notes": notes,
-                        "upload_name": upload.filename,
-                        "upload_path": str(upload_path),
-                        "report_html_path": str(report_html_path),
-                        "preview_url": url_for("generated_file", filename=report_html_path.name),
-                    }
+                error = f"Email send failed: {exc}"
+            finally:
+                cleanup_temp_files(upload_path, report_md_path)
 
     return render_template("index.html", result=result, error=error, form=form)
 

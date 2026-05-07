@@ -9,6 +9,7 @@ const {
   restUpdate,
   storageUpload,
   storageDownload,
+  storageDelete,
 } = require('../_supabase');
 
 const TEMPLATE_PATH = path.join(process.cwd(), 'agent_mvp', 'report_email_template.txt');
@@ -38,6 +39,17 @@ const mapSchemaError = (error) => {
 };
 
 const latest = (items) => (Array.isArray(items) && items.length ? items[0] : null);
+
+const cleanupSubmissionCsv = async (submission) => {
+  if (!submission?.csv_file_url) return false;
+  try {
+    await storageDelete({ bucket: CSV_BUCKET, objectPath: submission.csv_file_url });
+    return true;
+  } catch (error) {
+    console.warn('[gnomeo admin crm] csv cleanup failed (non-blocking):', error);
+    return false;
+  }
+};
 
 const fetchCRMData = async () => {
   const [customers, submissions, reports, emailEvents] = await Promise.all([
@@ -298,6 +310,7 @@ module.exports = async (req, res) => {
         status: 'sent',
         sent_at: sentAt,
       });
+      await cleanupSubmissionCsv(submission);
       return res.status(200).json({ success: true, sent_at: sentAt });
     }
 

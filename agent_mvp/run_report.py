@@ -98,6 +98,11 @@ def main() -> int:
         if stdout:
             fail(stdout)
         fail(f"Report processing failed: {error}")
+    finally:
+        try:
+            processed_csv.unlink(missing_ok=True)
+        except Exception:
+            pass
 
     print(f"HTML report path: {output_html}")
     print(f"MD report path: {output_md}")

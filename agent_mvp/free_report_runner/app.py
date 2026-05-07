@@ -62,6 +62,18 @@ def parse_paths(output: str) -> tuple[str | None, str | None]:
     return html_path, md_path
 
 
+def cleanup_temp_files(*paths: Path | None) -> None:
+    for path in paths:
+        if not path:
+            continue
+        try:
+            path.unlink(missing_ok=True)
+        except FileNotFoundError:
+            pass
+        except Exception:
+            continue
+
+
 @app.route("/reports/<path:filename>")
 def report_file(filename: str):
     return send_from_directory(OUTPUT_DIR, filename)
@@ -135,6 +147,7 @@ def index():
                         "admin_link": "https://www.gnomeo.nl/admin/submissions.html",
                         "generated_at": stamp,
                     }
+                cleanup_temp_files(saved_csv, INBOX_DIR.parent / "processed_inputs" / f"{stamp}_{saved_csv.name}")
 
     return render_template("index.html", error=error, result=result, form=form)
 
