@@ -22,7 +22,7 @@
   <body>
     <div class="card">
       <h1>Gnomeo Local Report Tool</h1>
-      <p class="muted">Local-only. Upload a CSV, generate a report, preview it, and send it via Resend.</p>
+      <p class="muted">Local-only. Upload one or more CSVs, generate a report, preview it, and send it via Resend.</p>
       <p class="muted">Runs at <code>http://localhost:5050</code>.</p>
     </div>
 
@@ -57,7 +57,7 @@
 
         <label>
           CSV upload
-          <input type="file" name="csv_file" accept=".csv,text/csv" required />
+          <input type="file" name="csv_file" accept=".csv,text/csv" multiple required />
         </label>
 
         <label>
@@ -74,7 +74,7 @@
       <ol>
         <li>Download CSV from admin email attachment</li>
         <li>Open this local tool</li>
-        <li>Upload CSV</li>
+        <li>Upload one or more CSVs</li>
         <li>Enter recipient email</li>
         <li>Generate + send report</li>
         <li>Review preview link</li>

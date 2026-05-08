@@ -804,8 +804,8 @@
               <div class="form-grid">
                 <div class="form-group">
                   <label for="csv-file">Upload campaign data</label>
-                  <input type="file" id="csv-file" name="csv-file" accept=".csv,text/csv" required />
-                  <span class="helper">Works best with campaign-level data including spend, conversions, and revenue.</span>
+                  <input type="file" id="csv-file" name="csv-file" accept=".csv,text/csv" multiple required />
+                  <span class="helper">Upload one or more Google Ads or Meta Ads campaign exports.</span>
                 </div>
                 <div class="form-group">
                   <label for="email">Where should we send your report?</label>
@@ -890,33 +890,34 @@
       });
 
       csvFile?.addEventListener('change', () => {
-        const file = csvFile.files?.[0];
-        if (!file) return;
+        const files = Array.from(csvFile.files || []);
+        if (!files.length) return;
 
         track('free_analysis_csv_selected', {
-          fileName: file.name,
+          fileNames: files.map((file) => file.name),
+          fileCount: files.length,
         });
       });
 
       form?.addEventListener('submit', (event) => {
         event.preventDefault();
 
-        const file = csvFile?.files?.[0];
+        const files = Array.from(csvFile?.files || []);
         const emailValue = email?.value.trim();
 
-        if (!file) {
+        if (!files.length) {
           track('free_analysis_validation_error', {
             reason: 'missing_csv',
             email: emailValue || '',
           });
-          alert('Please upload a CSV file.');
+          alert('Please upload one or more CSV files.');
           return;
         }
 
         if (!emailValue) {
           track('free_analysis_validation_error', {
             reason: 'missing_email',
-            fileName: file.name,
+            fileNames: files.map((file) => file.name),
           });
           alert('Please add your email address.');
           return;
@@ -925,9 +926,11 @@
         const timestamp = new Date().toISOString();
         const payload = new FormData();
         payload.append('email', emailValue);
-        payload.append('filename', file.name);
+        payload.append('filename', files[0].name);
         payload.append('timestamp', timestamp);
-        payload.append('csv-file', file, file.name);
+        files.forEach((file) => {
+          payload.append('csv-file', file, file.name);
+        });
 
         fetch('/api/submit', {
           method: 'POST',
@@ -952,7 +955,8 @@
             console.log('Free Analysis Option A submission', payload);
             track('free_analysis_form_submitted_successfully', {
               email: emailValue,
-              fileName: file.name,
+              fileNames: files.map((file) => file.name),
+              fileCount: files.length,
             });
 
             success.style.display = 'block';

@@ -111,43 +111,45 @@ def index():
             except Exception as exc:  # noqa: BLE001
                 error = f"CSV validation failed: {exc}"
             else:
-                process = subprocess.run(
-                    [
-                        "python3",
-                        str(RUN_REPORT),
-                        "--csv",
-                        str(saved_csv),
-                        "--email",
-                        email,
-                    ],
-                    cwd=APP_DIR,
-                    capture_output=True,
-                    text=True,
-                )
+                try:
+                    process = subprocess.run(
+                        [
+                            "python3",
+                            str(RUN_REPORT),
+                            "--csv",
+                            str(saved_csv),
+                            "--email",
+                            email,
+                        ],
+                        cwd=APP_DIR,
+                        capture_output=True,
+                        text=True,
+                    )
 
-                output = (process.stdout or "") + ("\n" + process.stderr if process.stderr else "")
-                html_path, md_path = parse_paths(output)
+                    output = (process.stdout or "") + ("\n" + process.stderr if process.stderr else "")
+                    html_path, md_path = parse_paths(output)
 
-                if process.returncode != 0:
-                    error = output.strip() or "Report generation failed."
-                elif not html_path or not md_path:
-                    error = "Report finished, but output paths were not returned."
-                else:
-                    html_file = Path(html_path)
-                    md_file = Path(md_path)
-                    result = {
-                        "email": email,
-                        "saved_csv": str(saved_csv),
-                        "csv_name": saved_csv.name,
-                        "html_path": str(html_file),
-                        "html_name": html_file.name,
-                        "md_path": str(md_file),
-                        "md_name": md_file.name,
-                        "report_link": url_for("report_file", filename=html_file.name),
-                        "admin_link": "https://www.gnomeo.nl/admin/submissions.html",
-                        "generated_at": stamp,
-                    }
-                cleanup_temp_files(saved_csv, INBOX_DIR.parent / "processed_inputs" / f"{stamp}_{saved_csv.name}")
+                    if process.returncode != 0:
+                        error = output.strip() or "Report generation failed."
+                    elif not html_path or not md_path:
+                        error = "Report finished, but output paths were not returned."
+                    else:
+                        html_file = Path(html_path)
+                        md_file = Path(md_path)
+                        result = {
+                            "email": email,
+                            "saved_csv": str(saved_csv),
+                            "csv_name": saved_csv.name,
+                            "html_path": str(html_file),
+                            "html_name": html_file.name,
+                            "md_path": str(md_file),
+                            "md_name": md_file.name,
+                            "report_link": url_for("report_file", filename=html_file.name),
+                            "admin_link": "https://www.gnomeo.nl/admin/submissions.html",
+                            "generated_at": stamp,
+                        }
+                finally:
+                    cleanup_temp_files(saved_csv, INBOX_DIR.parent / "processed_inputs" / f"{stamp}_{saved_csv.name}")
 
     return render_template("index.html", error=error, result=result, form=form)
 

@@ -106,12 +106,12 @@ def build_email_html(body: str, client_id: str | None = None, notes: str | None 
     )
 
 
-def run_agent(csv_path: Path, report_html_path: Path, report_md_path: Path) -> None:
+def run_agent(csv_paths: list[Path], report_html_path: Path, report_md_path: Path) -> None:
     command = [
         "python3",
         str(AGENT_SCRIPT),
         "--graph",
-        str(csv_path),
+        *[str(path) for path in csv_paths],
         "--output-report",
         str(report_md_path),
         "--output-html",
@@ -179,7 +179,7 @@ def index():
         recipient_email = (request.form.get("recipient_email") or "").strip()
         client_id = (request.form.get("client_id") or "").strip()
         notes = (request.form.get("notes") or "").strip()
-        upload = request.files.get("csv_file")
+        uploads = request.files.getlist("csv_file")
 
         form.update({
             "recipient_email": recipient_email,
@@ -191,28 +191,34 @@ def index():
             error = "Recipient email is required."
         elif not valid_email(recipient_email):
             error = "Recipient email is not valid."
-        elif not upload or not upload.filename:
-            error = "Please upload a CSV file."
-        elif not is_csv_file(upload.filename):
-            error = "Uploaded file must be a CSV."
+        elif not uploads or not uploads[0].filename:
+            error = "Please upload one or more CSV files."
+        elif any(not upload.filename for upload in uploads):
+            error = "Please upload one or more CSV files."
+        elif any(not is_csv_file(upload.filename) for upload in uploads):
+            error = "Uploaded files must be CSVs."
         else:
             timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-            safe_name = slugify(Path(upload.filename).stem)
-            upload_path = UPLOADS_DIR / f"{timestamp}-{safe_name}.csv"
+            upload_paths = []
+            safe_name = slugify(Path(uploads[0].filename).stem)
             report_html_path = GENERATED_DIR / f"{timestamp}-{safe_name}.html"
             report_md_path = GENERATED_DIR / f"{timestamp}-{safe_name}.md"
 
-            upload.save(upload_path)
-
             try:
-                run_agent(upload_path, report_html_path, report_md_path)
+                for index, upload in enumerate(uploads, start=1):
+                    upload_name = f"{timestamp}-{index:02d}-{slugify(Path(upload.filename).stem)}.csv"
+                    upload_path = UPLOADS_DIR / upload_name
+                    upload.save(upload_path)
+                    upload_paths.append(upload_path)
+
+                run_agent(upload_paths, report_html_path, report_md_path)
                 send_report_email(recipient_email, report_html_path, client_id or None, notes or None)
                 result = {
                     "recipient_email": recipient_email,
                     "client_id": client_id,
                     "notes": notes,
-                    "upload_name": upload.filename,
-                    "upload_path": str(upload_path),
+                    "upload_name": ", ".join(upload.filename for upload in uploads),
+                    "upload_path": ", ".join(str(path) for path in upload_paths),
                     "report_html_path": str(report_html_path),
                     "preview_url": url_for("generated_file", filename=report_html_path.name),
                 }
@@ -223,7 +229,7 @@ def index():
             except Exception as exc:  # noqa: BLE001
                 error = f"Email send failed: {exc}"
             finally:
-                cleanup_temp_files(upload_path, report_md_path)
+                cleanup_temp_files(*upload_paths, report_md_path)
 
     return render_template("index.html", result=result, error=error, form=form)
 

@@ -15,6 +15,7 @@ const parseMultipartForm = (buffer, contentType) => {
   const boundary = boundaryMatch[1] || boundaryMatch[2];
   const segments = buffer.toString('latin1').split(`--${boundary}`);
   const fields = {};
+  const files = [];
   let file = null;
 
   for (const segment of segments) {
@@ -44,12 +45,13 @@ const parseMultipartForm = (buffer, contentType) => {
         contentType: headers['content-type'] || 'text/plain',
         content: value,
       };
+      files.push(file);
     } else {
       fields[disposition.name] = value;
     }
   }
 
-  return { fields, file };
+  return { fields, file, files };
 };
 
 module.exports = { parseMultipartForm };

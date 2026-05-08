@@ -292,26 +292,30 @@ module.exports = async (req, res) => {
         content: downloaded.buffer.toString('base64'),
       };
 
-      await resendSend({
-        to: customer?.email,
-        subject: template.subject,
-        body: template.body,
-        attachments: [attachment],
-      });
+      try {
+        await resendSend({
+          to: customer?.email,
+          subject: template.subject,
+          body: template.body,
+          attachments: [attachment],
+        });
 
-      const sentAt = new Date().toISOString();
-      await restUpdate('submissions', { id: `eq.${submissionId}` }, { status: 'report_sent' });
-      await restUpdate('reports', { id: `eq.${report.id}` }, { sent_at: sentAt });
-      await restInsert('email_events', {
-        id: generateId(),
-        customer_id: customer?.id || null,
-        submission_id: submissionId,
-        type: 'report_sent',
-        status: 'sent',
-        sent_at: sentAt,
-      });
-      await cleanupSubmissionCsv(submission);
-      return res.status(200).json({ success: true, sent_at: sentAt });
+        const sentAt = new Date().toISOString();
+        await restUpdate('submissions', { id: `eq.${submissionId}` }, { status: 'report_sent' });
+        await restUpdate('reports', { id: `eq.${report.id}` }, { sent_at: sentAt });
+        await restInsert('email_events', {
+          id: generateId(),
+          customer_id: customer?.id || null,
+          submission_id: submissionId,
+          type: 'report_sent',
+          status: 'sent',
+          sent_at: sentAt,
+        });
+        await cleanupSubmissionCsv(submission);
+        return res.status(200).json({ success: true, sent_at: sentAt });
+      } finally {
+        await cleanupSubmissionCsv(submission);
+      }
     }
 
     return respondError(res, 400, 'action', 'Unknown action');

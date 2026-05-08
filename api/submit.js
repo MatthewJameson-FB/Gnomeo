@@ -16,6 +16,8 @@ const IS_PRODUCTION = process.env.VERCEL_ENV === 'production' || process.env.NOD
 const HAS_SUPABASE = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 const CSV_BUCKET = 'submissions';
 const ADMIN_PASSWORD_FALLBACK = 'gnomeo-admin';
+const MAX_UPLOAD_FILES = 5;
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 const getHeader = (req, name) => {
   const target = String(name).toLowerCase();
@@ -167,15 +169,26 @@ const logEmailEvent = async ({ customerId, submissionId, type, status }) => {
   }
 };
 
-const cleanupSubmissionCsv = async (objectPath) => {
-  if (!IS_PRODUCTION || !HAS_SUPABASE || !objectPath) return false;
-  try {
-    await storageDelete({ bucket: CSV_BUCKET, objectPath });
-    return true;
-  } catch (error) {
-    console.warn('[gnomeo submit] csv cleanup failed (non-blocking):', error);
-    return false;
+const cleanupSubmissionCsvs = async (objectPaths) => {
+  if (!IS_PRODUCTION || !HAS_SUPABASE) return false;
+  const uniquePaths = [...new Set((Array.isArray(objectPaths) ? objectPaths : [objectPaths]).filter(Boolean))];
+  if (!uniquePaths.length) return false;
+  let deleted = false;
+  for (const objectPath of uniquePaths) {
+    try {
+      await storageDelete({ bucket: CSV_BUCKET, objectPath });
+      deleted = true;
+    } catch (error) {
+      console.warn('[gnomeo submit] csv cleanup failed (non-blocking):', error);
+    }
   }
+  return deleted;
+};
+
+const listUploadedFiles = (parsed) => {
+  if (Array.isArray(parsed?.files) && parsed.files.length) return parsed.files;
+  if (parsed?.file) return [parsed.file];
+  return [];
 };
 
 module.exports = async (req, res) => {
@@ -190,30 +203,54 @@ module.exports = async (req, res) => {
 
   const rawBuffer = await readRequestBuffer(req);
   let body = {};
-  let uploadedFile = null;
+  let uploadedFiles = [];
 
   if (/multipart\/form-data/i.test(contentType)) {
     const parsed = parseMultipartForm(rawBuffer, contentType);
     body = parsed.fields || {};
-    uploadedFile = parsed.file;
+    uploadedFiles = listUploadedFiles(parsed);
   } else {
-    body = await parseJsonBody(req, rawBuffer);
+    body = await parseJsonBody(req, rawBuffer) || {};
+    uploadedFiles = listUploadedFiles(body);
   }
 
   if (!body || typeof body !== 'object') {
     return respondError(res, 400, 'request-body', 'Invalid request payload');
   }
 
+  uploadedFiles = uploadedFiles
+    .map((file, index) => ({
+      ...file,
+      filename: String(file?.filename || body.filename || `submission-${index + 1}.csv`).trim(),
+    }))
+    .filter((file) => file.filename);
+
   const email = String(body.email || '').trim();
   const timestamp = String(body.timestamp || '').trim();
-  const originalFilename = String(body.filename || uploadedFile?.filename || '').trim();
+  const originalFilename = uploadedFiles.map((file) => file.filename).join(', ');
 
   console.log('[gnomeo submit] email received:', Boolean(email));
-  console.log('[gnomeo submit] file received:', Boolean(uploadedFile));
-  console.log('[gnomeo submit] file name:', originalFilename || '(missing)');
+  console.log('[gnomeo submit] file count received:', uploadedFiles.length);
+  console.log('[gnomeo submit] file names:', originalFilename || '(missing)');
 
   if (!email) return respondError(res, 400, 'validation', 'Email is required');
-  if (!uploadedFile) return respondError(res, 400, 'file-upload', 'CSV file is required');
+  if (!uploadedFiles.length) return respondError(res, 400, 'file-upload', 'CSV file is required');
+  if (uploadedFiles.length > MAX_UPLOAD_FILES) return respondError(res, 400, 'file-upload', `Upload limit is ${MAX_UPLOAD_FILES} CSV files`);
+
+  const invalidFile = uploadedFiles.find((file) => {
+    const name = String(file.filename || '').toLowerCase();
+    const type = String(file.contentType || '').toLowerCase();
+    return !(name.endsWith('.csv') || type.includes('csv') || type.includes('text/plain'));
+  });
+  if (invalidFile) {
+    return respondError(res, 400, 'file-upload', `Unsupported file type: ${invalidFile.filename}`);
+  }
+
+  const csvBuffers = uploadedFiles.map((file) => Buffer.from(file.content || '', 'latin1'));
+  const oversizedFile = csvBuffers.find((buffer) => buffer.length > MAX_UPLOAD_BYTES);
+  if (oversizedFile) {
+    return respondError(res, 400, 'file-upload', `Each CSV must be under ${MAX_UPLOAD_BYTES / (1024 * 1024)}MB`);
+  }
 
   const apiKey = process.env.RESEND_API_KEY;
   const adminEmail = process.env.ADMIN_EMAIL;
@@ -226,14 +263,12 @@ module.exports = async (req, res) => {
 
   const submissionId = randomUUID();
   console.log('[gnomeo submit] submission_id generated:', submissionId);
-  const csvBuffer = Buffer.from(uploadedFile.content || '', 'latin1');
-  let csvPath = null;
+  const csvPaths = [];
   let customer = { id: randomUUID(), email };
   let supabaseLoggingError = null;
 
   if (HAS_SUPABASE) {
     ensureConfig();
-    const proposedCsvPath = `submissions/${submissionId}/${cleanFilename(originalFilename)}`;
 
     try {
       customer = await upsertCustomer({ email });
@@ -244,26 +279,28 @@ module.exports = async (req, res) => {
       customer = { id: randomUUID(), email };
     }
 
-    try {
-      await storageUpload({
-        bucket: CSV_BUCKET,
-        objectPath: proposedCsvPath,
-        content: csvBuffer,
-        contentType: uploadedFile.contentType || 'text/csv',
-        upsert: true,
-      });
-      csvPath = proposedCsvPath;
-    } catch (error) {
-      csvPath = null;
-      console.error('[gnomeo submit] step=supabase-storage csv upload failed (non-blocking):', error);
-      supabaseLoggingError = supabaseLoggingError || (error instanceof Error ? error.message : String(error));
+    for (const [index, file] of uploadedFiles.entries()) {
+      const proposedCsvPath = `submissions/${submissionId}/${String(index + 1).padStart(2, '0')}-${cleanFilename(file.filename)}`;
+      try {
+        await storageUpload({
+          bucket: CSV_BUCKET,
+          objectPath: proposedCsvPath,
+          content: csvBuffers[index],
+          contentType: file.contentType || 'text/csv',
+          upsert: true,
+        });
+        csvPaths.push(proposedCsvPath);
+      } catch (error) {
+        console.error('[gnomeo submit] step=supabase-storage csv upload failed (non-blocking):', error);
+        supabaseLoggingError = supabaseLoggingError || (error instanceof Error ? error.message : String(error));
+      }
     }
 
     const submissionRecord = createSubmissionRecord({
       submissionId,
       customerId: customer.id,
       originalFilename,
-      csvPath,
+      csvPath: csvPaths[0] || null,
       timestamp: timestamp || new Date().toISOString(),
     });
 
@@ -274,8 +311,6 @@ module.exports = async (req, res) => {
       supabaseLoggingError = supabaseLoggingError || (error instanceof Error ? error.message : String(error));
       console.error('[gnomeo submit] supabase error details: submission row failed', error);
     }
-  } else {
-    csvPath = null;
   }
 
   try {
@@ -283,7 +318,7 @@ module.exports = async (req, res) => {
       submissionId,
       customerEmail: email,
       originalFilename,
-      csvPath,
+      csvPath: csvPaths[0] || null,
       timestamp: timestamp || new Date().toISOString(),
     }));
   } catch {
@@ -332,10 +367,12 @@ module.exports = async (req, res) => {
     </div>
   `;
 
-  const csvStoragePathLabel = csvPath || 'storage unavailable (use the email attachment)';
-  const analysisRunHint = csvPath
-    ? `python3 agent_mvp/agent_test.py --graph ${csvStoragePathLabel}`
-    : 'Use the CSV attachment from the admin email to run the local report tool.';
+  const csvStoragePathLabel = csvPaths[0] || 'storage unavailable (use the email attachment)';
+  const analysisRunHint = csvPaths.length > 1
+    ? 'Use the CSV attachments from the admin email to run the local report tool.'
+    : (csvPaths[0]
+        ? `python3 agent_mvp/agent_test.py --graph ${csvStoragePathLabel}`
+        : 'Use the CSV attachment from the admin email to run the local report tool.');
   const warningLine = supabaseLoggingError ? `Supabase logging failed: ${supabaseLoggingError}` : '';
   const adminSubject = 'New Gnomeo Free Analysis Submission';
   const adminText = [
@@ -358,7 +395,7 @@ module.exports = async (req, res) => {
       ${warningLine ? `<p><strong>Warning:</strong> ${escapeHtml(warningLine)}</p>` : ''}
       <p><strong>Timestamp:</strong> ${escapeHtml(timestamp || 'not provided')}</p>
       <p>Run analysis manually and send report.</p>
-      <p>The CSV is attached to this email for direct access.</p>
+      <p>The CSV files are attached to this email for direct access.</p>
       <p>${escapeHtml(analysisRunHint)}</p>
     </div>
   `;
@@ -378,6 +415,8 @@ module.exports = async (req, res) => {
   } catch (error) {
     console.error('[gnomeo submit] resend failure: user email', error);
     return respondError(res, 502, 'user-email', error instanceof Error ? error.message : String(error));
+  } finally {
+    await cleanupSubmissionCsvs(csvPaths);
   }
 
   try {
@@ -389,26 +428,27 @@ module.exports = async (req, res) => {
       html: adminHtml,
       text: adminText,
       reply_to: 'matt@gnomeo.nl',
-      attachments: [
-          {
-          filename: originalFilename || path.basename(csvPath),
-          content: csvBuffer.toString('base64'),
-          content_type: uploadedFile.contentType || 'text/csv',
-        },
-      ],
+      attachments: uploadedFiles.map((file, index) => ({
+        filename: file.filename,
+        content: csvBuffers[index].toString('base64'),
+        content_type: file.contentType || 'text/csv',
+      })),
     });
     console.log('[gnomeo submit] resend success: admin email');
     await logEmailEvent({ customerId: customer.id, submissionId, type: 'submission_notification', status: 'sent' });
-    await cleanupSubmissionCsv(csvPath);
+    await cleanupSubmissionCsvs(csvPaths);
   } catch (error) {
     console.error('[gnomeo submit] resend failure: admin email', error);
     return respondError(res, 502, 'admin-email', error instanceof Error ? error.message : String(error));
+  } finally {
+    await cleanupSubmissionCsvs(csvPaths);
   }
 
   return respondSuccess(res, {
     step: 'emails-sent',
     submission_id: submissionId,
-    csv_file_url: csvPath,
+    csv_file_url: csvPaths[0] || null,
+    csv_file_urls: csvPaths,
     original_filename: originalFilename,
     warning: supabaseLoggingError ? 'supabase_logging_failed' : null,
   });

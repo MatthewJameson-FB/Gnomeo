@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import base64
 import html
 import sys
@@ -117,6 +118,18 @@ def normalize_name(value: str) -> str:
 
 def label(campaign: Campaign) -> str:
     return campaign.campaign or campaign.campaign_group or campaign.platform or "Unassigned"
+
+
+def platform_display_name(platform: str) -> str:
+    key = (platform or "").strip().lower()
+    return {
+        "google_ads": "Google Ads",
+        "meta_ads": "Meta Ads",
+    }.get(key, (platform or "").replace("_", " ").title() or "Unknown")
+
+
+def source_export_label(platform: str) -> str:
+    return f"{platform_display_name(platform)} export"
 
 
 def _priority_from_rank(rank: int) -> str:
@@ -545,7 +558,7 @@ def build_marketer_content(source_label: str, analysis: Dict[str, Any], strategy
         if action_type in {"reallocate", "pause", "reduce"}:
             return "Spend is meaningful and performance is weaker than the account average, so Gnomeo recommends moving budget toward a stronger signal rather than increasing total spend."
         if action_type == "scale":
-            return "This campaign shows stronger efficiency than the account baseline, so Gnomeo recommends a controlled increase rather than an aggressive scale."
+            return "This campaign shows stronger efficiency than the overall account average, so Gnomeo recommends a controlled increase rather than an aggressive scale."
         if action_type == "test":
             return "The signal is good enough to explore, but not strong enough for a larger budget move, so Gnomeo recommends a controlled test."
         return "The signal is still too uneven for a confident budget change, so Gnomeo recommends watching performance before changing spend."
@@ -777,92 +790,112 @@ def render_markdown_report(source_label: str, content: Dict[str, Any]) -> str:
         "# Gnomeo Agent MVP Report",
         f"Source file: {source_label}",
         "",
-        "## Executive Summary",
     ]
-    lines.extend(content["executive_summary"].split(". "))
-    lines.append("")
-    lines.append("## Account Snapshot")
-    for item in content["account_snapshot"]:
-        lines.append(f"- {item['label']}: {item['value']}")
-    lines.append("")
-    lines.append("## Top Priorities")
-    for idx, item in enumerate(content["top_priorities"], 1):
-        lines.append(f"{idx}. {item['title']}")
-        lines.append(f"   - {item['detail']}")
-        lines.append(f"   - Signal: {item['confidence']}")
-    lines.append("")
-    lines.append("## Key Decisions")
-    for idx, decision in enumerate(content["decisions"], 1):
-        lines.extend([
-            f"### {idx}. {decision['action_line']}",
-            f"- Priority: {decision['priority']}",
-            f"- Signal label: {decision['signal_label']}",
-            f"- Confidence: {decision['confidence_grade']}",
-            f"- Campaign(s): {decision['campaign_line']}",
-            f"- Current spend: {fmt_money(decision['current_spend']) if isinstance(decision['current_spend'], (int, float)) else 'n/a'}",
-            f"- Key metric: {decision['metric_text']}",
-            f"- Estimated impact: {decision['impact_range']}",
-            f"- Rationale: {decision['rationale']}",
-            f"- Implementation: {decision['implementation']}",
-        ])
-        if decision.get("conservative_note"):
-            lines.append(f"- Why Gnomeo stayed conservative: {decision['conservative_note']}")
-        if decision.get("audit_note"):
-            lines.append(f"- Audit note: {decision['audit_note']}")
+
+    sources = content.get("sources_analyzed") or []
+    if sources:
+        lines.append("## Sources analyzed")
+        for source in sources:
+            if isinstance(source, dict):
+                label = source.get("label") or "Unknown"
+                count = source.get("campaign_count")
+                suffix = f" ({count} campaigns)" if count is not None else ""
+                lines.append(f"- {label}{suffix}")
+            else:
+                lines.append(f"- {source}")
         lines.append("")
-    lines.append("## Signal Notes / Conservative Calls")
-    lines.extend(f"- {item}" for item in content["signal_notes"])
+
+    lines.append("## Executive Summary")
+    for paragraph in str(content.get("executive_summary") or "").split(". "):
+        paragraph = paragraph.strip()
+        if paragraph:
+            lines.append(paragraph if paragraph.endswith(".") else f"{paragraph}.")
     lines.append("")
-    lines.append("## Data Quality & Caveats")
-    lines.extend(f"- {item}" for item in content["caveats"])
+
+    lines.append("## Account Snapshot")
+    for item in content.get("account_snapshot") or []:
+        lines.append(f"- **{item.get('label', 'Value')}**: {item.get('value', 'n/a')}")
+    lines.append("")
+
+    lines.append("## Top Priorities")
+    for item in content.get("top_priorities") or []:
+        lines.append(f"- **{item.get('title', 'Priority')}**: {item.get('detail', '')} ({item.get('confidence', 'n/a')})")
+    lines.append("")
+
+    lines.append("## Key Decisions")
+    for idx, decision in enumerate(content.get("decisions") or [], 1):
+        lines.append(f"{idx}. {decision.get('action_line', 'Review the campaign')}")
+        lines.append(f"   - Campaign(s): {decision.get('campaign_line', 'n/a')}")
+        spend = decision.get('current_spend')
+        lines.append(f"   - Current spend: {spend if spend is not None else 'n/a'}")
+        lines.append(f"   - Estimated impact: {decision.get('impact_range', 'n/a')}")
+        lines.append(f"   - Confidence: {decision.get('confidence', 'n/a')}")
+        rationale = decision.get('rationale')
+        if rationale:
+            lines.append(f"   - Reason: {rationale}")
+        implementation = decision.get('implementation')
+        if implementation:
+            lines.append(f"   - Implementation: {implementation}")
+    lines.append("")
+
+    signal_notes = content.get("signal_notes") or []
+    if signal_notes:
+        lines.append("## Signal Notes / Conservative Calls")
+        for note in signal_notes:
+            lines.append(f"- {note}")
+        lines.append("")
+
+    caveats = content.get("caveats") or []
+    if caveats:
+        lines.append("## Data Quality & Caveats")
+        for caveat in caveats:
+            lines.append(f"- {caveat}")
+        lines.append("")
+
     return "\n".join(lines).strip() + "\n"
 
 
 def render_html_report(source_label: str, content: Dict[str, Any]) -> str:
-    summary_cards = "".join(
-        f"""
-        <div class="stat-card">
-          <div class="label">{esc(item['label'])}</div>
-          <div class="value">{esc(item['value'])}</div>
-        </div>
-        """
-        for item in content["account_snapshot"]
-    )
+    def card(label: str, value: Any) -> str:
+        return f'<div class="stat-card"><div class="label">{esc(label)}</div><div class="value">{esc(value)}</div></div>'
+
+    sources = content.get("sources_analyzed") or []
+    source_items = []
+    for item in sources:
+        if isinstance(item, dict):
+            label = item.get("label", "Unknown")
+            count = item.get("campaign_count")
+            suffix = f" ({count} campaigns)" if count is not None else ""
+            source_items.append(f"<li>{esc(label)}{esc(suffix)}</li>")
+        else:
+            source_items.append(f"<li>{esc(item)}</li>")
+    sources_html = "".join(source_items)
+
+    summary_cards = "".join(card(item.get("label", "Value"), item.get("value", "n/a")) for item in (content.get("account_snapshot") or []))
     priority_cards = "".join(
-        f"""
-        <article class="card priority-card">
-          <span class="chip chip-priority">{esc(item['confidence'])}</span>
-          <h3>{esc(item['title'])}</h3>
-          <p>{esc(item['detail'])}</p>
-        </article>
-        """
-        for item in content["top_priorities"]
+        f'<div class="card"><h3>{esc(item.get("title", "Priority"))}</h3><p>{esc(item.get("detail", ""))}</p><p class="muted"><strong>{esc(item.get("confidence", "n/a"))}</strong></p></div>'
+        for item in (content.get("top_priorities") or [])
     )
-    decision_cards = "".join(
-        f"""
-        <article class="card decision-card">
-          <div class="chip-row">
-            <span class="chip chip-action">{esc(decision['type'].title())}</span>
-            <span class="chip chip-signal">{esc(decision['signal_label'])}</span>
-            <span class="chip chip-priority">{esc(decision['priority'])}</span>
-          </div>
-          <h3>{esc(decision['action_line'])}</h3>
-          <p class="decision-meta"><strong>Campaign(s):</strong> {esc(decision['campaign_line'])}</p>
-          <p class="decision-meta"><strong>Current spend:</strong> {esc(fmt_money(decision['current_spend']) if isinstance(decision['current_spend'], (int, float)) else 'n/a')}</p>
-          <p class="decision-meta"><strong>Key metric:</strong> {esc(decision['metric_text'])}</p>
-          <p class="decision-meta"><strong>Estimated impact:</strong> {esc(decision['impact_range'])}</p>
-          <p class="decision-meta"><strong>Rationale:</strong> {esc(decision['rationale'])}</p>
-          <p class="decision-meta"><strong>Implementation:</strong> {esc(decision['implementation'])}</p>
-          {f'<p class="decision-note"><strong>Why Gnomeo stayed conservative:</strong> {esc(decision["conservative_note"])}</p>' if decision.get('conservative_note') else ''}
-          {f'<p class="decision-note"><strong>Audit note:</strong> {esc(decision["audit_note"])}</p>' if decision.get('audit_note') else ''}
-        </article>
-        """
-        for decision in content["decisions"]
-    )
-    signal_notes = "".join(f"<li>{esc(item)}</li>" for item in content["signal_notes"])
-    caveats = "".join(f"<li>{esc(item)}</li>" for item in content["caveats"])
-    logo_src = report_logo_data_uri()
-    logo_html = f'<img class="report-logo" src="{logo_src}" alt="Gnomeo logo" />' if logo_src else ""
+    decision_cards = []
+    for idx, decision in enumerate(content.get("decisions") or [], 1):
+        html_block = [
+            f'<div class="card decision-card"><h3>{idx}. {esc(decision.get("action_line", "Review the campaign"))}</h3>',
+            f'<p class="decision-meta"><strong>Campaign(s):</strong> {esc(decision.get("campaign_line", "n/a"))}</p>',
+            f'<p class="decision-meta"><strong>Current spend:</strong> {esc(decision.get("current_spend", "n/a") if decision.get("current_spend") is not None else "n/a")}</p>',
+            f'<p class="decision-meta"><strong>Estimated impact:</strong> {esc(decision.get("impact_range", "n/a"))}</p>',
+            f'<p class="decision-meta"><strong>Confidence:</strong> {esc(decision.get("confidence", "n/a"))}</p>',
+        ]
+        if decision.get("rationale"):
+            html_block.append(f'<p class="decision-note">{esc(decision.get("rationale"))}</p>')
+        if decision.get("implementation"):
+            html_block.append(f'<p class="decision-note"><strong>Implementation:</strong> {esc(decision.get("implementation"))}</p>')
+        html_block.append('</div>')
+        decision_cards.append("".join(html_block))
+    decision_cards = "".join(decision_cards)
+    signal_notes = "".join(f"<li>{esc(note)}</li>" for note in (content.get("signal_notes") or []))
+    caveats = "".join(f"<li>{esc(caveat)}</li>" for caveat in (content.get("caveats") or []))
+    summary_paragraphs = "".join(f"<p>{esc(part.strip())}</p>" for part in str(content.get("executive_summary") or "").split(". ") if part.strip())
+
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -870,49 +903,43 @@ def render_html_report(source_label: str, content: Dict[str, Any]) -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gnomeo Agent MVP Report</title>
   <style>
-    :root {{ --bg:#fff; --text:#101828; --muted:#667085; --line:#eaecf0; --accent:#2563eb; --soft:#f8fafc; }}
+    :root {{ --bg:#fff; --text:#101828; --muted:#667085; --line:#eaecf0; --soft:#f8fafc; }}
     * {{ box-sizing:border-box; }}
     body {{ margin:0; background:var(--bg); color:var(--text); font:15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
     .wrap {{ max-width:980px; margin:0 auto; padding:40px 24px 72px; }}
-    .report-logo {{ display:block; width:180px; max-width:55vw; height:auto; object-fit:contain; margin:0 auto 18px; }}
     h1 {{ font-size:30px; margin:0 0 10px; text-align:center; letter-spacing:-0.04em; }}
     h2 {{ font-size:22px; margin:32px 0 14px; letter-spacing:-0.03em; }}
     h3 {{ margin:0 0 8px; font-size:17px; }}
     p {{ margin:0 0 10px; }}
+    ul {{ margin:8px 0 0 20px; padding:0; }}
+    li {{ margin-bottom:6px; }}
     .muted {{ color:var(--muted); }}
     .section-block {{ margin-top:28px; }}
     .summary-grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }}
     .priority-grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }}
     .decision-grid {{ display:grid; gap:14px; }}
-    .card {{ border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 1px 2px rgba(16,24,40,.04); padding:18px; }}
-    .stat-card {{ border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 1px 2px rgba(16,24,40,.04); padding:16px; }}
+    .card, .stat-card {{ border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 1px 2px rgba(16,24,40,.04); padding:18px; }}
     .label {{ color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; }}
     .value {{ font-size:22px; font-weight:700; letter-spacing:-0.03em; }}
-    .chip-row {{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }}
-    .chip {{ display:inline-flex; align-items:center; padding:4px 9px; border-radius:999px; font-size:12px; font-weight:700; line-height:1; }}
-    .chip-action {{ background:#eff6ff; color:#1d4ed8; }}
-    .chip-signal {{ background:#f8fafc; color:#475467; border:1px solid var(--line); }}
-    .chip-priority {{ background:#fef3c7; color:#92400e; }}
-    .decision-card h3 {{ margin-top:0; }}
-    .decision-meta, .decision-note {{ margin:0 0 8px; color:var(--text); }}
-    .decision-note {{ padding-top:8px; border-top:1px solid var(--line); color:var(--muted); }}
-    ul {{ margin:8px 0 0 20px; padding:0; }}
-    li {{ margin-bottom:6px; }}
     .summary-card {{ border:1px solid var(--line); border-radius:18px; background:var(--soft); padding:18px; }}
     .summary-card p:last-child {{ margin-bottom:0; }}
+    .decision-note {{ padding-top:8px; border-top:1px solid var(--line); color:var(--muted); }}
+    .decision-meta {{ margin:0 0 8px; }}
   </style>
 </head>
 <body>
   <div class="wrap">
-    {logo_html}
     <h1>Gnomeo Agent MVP Report</h1>
     <p class="muted" style="text-align:center;">Source file: {esc(source_label)}</p>
 
     <section class="section-block">
+      <h2>Sources analyzed</h2>
+      <div class="card"><ul>{sources_html or '<li>n/a</li>'}</ul></div>
+    </section>
+
+    <section class="section-block">
       <h2>Executive Summary</h2>
-      <div class="summary-card">
-        {''.join(f'<p>{esc(part.strip())}</p>' for part in content['executive_summary'].split('. ') if part.strip())}
-      </div>
+      <div class="summary-card">{summary_paragraphs}</div>
     </section>
 
     <section class="section-block">
@@ -932,27 +959,33 @@ def render_html_report(source_label: str, content: Dict[str, Any]) -> str:
 
     <section class="section-block">
       <h2>Signal Notes / Conservative Calls</h2>
-      <div class="card"><ul>{signal_notes}</ul></div>
+      <div class="card"><ul>{signal_notes or '<li>n/a</li>'}</ul></div>
     </section>
 
     <section class="section-block">
       <h2>Data Quality &amp; Caveats</h2>
-      <div class="card"><ul>{caveats}</ul></div>
+      <div class="card"><ul>{caveats or '<li>n/a</li>'}</ul></div>
     </section>
   </div>
 </body>
 </html>"""
 def marketer(source_context: Dict[str, Any], analysis: Dict[str, Any], strategy: Dict[str, Any], critique: Dict[str, Any], simulation: Dict[str, Any], evaluation: Dict[str, Any], synthesizer_text: str) -> Dict[str, Any]:
     source_value = str(source_context.get("source") or source_context.get("csv_path") or "dataset")
-    source_label = Path(source_value).name if source_value else "dataset"
+    sources_analyzed = source_context.get("sources_analyzed") or []
+    if len(sources_analyzed) > 1:
+        labels = [item.get("label") if isinstance(item, dict) else str(item) for item in sources_analyzed]
+        source_label = " + ".join(label for label in labels if label) or Path(source_value).name if source_value else "dataset"
+    else:
+        source_label = Path(source_value).name if source_value else "dataset"
     ingestion_contract = source_context.get("ingestion_contract") or {}
     audit_result = audit_recommendations(ingestion_contract, {"analysis": analysis, "strategy": strategy, "simulation": simulation, "critique": critique, "evaluation": evaluation, "synthesizer_text": synthesizer_text})
     audited_actions = [item for item in audit_result.get("recommendations", []) if not item.get("blocked")]
     if not audited_actions:
-        audited_actions = [{"type": "monitor", "action": "No strong budget move recommended yet", "campaign_or_segment": "account baseline", "reason": audit_result.get("user_message", "Recommendation audit blocked unsafe output."), "amount": 0.0, "confidence": "low", "expected_impact": "Hold until the signal improves.", "rollout_plan": "Monitor for 7 days.", "monitoring_window": "7 days", "revert_condition": "Re-evaluate once evidence improves."}]
+        audited_actions = [{"type": "monitor", "action": "No strong budget move recommended yet", "campaign_or_segment": "account-level placeholder", "reason": audit_result.get("user_message", "Recommendation audit blocked unsafe output."), "amount": 0.0, "confidence": "low", "expected_impact": "Hold until the signal improves.", "rollout_plan": "Monitor for 7 days.", "monitoring_window": "7 days", "revert_condition": "Re-evaluate once evidence improves."}]
     audited_strategy = {**strategy, "actions": audited_actions[:3]}
     audited_simulation = simulate_projections(audited_strategy, analysis)
     content = build_marketer_content(source_label, analysis, audited_strategy, critique, audited_simulation, audit_result)
+    content["sources_analyzed"] = list(source_context.get("sources_analyzed") or [])
     return {"content": content, "audit_result": audit_result, "final_report_text": render_markdown_report(source_label, content), "final_report_html": render_html_report(source_label, content)}
 
 
@@ -1003,7 +1036,7 @@ def print_section(title: str, body: Any) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the local Gnomeo agent MVP workflow.")
-    parser.add_argument("csv_path", nargs="?", default=str(DEFAULT_INPUT), help="Path to a CSV file")
+    parser.add_argument("csv_paths", nargs="*", default=[str(DEFAULT_INPUT)], help="Path(s) to CSV file(s)")
     parser.add_argument("--business-stage", default="balanced", choices=["balanced", "growth", "defensive"], help="Business profile stage used to derive thresholds")
     parser.add_argument("--objective", default="efficient growth", help="Business objective used by the profile interpreter")
     parser.add_argument("--acceptable-cpa", type=float, default=None, help="Override acceptable CPA")
@@ -1016,19 +1049,94 @@ def main() -> None:
 
     output_report = Path(args.output_report).expanduser().resolve()
     output_html = Path(args.output_html).expanduser().resolve()
-    source = Path(args.csv_path).expanduser().resolve()
-    if not source.exists():
-        raise SystemExit(f"Missing data file: {source}")
+    source_paths = [Path(value).expanduser().resolve() for value in (args.csv_paths or [str(DEFAULT_INPUT)])]
+    missing_sources = [str(source) for source in source_paths if not source.exists()]
+    if missing_sources:
+        raise SystemExit(f"Missing data file(s): {', '.join(missing_sources)}")
 
-    ingestion = ingest_campaign_export(source)
-    contract = build_ingestion_contract(ingestion)
+    ingestions = [ingest_campaign_export(path) for path in source_paths]
+    for result in ingestions:
+        if not result.valid:
+            print(format_validation_message(result), file=sys.stderr)
+            raise SystemExit(1)
+
+    source_summaries = []
+    combined = copy.deepcopy(ingestions[0])
+    if len(ingestions) > 1:
+        combined.records = []
+        combined.raw_rows = []
+        combined.issues = []
+        combined.warnings = []
+        combined.field_mapping = dict(ingestions[0].field_mapping)
+        combined.currency = dict(ingestions[0].currency)
+        combined.platform = {"platform": "mixed", "confidence": "medium", "signals": "multiple sources"}
+        combined.analysis_mode = "roas" if any((item.analysis_mode or "").lower() == "roas" or item.summary.get("revenue_present") for item in ingestions) else ("cpa" if all((item.analysis_mode or "").lower() == "cpa" for item in ingestions) else ingestions[0].analysis_mode)
+        combined.segment_strategy = {
+            "name": "multi_source_combined",
+            "fields": ["campaign_name"],
+            "segment_count": sum(len(item.records) for item in ingestions),
+            "coverage": 1.0,
+            "sample_segment_names": [],
+        }
+        combined.summary = {
+            "row_count": 0,
+            "normalized_row_count": 0,
+            "total_spend": 0.0,
+            "total_conversions": 0,
+            "total_revenue": 0.0,
+            "revenue_present": False,
+            "segment_count": 0,
+            "platform": "mixed",
+            "platform_confidence": "medium",
+        }
+        for item in ingestions:
+            prefix = source_export_label(item.platform.get("platform", "unknown"))
+            source_summaries.append({"label": source_export_label(item.platform.get("platform", "unknown")), "campaign_count": len(item.records)})
+            combined.summary["row_count"] += int(item.summary.get("row_count") or 0)
+            combined.summary["normalized_row_count"] += int(item.summary.get("normalized_row_count") or 0)
+            combined.summary["total_spend"] += float(item.summary.get("total_spend") or 0.0)
+            combined.summary["total_conversions"] += int(item.summary.get("total_conversions") or 0)
+            if item.summary.get("revenue_present"):
+                combined.summary["revenue_present"] = True
+                combined.summary["total_revenue"] += float(item.summary.get("total_revenue") or 0.0)
+            for record in item.records:
+                merged_record = dict(record)
+                campaign_name = str(merged_record.get("campaign") or "").strip()
+                if campaign_name:
+                    merged_record["campaign"] = f"{prefix} | {campaign_name}"
+                merged_raw = dict(merged_record.get("raw") or {})
+                merged_raw["source_file"] = item.path.name
+                merged_raw["source_platform"] = item.platform.get("platform", "unknown")
+                merged_record["raw"] = merged_raw
+                combined.records.append(merged_record)
+            combined.raw_rows.extend(item.raw_rows)
+            combined.warnings.extend(item.warnings)
+            combined.issues.extend(item.issues)
+        combined.summary["segment_count"] = len(combined.records)
+        if not combined.summary["revenue_present"]:
+            combined.summary["total_revenue"] = None
+        combined.debug = dict(ingestions[0].debug)
+        combined.debug["source_summaries"] = source_summaries
+        combined.debug["combined_sources"] = [str(path) for path in source_paths]
+        combined.debug["detected_platform"] = {"platform": "mixed", "confidence": "medium", "signals": "multiple sources"}
+        combined.debug["chosen_segmentation_strategy"] = combined.segment_strategy
+        if combined.records:
+            combined.segment_strategy["sample_segment_names"] = [record.get("campaign") for record in combined.records[:3] if record.get("campaign")]
+    else:
+        source_summaries = [{"label": source_export_label(combined.platform.get("platform", "unknown")), "campaign_count": len(combined.records)}]
+        combined.debug = dict(combined.debug)
+        combined.debug["source_summaries"] = source_summaries
+        combined.debug["combined_sources"] = [str(source_paths[0])]
+
+    contract = build_ingestion_contract(combined)
     if not contract.get("ok"):
-        print(contract.get("user_message") or format_validation_message(ingestion), file=sys.stderr)
+        print(contract.get("user_message") or format_validation_message(combined), file=sys.stderr)
         raise SystemExit(1)
 
-    set_currency_context(ingestion.currency.get("currency_code", "GBP"), ingestion.currency.get("currency_symbol", "£"), ingestion.currency.get("currency_source", "detected"))
-    campaigns = [Campaign(**{k: v for k, v in record.items() if k != "campaign_group"}) for record in ingestion.records]
+    set_currency_context(combined.currency.get("currency_code", "GBP"), combined.currency.get("currency_symbol", "£"), combined.currency.get("currency_source", "detected"))
+    campaigns = [Campaign(**{k: v for k, v in record.items() if k != "campaign_group"}) for record in combined.records]
     args.ingestion_contract = contract
+    args.csv_path = ", ".join(str(path) for path in source_paths)
 
     if args.graph:
         graph = DecisionGraph(profile_interpreter=run_profile_interpreter, analyst=analyst, strategist_initial=strategist_initial, critic=critic, strategist_refinement=strategist_refinement, enrich_decisions=enrich_decisions, simulate_projections=simulate_projections, synthesizer=synthesize_report, evaluate_output=evaluate_output, marketer=marketer)
@@ -1052,32 +1160,13 @@ def main() -> None:
         enriched_strategy = enrich_decisions(strategy_refined, analysis)
         simulation = simulate_projections(enriched_strategy, analysis)
         evaluation = evaluate_output(enriched_strategy, critique)
-        marketer_output = marketer({"source": str(source), "ingestion_contract": contract}, analysis, enriched_strategy, critique, simulation, evaluation, "")
+        marketer_output = marketer({"source": str(args.csv_path), "csv_path": str(source_paths[0]), "ingestion_contract": contract, "sources_analyzed": source_summaries}, analysis, enriched_strategy, critique, simulation, evaluation, "")
         final = marketer_output["final_report_text"]
         report = final
         html_report = marketer_output["final_report_html"]
 
     output_report.write_text(report, encoding="utf-8")
     output_html.write_text(html_report, encoding="utf-8")
-
-    print("Gnomeo agent MVP test")
-    print("API mode: local mock (no remote calls)")
-    print(f"Data source: {source}")
-    print(f"Report written: {output_report}")
-    print(f"HTML written: {output_html}")
-    print_section("PROFILE INTERPRETER", profile_context)
-    print_section("ANALYST", analysis)
-    print_section("STRATEGIST (initial)", strategy_initial)
-    print_section("CRITIC", critique)
-    print_section("STRATEGIST (refined)", enriched_strategy)
-    if args.audit:
-        audit_result = marketer_output.get("audit_result", {}) if isinstance(marketer_output, dict) else {}
-        print_section("AUDIT", audit_result)
-        print_section("AUDITED RECOMMENDATIONS", audit_result.get("recommendations", []))
-    print("\n=== FINAL REPORT ===")
-    print(final)
-    print("\n=== EVALUATION ===")
-    print(evaluation)
 
 
 if __name__ == "__main__":

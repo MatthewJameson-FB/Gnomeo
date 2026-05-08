@@ -29,7 +29,7 @@ def timestamp() -> str:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a local Gnomeo free-tier report process.")
-    parser.add_argument("--csv", required=True, help="Path to the input CSV file")
+    parser.add_argument("--csv", nargs="+", required=True, help="Path(s) to the input CSV file(s)")
     parser.add_argument("--email", required=True, help="Customer email address")
     return parser.parse_args()
 
@@ -41,16 +41,17 @@ def fail(message: str, code: int = 1) -> None:
 
 def main() -> int:
     args = parse_args()
-    csv_path = Path(args.csv).expanduser()
+    csv_paths = [Path(value).expanduser() for value in args.csv]
     email = args.email.strip()
 
-    try:
-        if not csv_path.exists() or not csv_path.is_file() or not csv_path.stat().st_size:
+    for csv_path in csv_paths:
+        try:
+            if not csv_path.exists() or not csv_path.is_file() or not csv_path.stat().st_size:
+                fail(f"CSV not found or unreadable: {csv_path}")
+            with csv_path.open("rb"):
+                pass
+        except PermissionError:
             fail(f"CSV not found or unreadable: {csv_path}")
-        with csv_path.open("rb"):
-            pass
-    except PermissionError:
-        fail(f"CSV not found or unreadable: {csv_path}")
 
     INBOX_DIR.mkdir(parents=True, exist_ok=True)
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
@@ -58,12 +59,13 @@ def main() -> int:
 
     stamp = timestamp()
     safe_email = email_safe(email)
-    processed_csv = PROCESSED_DIR / f"{stamp}_{csv_path.name}"
+    processed_csvs = [PROCESSED_DIR / f"{stamp}_{index + 1:02d}_{csv_path.name}" for index, csv_path in enumerate(csv_paths)]
     output_html = OUTPUT_DIR / f"gnomeo_report_{safe_email}_{stamp}.html"
     output_md = OUTPUT_DIR / f"gnomeo_report_{safe_email}_{stamp}.md"
 
     try:
-        shutil.copy2(csv_path, processed_csv)
+        for source_path, processed_csv in zip(csv_paths, processed_csvs):
+            shutil.copy2(source_path, processed_csv)
     except PermissionError:
         fail("Move the CSV into ~/Gnomeo/free_reports/inbox first.")
     except OSError as error:
@@ -77,7 +79,7 @@ def main() -> int:
                 "python3",
                 str(AGENT_TEST),
                 "--graph",
-                str(processed_csv),
+                *[str(path) for path in processed_csvs],
                 "--output-html",
                 str(output_html),
                 "--output-report",
@@ -100,7 +102,8 @@ def main() -> int:
         fail(f"Report processing failed: {error}")
     finally:
         try:
-            processed_csv.unlink(missing_ok=True)
+            for processed_csv in processed_csvs:
+                processed_csv.unlink(missing_ok=True)
         except Exception:
             pass
 
