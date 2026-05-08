@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Security & Data Protection — Gnomeo</title>
+  <meta name="description" content="How Gnomeo protects uploaded ad data, reports, and workspace context." />
+  <link rel="stylesheet" href="/content-pages.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-nav">
+      <a class="brand" href="/index.html">Gnomeo.nl</a>
+      <nav class="nav-links" aria-label="Trust navigation">
+        <a href="/privacy.html">Privacy</a>
+        <a href="/data-handling.html">Data handling</a>
+        <a href="/data-retention.html">Retention</a>
+        <a href="/security.html">Security</a>
+        <a href="/ai-policy.html">AI policy</a>
+      </nav>
+    </header>
+    <main>
+      <section class="hero">
+        <div class="eyebrow">Security & trust</div>
+        <h1>Security & Data Protection</h1>
+        <p class="subhead">Gnomeo is designed around minimal-retention security: raw uploads are temporary, reports and analytical memory may persist, and customer data stays private by default.</p>
+        <div class="cta-row">
+          <a class="button" href="/workspace.html">Workspace setup</a>
+          <a class="button ghost" href="/pricing.html">See plans</a>
+          <a class="button download" href="/public/docs/security-and-data-protection.pdf">Download PDF</a>
+        </div>
+      </section>
+      
+<section class="grid two-col">
+  <article class="card">
+    <h2>Security & data protection</h2>
+    <p>Gnomeo is designed around minimal-retention security. We aim to protect uploaded ad data, reports, and workspace context without turning the product into a raw-data warehouse.</p>
+    <div class="badge-row">
+      <span class="badge">HTTPS / encrypted transport</span>
+      <span class="badge">Server-side secrets only</span>
+      <span class="badge">Private-by-default storage</span>
+      <span class="badge">Workspace isolation</span>
+    </div>
+  </article>
+  <article class="card">
+    <h2>What we protect</h2>
+    <ul>
+      <li>Uploaded Google Ads and Meta Ads CSV exports.</li>
+      <li>Generated reports and analytical memory.</li>
+      <li>Workspace preferences, trend summaries, and recommendation history.</li>
+      <li>Private file access via signed URLs where applicable.</li>
+    </ul>
+  </article>
+</section>
+
+<section class="grid three-col" style="margin-top:16px;">
+  <article class="card">
+    <h3>Private by default</h3>
+    <p>Customer data is not intended for public indexing or public file exposure. Private storage buckets and restricted admin access should be used for customer materials.</p>
+  </article>
+  <article class="card">
+    <h3>Minimal retention</h3>
+    <p>Raw uploads should be temporary. Gnomeo retains analytical memory, reports, and summaries so recurring reviews remain useful without keeping raw exports indefinitely.</p>
+  </article>
+  <article class="card">
+    <h3>GDPR-aware operations</h3>
+    <p>We aim to support deletion requests, data minimization, and clear retention rules. No SOC2 claim is made here, and no military-grade phrasing is used.</p>
+  </article>
+</section>
+
+<section class="card" style="margin-top:16px;">
+  <h2>Operational notes</h2>
+  <ul>
+    <li>Admin routes must be protected before public production use.</li>
+    <li>Service-role access stays server-side only.</li>
+    <li>Raw CSV contents should not appear in logs.</li>
+    <li>Signed URLs should be used for private file access when needed.</li>
+  </ul>
+  <div class="downloads">
+    <a class="button download" href="/public/docs/security-and-data-protection.pdf">Download PDF</a>
+  </div>
+</section>
+
+    </main>
+    <footer class="footer">
+      <p>© 2026 Gnomeo.nl</p>
+      <p class="footer-links"><a href="/">Home</a> • <a href="/pricing.html">Pricing</a> • <a href="/workspace.html">Workspace</a> • <a href="/privacy.html">Privacy</a> • <a href="/data-handling.html">Data handling</a> • <a href="/data-retention.html">Retention</a> • <a href="/security.html">Security</a> • <a href="/ai-policy.html">AI policy</a></p>
+    </footer>
+  </div>
+</body>
+</html>

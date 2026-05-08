@@ -1,0 +1,98 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 1114 >>
+stream
+BT
+/F1 11 Tf
+54 740 Td
+(Gnomeo Security & Data Protection) Tj
+0 -14 Td
+54 726 Td
+() Tj
+0 -14 Td
+54 712 Td
+(Security philosophy) Tj
+0 -14 Td
+54 698 Td
+(- Minimal retention: raw uploads are temporary.) Tj
+0 -14 Td
+54 684 Td
+(- Generated reports and workspace memory may persist.) Tj
+0 -14 Td
+54 670 Td
+(- Customer data stays private by default.) Tj
+0 -14 Td
+54 656 Td
+() Tj
+0 -14 Td
+54 642 Td
+(Protection measures) Tj
+0 -14 Td
+54 628 Td
+(- HTTPS / encrypted transport.) Tj
+0 -14 Td
+54 614 Td
+(- Server-side secrets only.) Tj
+0 -14 Td
+54 600 Td
+(- Restricted admin access.) Tj
+0 -14 Td
+54 586 Td
+(- Private storage buckets.) Tj
+0 -14 Td
+54 572 Td
+(- Signed URLs for private files where applicable.) Tj
+0 -14 Td
+54 558 Td
+(- Workspace isolation.) Tj
+0 -14 Td
+54 544 Td
+() Tj
+0 -14 Td
+54 530 Td
+(GDPR-aware practices) Tj
+0 -14 Td
+54 516 Td
+(- Deletion rights should be supported.) Tj
+0 -14 Td
+54 502 Td
+(- No public indexing of customer data.) Tj
+0 -14 Td
+54 488 Td
+(- No public upload exposure.) Tj
+0 -14 Td
+54 474 Td
+(- No SOC2 claim is made here.) Tj
+0 -14 Td
+54 460 Td
+(- No military-grade phrasing.) Tj
+0 -14 Td
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000247 00000 n 
+0000001413 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1483
+%%EOF

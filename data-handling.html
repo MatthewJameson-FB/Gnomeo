@@ -4,111 +4,57 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Data Handling — Gnomeo</title>
-  <meta name="description" content="How Gnomeo handles temporary uploads, report generation, secure transport, and free-tier cleanup." />
-  <link rel="canonical" href="https://www.gnomeo.nl/data-handling.html" />
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content="Data Handling — Gnomeo" />
-  <meta property="og:description" content="How Gnomeo handles temporary uploads, report generation, secure transport, and free-tier cleanup." />
-  <meta property="og:url" content="https://www.gnomeo.nl/data-handling.html" />
-  <meta property="og:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
-  <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Data Handling — Gnomeo" />
-  <meta name="twitter:description" content="How Gnomeo handles temporary uploads, report generation, secure transport, and free-tier cleanup." />
-  <meta name="twitter:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
-  <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Organization",
-      "name": "Gnomeo",
-      "url": "https://www.gnomeo.nl/",
-      "logo": "https://www.gnomeo.nl/gnomeo-logo.png?v=3"
-    },
-    {
-      "@type": "WebSite",
-      "name": "Gnomeo",
-      "url": "https://www.gnomeo.nl/",
-      "publisher": {
-        "@type": "Organization",
-        "name": "Gnomeo"
-      }
-    }
-  ]
-}
-  </script>
+  <meta name="description" content="Short data-handling overview with links to the fuller retention policy." />
   <link rel="stylesheet" href="/content-pages.css" />
 </head>
 <body>
   <div class="wrap">
     <header class="site-nav">
-      <a class="brand" href="/"><span class="brand-name">Gnomeo.nl</span></a>
-      <a class="nav-cta" href="/workspace.html">Set up your burrow</a>
+      <a class="brand" href="/index.html">Gnomeo.nl</a>
+      <nav class="nav-links" aria-label="Trust navigation">
+        <a href="/privacy.html">Privacy</a>
+        <a href="/data-handling.html">Data handling</a>
+        <a href="/data-retention.html">Retention</a>
+        <a href="/security.html">Security</a>
+        <a href="/ai-policy.html">AI policy</a>
+      </nav>
     </header>
-    <div class="mini-links" aria-label="Secondary navigation">
-      <a href="/">Home</a>
-      <span aria-hidden="true">•</span>
-      <a href="/pricing.html">Pricing</a>
-      <span aria-hidden="true">•</span>
-      <a href="/workspace.html">Workspace</a>
-      <span aria-hidden="true">•</span>
-      <a href="/privacy.html">Privacy</a>
-    </div>
-
     <main>
       <section class="hero">
         <div class="eyebrow">Data handling</div>
-        <h1>How uploads are handled</h1>
-        <p class="subhead">Temporary processing, conservative analysis, and a narrow retention model are the default.</p>
+        <h1>Data Handling</h1>
+        <p class="subhead">A concise overview of how Gnomeo treats uploaded ad data and what gets kept over time.</p>
+        <div class="cta-row">
+          <a class="button" href="/workspace.html">Workspace setup</a>
+          <a class="button ghost" href="/pricing.html">See plans</a>
+          <a class="button download" href="/public/docs/data-handling-and-retention.pdf">Retention PDF</a>
+        </div>
       </section>
+      
+<section class="grid two-col">
+  <article class="card">
+    <h2>Data handling</h2>
+    <p>This page is the short front door. The fuller retention model lives on the Data Handling & Retention page.</p>
+    <div class="downloads">
+      <a class="button" href="/data-retention.html">Read retention details</a>
+      <a class="button ghost" href="/security.html">Security details</a>
+    </div>
+  </article>
+  <article class="card">
+    <h2>What Gnomeo keeps</h2>
+    <ul>
+      <li>Generated reports</li>
+      <li>Workspace memory</li>
+      <li>Trend summaries</li>
+      <li>Recommendation history</li>
+    </ul>
+  </article>
+</section>
 
-      <div class="grid-2">
-        <article class="card">
-          <h2>How uploads are processed</h2>
-          <ul>
-            <li>Campaign exports are checked, analysed, and used to generate a report.</li>
-            <li>Processing is conservative: Gnomeo recommends cut, scale, hold, or test only when the signal supports it.</li>
-            <li>Reports are built from the export you provide, not from hidden account access.</li>
-          </ul>
-        </article>
-        <article class="card">
-          <h2>Temporary file handling</h2>
-          <ul>
-            <li>Uploaded files are treated as temporary processing inputs.</li>
-            <li>Free-tier uploads are automatically cleaned up after the report process finishes.</li>
-            <li>Partial failures and exceptions still trigger cleanup of temporary input files.</li>
-          </ul>
-        </article>
-      </div>
-
-      <div class="grid-2">
-        <article class="card">
-          <h2>Secure transport</h2>
-          <ul>
-            <li>Traffic should be served over HTTPS in production.</li>
-            <li>Do not upload sensitive data you do not need for analysis.</li>
-            <li>Temporary processing is meant to keep exposure low, not to promise perfect secrecy.</li>
-          </ul>
-        </article>
-        <article class="card">
-          <h2>Minimal retention</h2>
-          <ul>
-            <li>Keep only lightweight operational metadata where it is genuinely useful.</li>
-            <li>Do not retain raw export rows longer than needed.</li>
-            <li>Do not retain generated reports unless there is a clear operational reason.</li>
-          </ul>
-        </article>
-      </div>
-
-      <div class="card">
-        <h2>Operating posture</h2>
-        <p>Gnomeo stays independent, conservative, and signal-aware. It does not manage campaigns, buy media, or make claims it cannot support.</p>
-      </div>
     </main>
-
-    <footer>
-      <p class="footer-note">© 2026 Gnomeo.nl — independent analysis for Google Ads and Meta Ads exports.</p>
-      <p class="footer-links"><a href="/pricing.html">Pricing</a><span aria-hidden="true">•</span><a href="/workspace.html">Workspace</a><span aria-hidden="true">•</span><a href="/privacy.html">Privacy</a><span aria-hidden="true">•</span><a href="/data-handling.html">Data handling</a></p>
+    <footer class="footer">
+      <p>© 2026 Gnomeo.nl</p>
+      <p class="footer-links"><a href="/">Home</a> • <a href="/pricing.html">Pricing</a> • <a href="/workspace.html">Workspace</a> • <a href="/privacy.html">Privacy</a> • <a href="/data-handling.html">Data handling</a> • <a href="/data-retention.html">Retention</a> • <a href="/security.html">Security</a> • <a href="/ai-policy.html">AI policy</a></p>
     </footer>
   </div>
 </body>
