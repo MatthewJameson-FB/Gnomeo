@@ -1,11 +1,8 @@
 const { generateId, restSelect, restSingle, restInsert, restUpdate } = require('../_supabase');
-
-const ADMIN_PASSWORD = process.env.ADMIN_DASHBOARD_PASSWORD || 'gnomeo-admin';
+const { requireAdmin } = require('../_adminAuth');
 
 const respondError = (res, statusCode, step, error) =>
   res.status(statusCode).json({ success: false, step, error });
-
-const requireAdmin = (req) => String(req.headers['x-admin-password'] || '').trim() === ADMIN_PASSWORD;
 
 const readJsonBody = async (req) => {
   if (req.body && typeof req.body === 'object') return req.body;
@@ -68,7 +65,7 @@ const createSubmission = async ({ customerId, email, company, originalFilename, 
 };
 
 module.exports = async (req, res) => {
-  if (!requireAdmin(req)) {
+  if (!requireAdmin(req, res)) {
     return respondError(res, 401, 'auth', 'Unauthorized');
   }
 

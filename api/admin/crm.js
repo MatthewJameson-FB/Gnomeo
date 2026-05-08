@@ -15,12 +15,10 @@ const {
 const TEMPLATE_PATH = path.join(process.cwd(), 'agent_mvp', 'report_email_template.txt');
 const REPORTS_BUCKET = 'reports';
 const CSV_BUCKET = 'submissions';
-const ADMIN_PASSWORD = process.env.ADMIN_DASHBOARD_PASSWORD || 'gnomeo-admin';
+const { requireAdmin } = require('../_adminAuth');
 
 const respondError = (res, statusCode, step, error) =>
   res.status(statusCode).json({ success: false, step, error });
-
-const requireAdmin = (req) => String(req.headers['x-admin-password'] || '').trim() === ADMIN_PASSWORD;
 
 const safeName = (value) => String(value || 'file').replace(/[^a-zA-Z0-9._-]+/g, '-');
 
@@ -185,7 +183,7 @@ const detailView = async (id) => {
 
 module.exports = async (req, res) => {
   try {
-    if (!requireAdmin(req)) {
+    if (!requireAdmin(req, res)) {
       return respondError(res, 401, 'auth', 'Unauthorized');
     }
 

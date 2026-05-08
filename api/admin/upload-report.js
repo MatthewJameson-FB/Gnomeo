@@ -1,14 +1,11 @@
 const path = require('path');
 const { parseMultipartForm } = require('../_multipart');
 const { generateId, restSingle, restSelect, restInsert, restUpdate, storageUpload } = require('../_supabase');
-
-const ADMIN_PASSWORD = process.env.ADMIN_DASHBOARD_PASSWORD || 'gnomeo-admin';
+const { requireAdmin } = require('../_adminAuth');
 const REPORTS_BUCKET = 'reports';
 
 const respondError = (res, statusCode, step, error) =>
   res.status(statusCode).json({ success: false, step, error });
-
-const requireAdmin = (req) => String(req.headers['x-admin-password'] || '').trim() === ADMIN_PASSWORD;
 
 const mapSchemaError = (error) => {
   const message = String(error?.message || error || 'Unknown error');
@@ -29,7 +26,7 @@ const safeName = (value) => String(value || 'report').replace(/[^a-zA-Z0-9._-]+/
 
 module.exports = async (req, res) => {
   try {
-    if (!requireAdmin(req)) {
+    if (!requireAdmin(req, res)) {
       return respondError(res, 401, 'auth', 'Unauthorized');
     }
 

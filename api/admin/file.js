@@ -1,12 +1,9 @@
 const path = require('path');
 const { restSingle, restSelect, storageDownload } = require('../_supabase');
-
-const ADMIN_PASSWORD = process.env.ADMIN_DASHBOARD_PASSWORD || 'gnomeo-admin';
+const { requireAdmin } = require('../_adminAuth');
 
 const respondError = (res, statusCode, step, error) =>
   res.status(statusCode).json({ success: false, step, error });
-
-const requireAdmin = (req) => String(req.headers['x-admin-password'] || '').trim() === ADMIN_PASSWORD;
 
 const mapSchemaError = (error) => {
   const message = String(error?.message || error || 'Unknown error');
@@ -24,7 +21,7 @@ const mapSchemaError = (error) => {
 
 module.exports = async (req, res) => {
   try {
-    if (!requireAdmin(req)) {
+    if (!requireAdmin(req, res)) {
       return respondError(res, 401, 'auth', 'Unauthorized');
     }
 
