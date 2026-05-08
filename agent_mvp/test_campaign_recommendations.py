@@ -70,20 +70,24 @@ def main() -> int:
     lowered = (stdout + "\n" + report_text + "\n" + report_html_text).lower()
     if "account baseline" in lowered:
         failures.append("final report still references account baseline")
+    for campaign_name in ["meta prospecting broad uk", "google brand search"]:
+        if campaign_name not in lowered:
+            failures.append(f"final report is missing expected campaign name: {campaign_name}")
     for heading in ["Executive Summary", "Account Snapshot", "Top Priorities", "Key Decisions", "Signal Notes / Conservative Calls", "Data Quality & Caveats"]:
         if heading.lower() not in lowered:
             failures.append(f"final report is missing {heading}")
-    if "rationale:" not in lowered:
+    if "reason:" not in lowered:
         failures.append("final report is missing decision rationales")
-    if "signal label:" not in lowered:
-        failures.append("final report is missing signal labels")
+    if "confidence:" not in lowered:
+        failures.append("final report is missing signal/confidence labels")
     if "audit safeguards reduced" not in lowered and "signal quality was not strong enough" not in lowered:
         failures.append("final report is missing conservative notes")
-    if not re.search(r"Current spend:\s*£(?!0\.00)[0-9]", report_text):
+    spend_values = [float(value) for value in re.findall(r"Current spend:\s*([0-9]+(?:\.[0-9]+)?)", report_text)]
+    if not spend_values or not any(value > 0 for value in spend_values):
         failures.append("no decision shows current spend above £0.00")
     if "£0.00–£0.00" in report_text or "£0.00–£0.00" in report_html_text:
         failures.append("fake zero impact range still appears in the report")
-    if "Wasted spend:" not in report_text:
+    if "wasted spend" not in lowered:
         failures.append("summary is missing wasted spend")
 
     print("Pre-audit strategist actions:")

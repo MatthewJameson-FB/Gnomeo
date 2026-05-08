@@ -3,6 +3,13 @@ const path = require('path');
 const { randomUUID } = require('crypto');
 const { parseMultipartForm } = require('./_multipart');
 const {
+  FREE_REPORT_LIMITS,
+  normalizeEmail,
+  hashValue,
+  getClientIp,
+  validateCsvUploads,
+} = require('./_limits');
+const {
   ensureConfig,
   restSingle,
   restInsert,
@@ -12,12 +19,13 @@ const {
 } = require('./_supabase');
 
 const DATA_PATH = path.join(process.cwd(), 'data', 'submissions.json');
+const FREE_USAGE_PATH = path.join(process.cwd(), 'data', 'free_snapshot_usage.json');
 const IS_PRODUCTION = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
 const HAS_SUPABASE = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 const CSV_BUCKET = 'submissions';
 const ADMIN_PASSWORD_FALLBACK = 'gnomeo-admin';
-const MAX_UPLOAD_FILES = 5;
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const MAX_UPLOAD_FILES = FREE_REPORT_LIMITS.maxFiles;
+const MAX_UPLOAD_BYTES = FREE_REPORT_LIMITS.maxFileBytes;
 
 const getHeader = (req, name) => {
   const target = String(name).toLowerCase();
@@ -138,6 +146,74 @@ const createLocalLogEntry = ({ submissionId, customerEmail, originalFilename, cs
   notes: 'Waiting for manual report generation.',
 });
 
+const readFreeUsageState = () => {
+  try {
+    if (!fs.existsSync(FREE_USAGE_PATH)) return { entries: [] };
+    const raw = fs.readFileSync(FREE_USAGE_PATH, 'utf8').trim();
+    if (!raw) return { entries: [] };
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : { entries: [] };
+  } catch (error) {
+    console.error('[gnomeo submit] free usage read failed:', error);
+    return { entries: [] };
+  }
+};
+
+const writeFreeUsageState = (state) => {
+  ensureDataDir();
+  const payload = {
+    entries: Array.isArray(state?.entries) ? state.entries : [],
+  };
+  fs.writeFileSync(FREE_USAGE_PATH, `${JSON.stringify(payload, null, 2)}\n`);
+};
+
+const monthStartUtc = (value) => new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), 1));
+const dayStartUtc = (value) => new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
+
+const pruneFreeUsageEntries = (entries, cutoffMs) => entries.filter((entry) => {
+  const timestamp = Date.parse(entry?.timestamp || '');
+  return Number.isFinite(timestamp) ? timestamp >= cutoffMs : true;
+});
+
+const assessFreeSnapshotUsage = ({ emailHash, ipHash, now = new Date() } = {}) => {
+  const state = readFreeUsageState();
+  const entries = Array.isArray(state.entries) ? state.entries : [];
+  const monthStart = monthStartUtc(now);
+  const dayStart = dayStartUtc(now);
+  const monthCount = entries.filter((entry) => entry.emailHash === emailHash && Date.parse(entry.timestamp || '') >= monthStart.getTime()).length;
+  const dayCount = entries.filter((entry) => entry.ipHash === ipHash && Date.parse(entry.timestamp || '') >= dayStart.getTime()).length;
+
+  if (monthCount >= FREE_REPORT_LIMITS.maxReportsPerMonth) {
+    return { ok: false, error: 'Free snapshots are limited to 2 reports per month per email. Please use a Pro workspace for more.' };
+  }
+  if (dayCount >= FREE_REPORT_LIMITS.maxReportsPerDayByIp) {
+    return { ok: false, error: 'Free snapshots are limited to 1 report per day per IP. Please try again tomorrow or use a Pro workspace.' };
+  }
+
+  return { ok: true, monthCount, dayCount };
+};
+
+const recordFreeSnapshotUsage = ({ emailHash, ipHash, fileCount, rowCount, status = 'sent', now = new Date() } = {}) => {
+  try {
+    const state = readFreeUsageState();
+    const cutoffMs = now.getTime() - (90 * 24 * 60 * 60 * 1000);
+    const entries = pruneFreeUsageEntries(Array.isArray(state.entries) ? state.entries : [], cutoffMs);
+    entries.unshift({
+      plan: 'free',
+      planLabel: FREE_REPORT_LIMITS.planLabel,
+      emailHash,
+      ipHash,
+      timestamp: now.toISOString(),
+      status,
+      fileCount,
+      rowCount,
+    });
+    writeFreeUsageState({ entries });
+  } catch (error) {
+    console.error('[gnomeo submit] free usage record failed (non-blocking):', error);
+  }
+};
+
 const cleanFilename = (value) => String(value || 'submission.csv').replace(/[^a-zA-Z0-9._-]+/g, '_');
 
 const upsertCustomer = async ({ email }) => {
@@ -235,21 +311,19 @@ module.exports = async (req, res) => {
 
   if (!email) return respondError(res, 400, 'validation', 'Email is required');
   if (!uploadedFiles.length) return respondError(res, 400, 'file-upload', 'CSV file is required');
-  if (uploadedFiles.length > MAX_UPLOAD_FILES) return respondError(res, 400, 'file-upload', `Upload limit is ${MAX_UPLOAD_FILES} CSV files`);
-
-  const invalidFile = uploadedFiles.find((file) => {
-    const name = String(file.filename || '').toLowerCase();
-    const type = String(file.contentType || '').toLowerCase();
-    return !(name.endsWith('.csv') || type.includes('csv') || type.includes('text/plain'));
-  });
-  if (invalidFile) {
-    return respondError(res, 400, 'file-upload', `Unsupported file type: ${invalidFile.filename}`);
-  }
 
   const csvBuffers = uploadedFiles.map((file) => Buffer.from(file.content || '', 'latin1'));
-  const oversizedFile = csvBuffers.find((buffer) => buffer.length > MAX_UPLOAD_BYTES);
-  if (oversizedFile) {
-    return respondError(res, 400, 'file-upload', `Each CSV must be under ${MAX_UPLOAD_BYTES / (1024 * 1024)}MB`);
+  const validation = validateCsvUploads({ files: uploadedFiles, buffers: csvBuffers, limits: FREE_REPORT_LIMITS });
+  if (!validation.ok) {
+    return respondError(res, 400, 'file-upload', validation.error);
+  }
+
+  const requestIp = getClientIp(req);
+  const emailHash = hashValue(normalizeEmail(email));
+  const ipHash = hashValue(requestIp);
+  const rateLimitCheck = assessFreeSnapshotUsage({ emailHash, ipHash, now: new Date() });
+  if (!rateLimitCheck.ok) {
+    return respondError(res, 429, 'rate-limit', rateLimitCheck.error);
   }
 
   const apiKey = process.env.RESEND_API_KEY;
@@ -400,6 +474,7 @@ module.exports = async (req, res) => {
     </div>
   `;
 
+  let userEmailSent = false;
   try {
     console.log('[gnomeo submit] sending user confirmation email');
     await sendResendEmail({
@@ -410,6 +485,7 @@ module.exports = async (req, res) => {
       text: userText,
       reply_to: 'matt@gnomeo.nl',
     });
+    userEmailSent = true;
     console.log('[gnomeo submit] resend success: user email');
     await logEmailEvent({ customerId: customer.id, submissionId, type: 'submission_confirmation', status: 'sent' });
   } catch (error) {
@@ -417,6 +493,17 @@ module.exports = async (req, res) => {
     return respondError(res, 502, 'user-email', error instanceof Error ? error.message : String(error));
   } finally {
     await cleanupSubmissionCsvs(csvPaths);
+  }
+
+  if (userEmailSent) {
+    recordFreeSnapshotUsage({
+      emailHash,
+      ipHash,
+      fileCount: uploadedFiles.length,
+      rowCount: validation.totalRows || 0,
+      status: 'sent',
+      now: new Date(),
+    });
   }
 
   try {

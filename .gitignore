@@ -9,3 +9,7 @@ agent_mvp/output_report.html
 agent_mvp/output_report.md
 agent_mvp/output_report.json
 *.log
+
+data/free_snapshot_usage.json
+.env
+.env.*

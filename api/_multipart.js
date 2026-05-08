@@ -10,13 +10,12 @@ const parseContentDisposition = (value = '') => {
 
 const parseMultipartForm = (buffer, contentType) => {
   const boundaryMatch = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(contentType || '');
-  if (!boundaryMatch) return { fields: {}, file: null };
+  if (!boundaryMatch) return { fields: {}, file: null, files: [] };
 
   const boundary = boundaryMatch[1] || boundaryMatch[2];
   const segments = buffer.toString('latin1').split(`--${boundary}`);
   const fields = {};
   const files = [];
-  let file = null;
 
   for (const segment of segments) {
     const trimmed = segment.replace(/^\r?\n/, '').replace(/\r?\n$/, '');
@@ -39,19 +38,18 @@ const parseMultipartForm = (buffer, contentType) => {
     if (!disposition.name) continue;
 
     if (disposition.filename) {
-      file = {
+      files.push({
         fieldName: disposition.name,
         filename: disposition.filename,
         contentType: headers['content-type'] || 'text/plain',
         content: value,
-      };
-      files.push(file);
+      });
     } else {
       fields[disposition.name] = value;
     }
   }
 
-  return { fields, file, files };
+  return { fields, file: files[0] || null, files };
 };
 
 module.exports = { parseMultipartForm };
