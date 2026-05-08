@@ -15,7 +15,7 @@ import resend
 
 BASE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = BASE_DIR.parents[1]
-AGENT_SCRIPT = REPO_ROOT / "agent_test.py"
+AGENT_SCRIPT = BASE_DIR.parent / "agent_test.py"
 TEMPLATE_PATH = REPO_ROOT / "report_email_template.txt"
 UPLOADS_DIR = BASE_DIR / "uploads"
 GENERATED_DIR = BASE_DIR / "generated_reports"
