@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pricing — Gnomeo</title>
+  <meta name="description" content="Early-access pricing for Gnomeo's free snapshot, Pro Workspace, and Agency plans. EUR is the default display currency." />
+  <link rel="canonical" href="https://www.gnomeo.nl/pricing.html" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Pricing — Gnomeo" />
+  <meta property="og:description" content="Early-access pricing for Gnomeo's free snapshot, Pro Workspace, and Agency plans. EUR is the default display currency." />
+  <meta property="og:url" content="https://www.gnomeo.nl/pricing.html" />
+  <meta property="og:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Pricing — Gnomeo" />
+  <meta name="twitter:description" content="Early-access pricing for Gnomeo's free snapshot, Pro Workspace, and Agency plans. EUR is the default display currency." />
+  <meta name="twitter:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "name": "Gnomeo",
+      "url": "https://www.gnomeo.nl/",
+      "logo": "https://www.gnomeo.nl/gnomeo-logo.png?v=3"
+    },
+    {
+      "@type": "WebSite",
+      "name": "Gnomeo",
+      "url": "https://www.gnomeo.nl/",
+      "publisher": {
+        "@type": "Organization",
+        "name": "Gnomeo"
+      }
+    }
+  ]
+}
+  </script>
+  <link rel="stylesheet" href="/content-pages.css" />
+  <style>
+    .pricing-tools {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+    .currency-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .currency-switch select {
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      font-weight: 700;
+      outline: none;
+      cursor: pointer;
+    }
+    .price-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+    .price-card {
+      position: relative;
+      overflow: hidden;
+    }
+    .price-card.featured {
+      border-color: rgba(29, 78, 216, 0.18);
+      box-shadow: 0 18px 48px rgba(29, 78, 216, 0.08);
+    }
+    .price-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .price-amount {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      margin: 6px 0 12px;
+    }
+    .price-note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .feature-list {
+      margin-top: 14px;
+      padding-left: 18px;
+      color: var(--text);
+    }
+    .feature-list li + li { margin-top: 10px; }
+    .price-actions {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .button.ghost {
+      background: #fff;
+      color: var(--text);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+    .button.ghost:hover { background: #f8fafc; }
+    .trust-strip {
+      margin-top: 22px;
+      padding: 18px 20px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: #fff;
+      color: var(--muted);
+      box-shadow: var(--shadow);
+    }
+    .trust-strip strong { color: var(--text); }
+    @media (max-width: 920px) {
+      .price-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-nav">
+      <a class="brand" href="/"><span class="brand-name">Gnomeo.nl</span></a>
+      <a class="nav-cta" href="/workspace.html">Set up your burrow</a>
+    </header>
+    <div class="mini-links" aria-label="Secondary navigation">
+      <a href="/">Home</a>
+      <span aria-hidden="true">•</span>
+      <a href="/pricing.html">Pricing</a>
+      <span aria-hidden="true">•</span>
+      <a href="/workspace.html">Workspace</a>
+      <span aria-hidden="true">•</span>
+      <a href="/privacy.html">Privacy</a>
+    </div>
+
+    <main>
+      <section class="hero">
+        <div class="eyebrow">Pricing</div>
+        <h1>Early-access pricing for the burrow</h1>
+        <p class="subhead">Amsterdam-first, EUR by default, and no live exchange-rate faff. Switch display currency if you’re pricing for a different region.</p>
+        <div class="pricing-tools">
+          <div class="pill-row" aria-label="Current defaults">
+            <span class="pill">Default currency: EUR</span>
+            <span class="pill">Early access</span>
+            <span class="pill">No platform incentives</span>
+          </div>
+          <label class="currency-switch" for="currency">
+            Currency
+            <select id="currency" aria-label="Currency display">
+              <option value="EUR" selected>EUR</option>
+              <option value="GBP">GBP</option>
+              <option value="USD">USD</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section>
+        <div class="price-grid">
+          <article class="card price-card">
+            <span class="price-tag">Free Snapshot</span>
+            <h2>One-off report</h2>
+            <div class="price-amount" data-price-group="free">€0</div>
+            <ul class="feature-list">
+              <li>Google Ads + Meta Ads CSV uploads</li>
+              <li>Temporary processing</li>
+              <li>Raw uploads deleted after report generation</li>
+              <li>No saved history</li>
+            </ul>
+            <div class="price-actions">
+              <a class="button" href="/#contact">Upload your data</a>
+            </div>
+          </article>
+
+          <article class="card price-card featured">
+            <span class="price-tag">Pro Workspace</span>
+            <h2>€29/month early access</h2>
+            <div class="price-amount" data-price-group="pro">
+              <span data-currency-price="pro">€29/month</span>
+            </div>
+            <p class="price-note">GBP display: <span data-currency-price="pro-gbp">£25/month</span> · USD display: <span data-currency-price="pro-usd">$29/month</span></p>
+            <ul class="feature-list">
+              <li>1 saved workspace</li>
+              <li>Saved business context</li>
+              <li>Goals and constraints remembered</li>
+              <li>Upload history</li>
+              <li>Trend comparison between reports</li>
+              <li>Google + Meta multi-file reviews</li>
+              <li>Early access to new report intelligence</li>
+            </ul>
+            <div class="price-actions">
+              <a class="button" href="/workspace.html">Set up your burrow</a>
+            </div>
+          </article>
+
+          <article class="card price-card">
+            <span class="price-tag">Agency</span>
+            <h2>€79/month early access</h2>
+            <div class="price-amount" data-price-group="agency">
+              <span data-currency-price="agency">€79/month</span>
+            </div>
+            <p class="price-note">GBP display: <span data-currency-price="agency-gbp">£69/month</span> · USD display: <span data-currency-price="agency-usd">$89/month</span></p>
+            <ul class="feature-list">
+              <li>Up to 5 workspaces / brands</li>
+              <li>Saved report history per brand</li>
+              <li>Multi-client review workflow</li>
+              <li>Shareable report exports</li>
+              <li>Early access to TikTok support</li>
+            </ul>
+            <div class="price-actions">
+              <a class="button" href="/workspace.html">Set up agency burrows</a>
+            </div>
+          </article>
+        </div>
+
+        <div class="trust-strip">
+          <strong>Early access pricing.</strong> Final pricing may change as saved workspaces, history, and monitoring features mature.
+          <br />No platform incentives. No media buying. Just the signal.
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p class="footer-note">© 2026 Gnomeo.nl — independent analysis for Google Ads and Meta Ads exports.</p>
+      <p class="footer-links"><a href="/pricing.html">Pricing</a><span aria-hidden="true">•</span><a href="/workspace.html">Workspace</a><span aria-hidden="true">•</span><a href="/privacy.html">Privacy</a><span aria-hidden="true">•</span><a href="/data-handling.html">Data handling</a></p>
+    </footer>
+  </div>
+
+  <script>
+    const pricingByCurrency = {
+      EUR: {
+        pro: '€29/month',
+        agency: '€79/month',
+        free: '€0',
+      },
+      GBP: {
+        pro: '£25/month',
+        agency: '£69/month',
+        free: '£0',
+      },
+      USD: {
+        pro: '$29/month',
+        agency: '$89/month',
+        free: '$0',
+      },
+    };
+
+    const currencySelect = document.getElementById('currency');
+    const updatePrices = (currency) => {
+      const prices = pricingByCurrency[currency] || pricingByCurrency.EUR;
+      document.querySelectorAll('[data-currency-price="pro"]').forEach((el) => { el.textContent = prices.pro; });
+      document.querySelectorAll('[data-currency-price="agency"]').forEach((el) => { el.textContent = prices.agency; });
+      document.querySelectorAll('[data-currency-price="pro-gbp"]').forEach((el) => { el.textContent = pricingByCurrency.GBP.pro; });
+      document.querySelectorAll('[data-currency-price="pro-usd"]').forEach((el) => { el.textContent = pricingByCurrency.USD.pro; });
+      document.querySelectorAll('[data-currency-price="agency-gbp"]').forEach((el) => { el.textContent = pricingByCurrency.GBP.agency; });
+      document.querySelectorAll('[data-currency-price="agency-usd"]').forEach((el) => { el.textContent = pricingByCurrency.USD.agency; });
+      document.querySelectorAll('[data-price-group="free"]').forEach((el) => { el.textContent = prices.free; });
+    };
+
+    currencySelect?.addEventListener('change', (event) => updatePrices(event.target.value));
+    updatePrices(currencySelect?.value || 'EUR');
+  </script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Checkout placeholder — Gnomeo</title>
+  <meta name="description" content="Placeholder checkout page for the future Stripe flow. No payment is taken in this prototype." />
+  <link rel="canonical" href="https://www.gnomeo.nl/checkout.html" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Checkout placeholder — Gnomeo" />
+  <meta property="og:description" content="Placeholder checkout page for the future Stripe flow. No payment is taken in this prototype." />
+  <meta property="og:url" content="https://www.gnomeo.nl/checkout.html" />
+  <meta property="og:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Checkout placeholder — Gnomeo" />
+  <meta name="twitter:description" content="Placeholder checkout page for the future Stripe flow. No payment is taken in this prototype." />
+  <meta name="twitter:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "name": "Gnomeo",
+      "url": "https://www.gnomeo.nl/",
+      "logo": "https://www.gnomeo.nl/gnomeo-logo.png?v=3"
+    },
+    {
+      "@type": "WebSite",
+      "name": "Gnomeo",
+      "url": "https://www.gnomeo.nl/",
+      "publisher": {
+        "@type": "Organization",
+        "name": "Gnomeo"
+      }
+    }
+  ]
+}
+  </script>
+  <link rel="stylesheet" href="/content-pages.css" />
+  <style>
+    .status-box {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+    .status-box h2 { margin-top: 0; }
+    .status-box p { color: var(--muted); }
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 11px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #f8fafc;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-nav">
+      <a class="brand" href="/"><span class="brand-name">Gnomeo.nl</span></a>
+      <a class="nav-cta" href="/pricing.html">Back to pricing</a>
+    </header>
+    <div class="mini-links" aria-label="Secondary navigation">
+      <a href="/">Home</a>
+      <span aria-hidden="true">•</span>
+      <a href="/pricing.html">Pricing</a>
+      <span aria-hidden="true">•</span>
+      <a href="/workspace.html">Workspace</a>
+      <span aria-hidden="true">•</span>
+      <a href="/privacy.html">Privacy</a>
+    </div>
+
+    <main>
+      <section class="hero">
+        <div class="eyebrow">Checkout</div>
+        <h1>Your burrow is ready</h1>
+        <p class="subhead">Payment wiring comes next. In production this will redirect to Stripe Checkout.</p>
+      </section>
+
+      <section>
+        <div class="status-box">
+          <h2>No payment has been taken in this prototype.</h2>
+          <p>This page exists to show the future paid flow without wiring billing yet.</p>
+          <div class="badge-row">
+            <span class="badge">Workspace set up</span>
+            <span class="badge">Plan selection placeholder</span>
+            <span class="badge">Stripe later</span>
+          </div>
+          <div class="cta-strip" style="margin-top: 20px;">
+            <div>
+              <strong>What happens next?</strong>
+              <p>Once billing is wired, this page can hand off to Stripe Checkout.</p>
+            </div>
+            <a class="button" href="/workspace.html">Back to workspace</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p class="footer-note">© 2026 Gnomeo.nl — independent analysis for Google Ads and Meta Ads exports.</p>
+      <p class="footer-links"><a href="/pricing.html">Pricing</a><span aria-hidden="true">•</span><a href="/workspace.html">Workspace</a><span aria-hidden="true">•</span><a href="/privacy.html">Privacy</a><span aria-hidden="true">•</span><a href="/data-handling.html">Data handling</a></p>
+    </footer>
+  </div>
+</body>
+</html>
