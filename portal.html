@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gnomeo Workspace</title>
+  <meta name="description" content="A lightweight static prototype of the Gnomeo workspace portal for saved reviews, business context, and trend snapshots." />
+  <link rel="canonical" href="https://www.gnomeo.nl/portal.html" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Gnomeo Workspace" />
+  <meta property="og:description" content="A lightweight static prototype of the Gnomeo workspace portal for saved reviews, business context, and trend snapshots." />
+  <meta property="og:url" content="https://www.gnomeo.nl/portal.html" />
+  <meta property="og:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Gnomeo Workspace" />
+  <meta name="twitter:description" content="A lightweight static prototype of the Gnomeo workspace portal for saved reviews, business context, and trend snapshots." />
+  <meta name="twitter:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "name": "Gnomeo",
+      "url": "https://www.gnomeo.nl/",
+      "logo": "https://www.gnomeo.nl/gnomeo-logo.png?v=3"
+    },
+    {
+      "@type": "WebSite",
+      "name": "Gnomeo",
+      "url": "https://www.gnomeo.nl/",
+      "publisher": {
+        "@type": "Organization",
+        "name": "Gnomeo"
+      }
+    }
+  ]
+}
+  </script>
+  <link rel="stylesheet" href="/content-pages.css" />
+  <style>
+    .portal-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .span-7 { grid-column: span 7; }
+    .span-5 { grid-column: span 5; }
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    .span-12 { grid-column: span 12; }
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .meta-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 11px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .metric-card {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: #fff;
+      box-shadow: none;
+    }
+    .metric-card .label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+    .metric-card .value {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+    .workspace-form {
+      display: grid;
+      gap: 14px;
+    }
+    .workspace-form label {
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .workspace-form select,
+    .workspace-form textarea,
+    .workspace-form input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+      padding: 12px 14px;
+      box-shadow: none;
+      outline: none;
+    }
+    .workspace-form select:focus,
+    .workspace-form textarea:focus,
+    .workspace-form input:focus {
+      border-color: rgba(29, 78, 216, 0.28);
+      box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.08);
+    }
+    .workspace-form textarea {
+      min-height: 106px;
+      resize: vertical;
+    }
+    .helper-note { color: var(--muted); font-size: 13px; }
+    .history-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: center;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+    }
+    .history-item strong { display: block; margin-bottom: 4px; }
+    .history-item p { margin: 0; color: var(--muted); }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .coming-soon {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-top: 14px;
+    }
+    .coming-soon .card {
+      box-shadow: none;
+      background: #fff;
+    }
+    .form-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .button.secondary {
+      background: #fff;
+      color: var(--text);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+    .button.secondary:hover { background: #f8fafc; }
+    .button.is-disabled {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    @media (max-width: 960px) {
+      .span-7, .span-5, .span-4, .span-6, .span-12 { grid-column: span 12; }
+      .metric-grid, .coming-soon { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 640px) {
+      .metric-grid, .coming-soon { grid-template-columns: 1fr; }
+      .history-item { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-nav">
+      <a class="brand" href="/"><span class="brand-name">Gnomeo.nl</span></a>
+      <a class="nav-cta" href="/pricing.html">See plans</a>
+    </header>
+    <div class="mini-links" aria-label="Secondary navigation">
+      <a href="/">Home</a>
+      <span aria-hidden="true">•</span>
+      <a href="/pricing.html">Pricing</a>
+      <span aria-hidden="true">•</span>
+      <a href="/workspace.html">Workspace setup</a>
+      <span aria-hidden="true">•</span>
+      <a href="/portal.html">Portal</a>
+    </div>
+
+    <main>
+      <section class="hero">
+        <div class="eyebrow">Workspace portal</div>
+        <h1>Gnomeo Workspace</h1>
+        <p class="subhead">Your private burrow for saved ad-spend reviews, goals, constraints, and trend comparisons.</p>
+        <div class="meta-row">
+          <span class="meta-pill">Static prototype</span>
+          <span class="meta-pill">No auth yet</span>
+          <span class="meta-pill">No persistence yet</span>
+        </div>
+      </section>
+
+      <section class="portal-grid">
+        <article class="card span-7">
+          <h2>Workspace overview</h2>
+          <div class="metric-grid">
+            <div class="metric-card"><div class="label">Workspace</div><div class="value">Skincare Growth Review</div></div>
+            <div class="metric-card"><div class="label">Business type</div><div class="value">Ecommerce</div></div>
+            <div class="metric-card"><div class="label">Primary goal</div><div class="value">Improve blended ROAS</div></div>
+            <div class="metric-card"><div class="label">Plan</div><div class="value">Pro Workspace</div></div>
+          </div>
+          <div class="meta-row">
+            <span class="meta-pill">Risk appetite: Conservative</span>
+            <span class="meta-pill">Budget constraint: Do not increase total spend</span>
+          </div>
+        </article>
+
+        <article class="card span-5">
+          <h2>Latest review</h2>
+          <div class="metric-grid" style="grid-template-columns: 1fr 1fr;">
+            <div class="metric-card"><div class="label">Last report</div><div class="value">Sample review</div></div>
+            <div class="metric-card"><div class="label">Spend analysed</div><div class="value">€57,300</div></div>
+            <div class="metric-card"><div class="label">Current ROAS</div><div class="value">1.19x</div></div>
+            <div class="metric-card"><div class="label">Estimated wasted spend</div><div class="value">€14,325</div></div>
+          </div>
+          <div class="card" style="margin-top: 14px; box-shadow: none;">
+            <div class="label">Top move</div>
+            <p style="margin: 0;">Reduce Meta Prospecting Broad UK and reallocate into Google Brand Search.</p>
+          </div>
+        </article>
+
+        <article class="card span-6">
+          <h2>Report history</h2>
+          <div class="history-list">
+            <div class="history-item">
+              <div><strong>Sample Review — Google + Meta</strong><p>Completed</p></div>
+              <span class="status-badge">Ready</span>
+            </div>
+            <div class="history-item">
+              <div><strong>Previous Review</strong><p>Placeholder</p></div>
+              <span class="status-badge">Coming soon</span>
+            </div>
+            <div class="history-item">
+              <div><strong>Trend comparison</strong><p>Coming soon</p></div>
+              <span class="status-badge">Early access</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="card span-6">
+          <h2>Trend snapshot</h2>
+          <p class="helper-note">Trend comparisons will show what changed since the last upload and whether recommendations are repeating over time.</p>
+          <div class="coming-soon">
+            <div class="card"><strong>Spend change</strong><p>Coming soon</p></div>
+            <div class="card"><strong>ROAS change</strong><p>Coming soon</p></div>
+            <div class="card"><strong>Wasted spend change</strong><p>Coming soon</p></div>
+            <div class="card"><strong>Recurring recommendations</strong><p>Coming soon</p></div>
+          </div>
+        </article>
+
+        <article class="card span-12">
+          <h2>Preferences / settings</h2>
+          <p class="helper-note">Editable-looking controls for now. In the real portal these settings will be stored against the workspace.</p>
+          <form class="workspace-form">
+            <div class="portal-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 8px;">
+              <label>Business type
+                <select>
+                  <option selected>Ecommerce</option>
+                  <option>SaaS / Lead generation</option>
+                  <option>Local services</option>
+                  <option>Mobile app</option>
+                  <option>Marketplace</option>
+                  <option>Other</option>
+                </select>
+              </label>
+              <label>Primary goal
+                <select>
+                  <option selected>Improve blended ROAS</option>
+                  <option>Reduce wasted spend</option>
+                  <option>Scale revenue carefully</option>
+                  <option>Lower CPA</option>
+                  <option>Stabilize performance volatility</option>
+                  <option>Improve lead efficiency</option>
+                </select>
+              </label>
+              <label>Risk appetite
+                <select>
+                  <option selected>Conservative</option>
+                  <option>Balanced</option>
+                  <option>Aggressive</option>
+                </select>
+              </label>
+              <label>Budget constraint
+                <select>
+                  <option selected>Do not increase total spend</option>
+                  <option>Max spend increase: 10%</option>
+                  <option>Max spend increase: 20%</option>
+                  <option>Need to reduce total spend</option>
+                  <option>Flexible budget</option>
+                </select>
+              </label>
+            </div>
+            <label style="margin-top: 6px;">Anything the gnome should know?
+              <textarea maxlength="280" placeholder="Margin pressure, seasonal campaign, board target, agency handover…">Board target: keep CPA flat while scaling spend carefully.</textarea>
+            </label>
+            <div class="form-actions">
+              <button class="button is-disabled" type="button" aria-disabled="true">Save preferences — prototype</button>
+              <a class="button secondary" href="/#contact">Upload next exports</a>
+              <a class="button secondary" href="/pricing.html">View pricing</a>
+            </div>
+          </form>
+        </article>
+      </section>
+    </main>
+
+    <footer>
+      <p class="footer-note">© 2026 Gnomeo.nl — independent analysis for Google Ads and Meta Ads exports.</p>
+      <p class="footer-links"><a href="/pricing.html">Pricing</a><span aria-hidden="true">•</span><a href="/workspace.html">Workspace</a><span aria-hidden="true">•</span><a href="/portal.html">Portal</a><span aria-hidden="true">•</span><a href="/privacy.html">Privacy</a><span aria-hidden="true">•</span><a href="/data-handling.html">Data handling</a></p>
+    </footer>
+  </div>
+</body>
+</html>
