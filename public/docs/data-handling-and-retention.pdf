@@ -4,13 +4,13 @@
 << /Type /Catalog /Pages 2 0 R >>
 endobj
 2 0 obj
-<< /Type /Pages /Kids [ 3 0 R 5 0 R 7 0 R 9 0 R ] /Count 4 >>
+<< /Type /Pages /Kids [ 3 0 R 5 0 R 7 0 R ] /Count 3 >>
 endobj
 3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 11 0 R >> >> /Contents 4 0 R >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 9 0 R >> >> /Contents 4 0 R >>
 endobj
 4 0 obj
-<< /Length 2138 >>
+<< /Length 2152 >>
 stream
 BT
 /F1 18 Tf
@@ -33,19 +33,19 @@ BT
 (This policy explains what Gnomeo stores temporarily, what it may retain, and why the) Tj
 /F1 11 Tf
 1 0 0 1 54 610 Tm
-(product keeps analytical memory instead of raw exports forever. The intent is to support) Tj
+(product keeps analytical memory rather than raw exports forever. The goal is to support) Tj
 /F1 11 Tf
 1 0 0 1 54 596 Tm
-(recurring reviews without becoming a raw ad-data warehouse.) Tj
+(recurring reviews without turning the service into a raw ad-data warehouse.) Tj
 /F1 12 Tf
 1 0 0 1 54 566 Tm
-(DATA MINIMIZATION PRINCIPLE) Tj
+(DATA MINIMIZATION) Tj
 /F1 11 Tf
 1 0 0 1 54 542 Tm
-(Gnomeo should keep less raw data whenever practical. The system is intended to preserve) Tj
+(Gnomeo is designed to keep less raw data whenever practical. The system should preserve) Tj
 /F1 11 Tf
 1 0 0 1 54 528 Tm
-(the minimum information needed to provide useful analysis, recurring reviews, and) Tj
+(the minimum information needed to produce useful analysis, recurring reviews, and) Tj
 /F1 11 Tf
 1 0 0 1 54 514 Tm
 (workspace continuity.) Tj
@@ -54,45 +54,45 @@ BT
 (DATA CATEGORIES) Tj
 /F1 11 Tf
 1 0 0 1 68 460 Tm
-(- Temporary data: raw CSV uploads, parsed processing files, temporary report artifacts.) Tj
+(- Temporary data includes raw CSV uploads, parsed processing files, and short-lived report) Tj
 /F1 11 Tf
-1 0 0 1 68 438 Tm
-(- Persistent data: generated reports, workspace memory, analytical summaries, trend) Tj
+1 0 0 1 54 446 Tm
+(  artifacts.) Tj
 /F1 11 Tf
-1 0 0 1 54 424 Tm
-(  snapshots, recommendation history, preferences, and usage/billing metadata where) Tj
+1 0 0 1 68 424 Tm
+(- Persistent data may include generated reports, workspace memory, analytical summaries,) Tj
 /F1 11 Tf
 1 0 0 1 54 410 Tm
-(  applicable.) Tj
+(  trend snapshots, recommendation history, preferences, and usage or billing metadata) Tj
+/F1 11 Tf
+1 0 0 1 54 396 Tm
+(  where applicable.) Tj
 /F1 12 Tf
-1 0 0 1 54 380 Tm
-(TEMPORARY DATA) Tj
+1 0 0 1 54 366 Tm
+(TEMPORARY RAW UPLOADS) Tj
 /F1 11 Tf
-1 0 0 1 68 356 Tm
-(- Raw CSV uploads are retained only temporarily for processing, support, and limited) Tj
+1 0 0 1 68 342 Tm
+(- Paid-tier raw uploads may be retained for up to 7 days for processing, support, and) Tj
 /F1 11 Tf
-1 0 0 1 54 342 Tm
-(  reruns.) Tj
+1 0 0 1 54 328 Tm
+(  limited reruns unless deleted earlier.) Tj
 /F1 11 Tf
-1 0 0 1 68 320 Tm
-(- A practical paid-tier target is up to 7 days unless deleted earlier.) Tj
+1 0 0 1 68 306 Tm
+(- Temporary parsed files are intended to be deleted within 24 hours where practical.) Tj
 /F1 11 Tf
-1 0 0 1 68 298 Tm
-(- Temporary parsed files should be deleted within 24 hours where possible.) Tj
-/F1 11 Tf
-1 0 0 1 68 276 Tm
-(- Temporary artifacts should not be used as a long-term storage layer.) Tj
+1 0 0 1 68 284 Tm
+(- Temporary artifacts are not intended to be a long-term storage layer.) Tj
 /F1 9 Tf
 1 0 0 1 502 28 Tm
-(Page 1 of 4) Tj
+(Page 1 of 3) Tj
 ET
 endstream
 endobj
 5 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 11 0 R >> >> /Contents 6 0 R >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 9 0 R >> >> /Contents 6 0 R >>
 endobj
 6 0 obj
-<< /Length 2024 >>
+<< /Length 2230 >>
 stream
 BT
 /F1 18 Tf
@@ -101,80 +101,80 @@ BT
 /F1 9 Tf
 1 0 0 1 54 722 Tm
 (Version 1.0 | Date 2026-05-09 | Scope: Public policy document for Gnomeo) Tj
+/F1 11 Tf
+1 0 0 1 54 692 Tm
+(Generated reports and workspace memory may be retained until deletion request, account) Tj
+/F1 11 Tf
+1 0 0 1 54 678 Tm
+(closure, or workspace removal. These records help preserve continuity across reviews and) Tj
+/F1 11 Tf
+1 0 0 1 54 664 Tm
+(are distinct from raw CSV uploads.) Tj
 /F1 12 Tf
-1 0 0 1 54 700 Tm
-(PERSISTENT ANALYTICAL DATA) Tj
+1 0 0 1 54 634 Tm
+(ANALYTICAL MEMORY) Tj
 /F1 11 Tf
-1 0 0 1 68 676 Tm
-(- Generated reports.) Tj
-/F1 11 Tf
-1 0 0 1 68 654 Tm
-(- Workspace memory and preferences.) Tj
-/F1 11 Tf
-1 0 0 1 68 632 Tm
-(- Analytical summaries and trend snapshots.) Tj
-/F1 11 Tf
-1 0 0 1 68 610 Tm
-(- Recommendation history.) Tj
-/F1 11 Tf
-1 0 0 1 68 588 Tm
-(- Usage and billing metadata where applicable.) Tj
-/F1 12 Tf
-1 0 0 1 54 558 Tm
-(WHY GNOMEO KEEPS ANALYTICAL MEMORY) Tj
-/F1 11 Tf
-1 0 0 1 54 534 Tm
-(Recurring reviews become more useful when Gnomeo can remember prior findings, compare) Tj
-/F1 11 Tf
-1 0 0 1 54 520 Tm
-(trends, and track which recommendations repeat. That memory should come from summaries,) Tj
-/F1 11 Tf
-1 0 0 1 54 506 Tm
-(derived metrics, recommendation history, and trend snapshots ? not indefinite storage of) Tj
-/F1 11 Tf
-1 0 0 1 54 492 Tm
-(raw CSV exports.) Tj
-/F1 12 Tf
-1 0 0 1 54 462 Tm
-(GENERATED REPORTS) Tj
-/F1 11 Tf
-1 0 0 1 54 438 Tm
-(Generated reports are intended to persist until a user or customer requests deletion,) Tj
-/F1 11 Tf
-1 0 0 1 54 424 Tm
-(the workspace is removed, or the account closes. Reports are part of the analytical) Tj
-/F1 11 Tf
-1 0 0 1 54 410 Tm
-(record and are distinct from raw CSV uploads.) Tj
-/F1 12 Tf
-1 0 0 1 54 380 Tm
-(WORKSPACE MEMORY) Tj
-/F1 11 Tf
-1 0 0 1 54 356 Tm
+1 0 0 1 54 610 Tm
 (Workspace memory stores the context needed for recurring reviews: business type, goals,) Tj
 /F1 11 Tf
-1 0 0 1 54 342 Tm
-(constraints, notes, and historical recommendations. This improves continuity while) Tj
+1 0 0 1 54 596 Tm
+(constraints, notes, and historical recommendations. This helps the product stay useful) Tj
 /F1 11 Tf
-1 0 0 1 54 328 Tm
-(keeping raw export retention low.) Tj
+1 0 0 1 54 582 Tm
+(without preserving every original export.) Tj
 /F1 12 Tf
-1 0 0 1 54 298 Tm
+1 0 0 1 54 552 Tm
 (RECOMMENDATION HISTORY AND TREND SNAPSHOTS) Tj
 /F1 11 Tf
-1 0 0 1 54 274 Tm
-(Recommendation history and trend snapshots are derived data. They are intentionally kept) Tj
+1 0 0 1 54 528 Tm
+(Recommendation history and trend snapshots are derived data. They are retained so Gnomeo) Tj
+/F1 11 Tf
+1 0 0 1 54 514 Tm
+(can show recurring patterns, budget changes, and platform tradeoffs over time.) Tj
+/F1 12 Tf
+1 0 0 1 54 484 Tm
+(USAGE AND BILLING METADATA) Tj
+/F1 11 Tf
+1 0 0 1 54 460 Tm
+(Usage events and billing metadata may be retained where applicable for operational,) Tj
+/F1 11 Tf
+1 0 0 1 54 446 Tm
+(support, or accounting reasons. These records should stay lightweight and should not) Tj
+/F1 11 Tf
+1 0 0 1 54 432 Tm
+(contain raw CSV contents.) Tj
+/F1 12 Tf
+1 0 0 1 54 402 Tm
+(BACKUPS AND LOGS) Tj
+/F1 11 Tf
+1 0 0 1 54 378 Tm
+(Backups and logs may have separate operational retention windows. They should not become) Tj
+/F1 11 Tf
+1 0 0 1 54 364 Tm
+(a shadow archive of raw customer uploads. The retention goal is the shortest practical) Tj
+/F1 11 Tf
+1 0 0 1 54 350 Tm
+(period consistent with reliability and incident response.) Tj
+/F1 12 Tf
+1 0 0 1 54 320 Tm
+(DELETION REQUESTS AND ACCOUNT CLOSURE) Tj
+/F1 11 Tf
+1 0 0 1 68 296 Tm
+(- Users may request deletion of workspace data and raw uploads.) Tj
+/F1 11 Tf
+1 0 0 1 68 274 Tm
+(- Deletion workflows should cover persistent workspace data where applicable.) Tj
 /F1 9 Tf
 1 0 0 1 502 28 Tm
-(Page 2 of 4) Tj
+(Page 2 of 3) Tj
 ET
 endstream
 endobj
 7 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 11 0 R >> >> /Contents 8 0 R >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 9 0 R >> >> /Contents 8 0 R >>
 endobj
 8 0 obj
-<< /Length 2120 >>
+<< /Length 1367 >>
 stream
 BT
 /F1 18 Tf
@@ -183,125 +183,68 @@ BT
 /F1 9 Tf
 1 0 0 1 54 722 Tm
 (Version 1.0 | Date 2026-05-09 | Scope: Public policy document for Gnomeo) Tj
+/F1 11 Tf
+1 0 0 1 68 692 Tm
+(- Backups and logs may be subject to separate limited retention windows.) Tj
 /F1 12 Tf
-1 0 0 1 54 684 Tm
-(USAGE AND BILLING METADATA) Tj
-/F1 11 Tf
-1 0 0 1 54 660 Tm
-(Usage events and billing metadata may be retained where applicable for operational,) Tj
-/F1 11 Tf
-1 0 0 1 54 646 Tm
-(support, or accounting reasons. These records should stay lightweight and should not) Tj
-/F1 11 Tf
-1 0 0 1 54 632 Tm
-(contain raw CSV contents.) Tj
-/F1 12 Tf
-1 0 0 1 54 602 Tm
-(BACKUPS AND OPERATIONAL LOGS) Tj
-/F1 11 Tf
-1 0 0 1 54 578 Tm
-(Backups and logs may have limited operational retention. They should not become a shadow) Tj
-/F1 11 Tf
-1 0 0 1 54 564 Tm
-(archive of raw customer uploads. The principle is to keep the shortest practical) Tj
-/F1 11 Tf
-1 0 0 1 54 550 Tm
-(retention window that still supports service reliability and incident response.) Tj
-/F1 12 Tf
-1 0 0 1 54 520 Tm
-(DELETION REQUESTS AND ACCOUNT CLOSURE) Tj
-/F1 11 Tf
-1 0 0 1 68 496 Tm
-(- Users should be able to request deletion of workspace data and raw uploads.) Tj
-/F1 11 Tf
-1 0 0 1 68 474 Tm
-(- Deletion workflows should cover persistent workspace data where applicable.) Tj
-/F1 11 Tf
-1 0 0 1 68 452 Tm
-(- Account closure should trigger cleanup where operationally possible.) Tj
-/F1 11 Tf
-1 0 0 1 68 430 Tm
-(- Backups and logs may have separate limited retention windows.) Tj
-/F1 12 Tf
-1 0 0 1 54 400 Tm
+1 0 0 1 54 662 Tm
 (GDPR-AWARE OPERATING PRINCIPLES) Tj
 /F1 11 Tf
-1 0 0 1 54 376 Tm
-(This policy is designed to support data minimization, purpose limitation, and deletion) Tj
+1 0 0 1 54 638 Tm
+(This policy is designed around data minimization, purpose limitation, and deletion) Tj
 /F1 11 Tf
-1 0 0 1 54 362 Tm
-(handling. It avoids overclaiming legal compliance while keeping the retention model) Tj
+1 0 0 1 54 624 Tm
+(handling. It is written to be transparent and practical without overclaiming legal) Tj
 /F1 11 Tf
-1 0 0 1 54 348 Tm
-(transparent and practical.) Tj
+1 0 0 1 54 610 Tm
+(certification.) Tj
 /F1 12 Tf
-1 0 0 1 54 318 Tm
+1 0 0 1 54 580 Tm
 (CURRENT LIMITATIONS) Tj
 /F1 11 Tf
-1 0 0 1 54 294 Tm
-(Exact operational retention may evolve as the product matures. The important principle) Tj
+1 0 0 1 54 556 Tm
+(Exact retention mechanics may evolve as the product matures. The core principle remains) Tj
 /F1 11 Tf
-1 0 0 1 54 280 Tm
-(is that Gnomeo should not keep raw uploads longer than necessary.) Tj
+1 0 0 1 54 542 Tm
+(the same: raw uploads should not be kept longer than necessary.) Tj
+/F1 12 Tf
+1 0 0 1 54 512 Tm
+(FUTURE IMPROVEMENTS) Tj
+/F1 11 Tf
+1 0 0 1 68 488 Tm
+(- More explicit cleanup automation for parsed artifacts and raw uploads.) Tj
+/F1 11 Tf
+1 0 0 1 68 466 Tm
+(- User-facing deletion tooling.) Tj
+/F1 11 Tf
+1 0 0 1 68 444 Tm
+(- Workspace-scoped retention controls for stricter customers.) Tj
+/F1 11 Tf
+1 0 0 1 68 422 Tm
+(- Clearer operational reporting on what is kept and for how long.) Tj
 /F1 9 Tf
 1 0 0 1 502 28 Tm
-(Page 3 of 4) Tj
+(Page 3 of 3) Tj
 ET
 endstream
 endobj
 9 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 11 0 R >> >> /Contents 10 0 R >>
-endobj
-10 0 obj
-<< /Length 645 >>
-stream
-BT
-/F1 18 Tf
-1 0 0 1 54 742 Tm
-(Gnomeo Data Handling & Retention Policy) Tj
-/F1 9 Tf
-1 0 0 1 54 722 Tm
-(Version 1.0 | Date 2026-05-09 | Scope: Public policy document for Gnomeo) Tj
-/F1 12 Tf
-1 0 0 1 54 700 Tm
-(FUTURE IMPROVEMENTS) Tj
-/F1 11 Tf
-1 0 0 1 68 676 Tm
-(- More explicit cleanup automation for parsed artifacts and raw uploads.) Tj
-/F1 11 Tf
-1 0 0 1 68 654 Tm
-(- User-facing deletion tooling.) Tj
-/F1 11 Tf
-1 0 0 1 68 632 Tm
-(- Workspace-scoped retention controls for stricter customers.) Tj
-/F1 11 Tf
-1 0 0 1 68 610 Tm
-(- Clearer operational reporting on what is kept and for how long.) Tj
-/F1 9 Tf
-1 0 0 1 502 28 Tm
-(Page 4 of 4) Tj
-ET
-endstream
-endobj
-11 0 obj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 xref
-0 12
+0 10
 0000000000 65535 f 
 0000000015 00000 n 
 0000000064 00000 n 
-0000000141 00000 n 
-0000000268 00000 n 
-0000002458 00000 n 
-0000002585 00000 n 
-0000004661 00000 n 
-0000004788 00000 n 
-0000006960 00000 n 
-0000007088 00000 n 
-0000007785 00000 n 
+0000000135 00000 n 
+0000000261 00000 n 
+0000002465 00000 n 
+0000002591 00000 n 
+0000004873 00000 n 
+0000004999 00000 n 
+0000006418 00000 n 
 trailer
-<< /Size 12 /Root 1 0 R >>
+<< /Size 10 /Root 1 0 R >>
 startxref
-7856
+6488
 %%EOF

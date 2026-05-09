@@ -159,87 +159,64 @@ def render(path: Path, title: str, summary: str, sections: list[list[str]]) -> N
 def doc_security() -> list[str]:
     return [
         section('Purpose and scope', [
-            'This policy explains how Gnomeo protects uploaded ad data, generated reports, workspace context, and manual admin operations. It applies to customer-facing use of the product, internal operations that touch customer data, and the current manual concierge beta workflow.'
+            'This policy explains how Gnomeo protects uploaded ad data, generated reports, workspace context, and administrative access. It applies to customer-facing use of the product, private storage and access handling, and the current manual beta operating model.'
         ]),
-        section('Security philosophy', [
-            'Gnomeo is designed around minimal retention and privacy-aware operations. Raw ad exports are sensitive commercial data. The product is intended to keep raw uploads temporary, while allowing generated reports, workspace memory, and recommendation history to persist where useful and where permitted.'
+        section('What Gnomeo protects', [
+            'Raw ad exports are commercially sensitive. They can reveal budget structure, campaign performance, audience segments, and operational decisions. Gnomeo is designed to protect that material as private customer data.'
         ]),
-        section('Data categories protected', items=[
-            'Raw Google Ads and Meta Ads CSV exports.',
-            'Generated reports and downloadable report files.',
-            'Workspace preferences, notes, and business context.',
-            'Recommendation history, trend summaries, and usage metadata.',
-            'Admin workflows that may touch customer-facing data.'
+        section('Security principles', items=[
+            'Workspace data remains private by default.',
+            'Raw uploads are handled as temporary processing data.',
+            'Reports and analytical memory are kept separate from raw export files.',
+            'Customer data is isolated by workspace and access scope.',
+            'Public exposure of uploaded files is avoided.'
         ]),
         section('Raw upload handling', items=[
-            'Raw uploads should be treated as temporary processing data.',
-            'Raw uploads should not be sold or publicly shared.',
-            'Raw CSV contents should not appear in logs.',
-            'Temporary files should be removed when processing is complete where possible.',
-            'Raw uploads should not be retained indefinitely.'
+            'Raw uploads are not sold.',
+            'Raw uploads are not publicly shared.',
+            'Raw CSV contents are not intended to appear in logs.',
+            'Temporary processing files are removed when practical after processing.',
+            'Raw uploads are not meant to be retained indefinitely.'
         ]),
-        section('Workspace and report protection', items=[
-            'Workspace data should remain private by default.',
-            'Reports may persist as part of analytical memory.',
-            'Private storage buckets should be used for customer data.',
-            'Signed URLs should be used for private file access when applicable.',
-            'No public indexing of customer data should be allowed.'
+        section('Private storage and access', items=[
+            'Customer files are stored in private locations.',
+            'Short-lived access methods are used when files need to be downloaded.',
+            'Public file access is avoided unless a file is intentionally public.',
+            'Workspace isolation is preserved across customer records.',
+            'Service credentials remain server-side only.'
         ]),
-        section('Admin access controls', items=[
-            'Admin endpoints require `ADMIN_SECRET` and a bearer-token header.',
-            'The service-role key must remain server-side only.',
-            'Admin access is suitable for the manual beta but is not a replacement for long-term user auth.',
-            'Admin access should be limited and auditable.',
-            'No secrets should be read from query strings or request bodies.'
-        ]),
-        section('Storage and access model', items=[
-            'Customer files should live in private buckets.',
-            'Storage objects should not be exposed publicly unless a deliberate public asset is intended.',
-            'Workspace isolation should be preserved across all customer-facing records.',
-            'Public frontend code should never contain service-role secrets.',
-            'The current storage model should minimize the amount of raw data retained.'
-        ]),
-        section('Transport security', [
-            'Customer-facing requests should use HTTPS/encrypted transport. Any file transfer or API request that carries customer data should assume transport security as a baseline requirement.'
+        section('Administrative access', [
+            'Administrative endpoints are protected by server-side access controls for the current manual beta. Administrative secrets are not exposed in frontend code.'
         ]),
         section('Secrets management', items=[
-            'Secrets must not be committed to git.',
-            'Frontend code must not contain service-role credentials.',
-            'Operational secrets should remain on the server.',
-            'Secret rotation should be possible if exposure is suspected.'
+            'Secrets are not committed to git.',
+            'Frontend code must not contain service credentials.',
+            'Operational secrets are stored on the server.',
+            'If exposure is suspected, secrets should be rotated without delay.'
         ]),
-        section('Logging and operational controls', items=[
-            'Logs should avoid raw CSV contents and other unnecessary sensitive detail.',
-            'Operational logs should be kept only as long as needed.',
-            'Access to admin functions should be restricted.',
-            'Future audit logging should record meaningful actions without storing raw uploads.'
+        section('Transport and logging', items=[
+            'Customer-facing requests are expected to use encrypted transport.',
+            'Logs are kept lightweight and avoid raw export contents.',
+            'Operational records are retained only as long as needed for support, reliability, or incident review.',
+            'Access to sensitive operations is limited.'
         ]),
-        section('Workspace isolation', [
-            'Each workspace should be isolated from other workspaces. Data from one customer or agency account must not be visible to another customer account. Aggregated product improvement must avoid workspace-to-workspace exposure.'
+        section('Deletion and retention', [
+            'Security and retention are linked. Keeping less raw data reduces exposure. Users may request deletion of workspace data, and temporary files are intended to be removed as soon as they are no longer needed.'
         ]),
-        section('File access and signed URLs', [
-            'Where private files need to be downloaded, signed URLs or equivalent short-lived access should be used. Public file links should be avoided for customer data unless they are intentionally public assets.'
+        section('Incident response', items=[
+            'If a secret or customer file is exposed, credentials should be rotated.',
+            'Affected storage paths and access logs should be reviewed.',
+            'Exposure should be contained by keeping customer data private by default.',
+            'Corrective action should be documented before broader rollout.'
         ]),
-        section('Deletion and retention relationship', [
-            'Security and retention are linked. Keeping less raw data reduces exposure. Users should be able to request deletion of workspace data, and retention windows should be minimized where practical.'
+        section('Current manual beta limitations', [
+            'The current manual beta uses a simpler administrative access model than a mature production system. It is appropriate for controlled operation, but it does not replace fully scoped user authorization, complete audit trails, or long-term security hardening.'
         ]),
-        section('Incident response approach', items=[
-            'If a secret or customer file is exposed, rotate credentials promptly.',
-            'Review access logs and storage paths after an incident.',
-            'Limit blast radius by keeping customer data private by default.',
-            'Document corrective action before expanding paid usage.'
-        ]),
-        section('Current limitations', [
-            'The current bearer-token admin model is appropriate for a manual concierge beta but still requires operational discipline. It does not replace full user authentication, scoped authorization, or mature audit logging.'
-        ]),
-        section('Future improvements', items=[
-            'Stronger user auth and workspace-scoped access.',
-            'More complete audit logging for admin actions.',
-            'Lifecycle cleanup for temporary raw uploads and artifacts.',
-            'Clearer retention tooling and deletion workflows.'
-        ]),
-        section('Contact / review note', [
-            'This document is an operational policy for product and engineering review. It is intentionally conservative and may be refined as the paid beta matures.'
+        section('Future security improvements', items=[
+            'Stronger user authentication and workspace-scoped authorization.',
+            'More complete audit logging for administrative actions.',
+            'Clearer cleanup for temporary uploads and derived artifacts.',
+            'Further access-control hardening as paid usage expands.'
         ]),
     ]
 
@@ -247,57 +224,46 @@ def doc_security() -> list[str]:
 def doc_retention() -> list[str]:
     return [
         section('Purpose and scope', [
-            'This policy explains what Gnomeo stores temporarily, what it may retain, and why the product keeps analytical memory instead of raw exports forever. The intent is to support recurring reviews without becoming a raw ad-data warehouse.'
+            'This policy explains what Gnomeo stores temporarily, what it may retain, and why the product keeps analytical memory rather than raw exports forever. The goal is to support recurring reviews without turning the service into a raw ad-data warehouse.'
         ]),
-        section('Data minimization principle', [
-            'Gnomeo should keep less raw data whenever practical. The system is intended to preserve the minimum information needed to provide useful analysis, recurring reviews, and workspace continuity.'
+        section('Data minimization', [
+            'Gnomeo is designed to keep less raw data whenever practical. The system should preserve the minimum information needed to produce useful analysis, recurring reviews, and workspace continuity.'
         ]),
         section('Data categories', items=[
-            'Temporary data: raw CSV uploads, parsed processing files, temporary report artifacts.',
-            'Persistent data: generated reports, workspace memory, analytical summaries, trend snapshots, recommendation history, preferences, and usage/billing metadata where applicable.'
+            'Temporary data includes raw CSV uploads, parsed processing files, and short-lived report artifacts.',
+            'Persistent data may include generated reports, workspace memory, analytical summaries, trend snapshots, recommendation history, preferences, and usage or billing metadata where applicable.'
         ]),
-        section('Temporary data', items=[
-            'Raw CSV uploads are retained only temporarily for processing, support, and limited reruns.',
-            'A practical paid-tier target is up to 7 days unless deleted earlier.',
-            'Temporary parsed files should be deleted within 24 hours where possible.',
-            'Temporary artifacts should not be used as a long-term storage layer.'
+        section('Temporary raw uploads', items=[
+            'Paid-tier raw uploads may be retained for up to 7 days for processing, support, and limited reruns unless deleted earlier.',
+            'Temporary parsed files are intended to be deleted within 24 hours where practical.',
+            'Temporary artifacts are not intended to be a long-term storage layer.'
         ]),
-        section('Persistent analytical data', items=[
-            'Generated reports.',
-            'Workspace memory and preferences.',
-            'Analytical summaries and trend snapshots.',
-            'Recommendation history.',
-            'Usage and billing metadata where applicable.'
+        section('Generated reports and workspace memory', [
+            'Generated reports and workspace memory may be retained until deletion request, account closure, or workspace removal. These records help preserve continuity across reviews and are distinct from raw CSV uploads.'
         ]),
-        section('Why Gnomeo keeps analytical memory', [
-            'Recurring reviews become more useful when Gnomeo can remember prior findings, compare trends, and track which recommendations repeat. That memory should come from summaries, derived metrics, recommendation history, and trend snapshots — not indefinite storage of raw CSV exports.'
-        ]),
-        section('Generated reports', [
-            'Generated reports are intended to persist until a user or customer requests deletion, the workspace is removed, or the account closes. Reports are part of the analytical record and are distinct from raw CSV uploads.'
-        ]),
-        section('Workspace memory', [
-            'Workspace memory stores the context needed for recurring reviews: business type, goals, constraints, notes, and historical recommendations. This improves continuity while keeping raw export retention low.'
+        section('Analytical memory', [
+            'Workspace memory stores the context needed for recurring reviews: business type, goals, constraints, notes, and historical recommendations. This helps the product stay useful without preserving every original export.'
         ]),
         section('Recommendation history and trend snapshots', [
-            'Recommendation history and trend snapshots are derived data. They are intentionally kept so Gnomeo can show recurring patterns, budget changes, and platform tradeoffs over time without needing to preserve every raw upload.'
+            'Recommendation history and trend snapshots are derived data. They are retained so Gnomeo can show recurring patterns, budget changes, and platform tradeoffs over time.'
         ]),
         section('Usage and billing metadata', [
             'Usage events and billing metadata may be retained where applicable for operational, support, or accounting reasons. These records should stay lightweight and should not contain raw CSV contents.'
         ]),
-        section('Backups and operational logs', [
-            'Backups and logs may have limited operational retention. They should not become a shadow archive of raw customer uploads. The principle is to keep the shortest practical retention window that still supports service reliability and incident response.'
+        section('Backups and logs', [
+            'Backups and logs may have separate operational retention windows. They should not become a shadow archive of raw customer uploads. The retention goal is the shortest practical period consistent with reliability and incident response.'
         ]),
         section('Deletion requests and account closure', items=[
-            'Users should be able to request deletion of workspace data and raw uploads.',
+            'Users may request deletion of workspace data and raw uploads.',
             'Deletion workflows should cover persistent workspace data where applicable.',
             'Account closure should trigger cleanup where operationally possible.',
-            'Backups and logs may have separate limited retention windows.'
+            'Backups and logs may be subject to separate limited retention windows.'
         ]),
         section('GDPR-aware operating principles', [
-            'This policy is designed to support data minimization, purpose limitation, and deletion handling. It avoids overclaiming legal compliance while keeping the retention model transparent and practical.'
+            'This policy is designed around data minimization, purpose limitation, and deletion handling. It is written to be transparent and practical without overclaiming legal certification.'
         ]),
         section('Current limitations', [
-            'Exact operational retention may evolve as the product matures. The important principle is that Gnomeo should not keep raw uploads longer than necessary.'
+            'Exact retention mechanics may evolve as the product matures. The core principle remains the same: raw uploads should not be kept longer than necessary.'
         ]),
         section('Future improvements', items=[
             'More explicit cleanup automation for parsed artifacts and raw uploads.',
@@ -311,50 +277,47 @@ def doc_retention() -> list[str]:
 def doc_ai() -> list[str]:
     return [
         section('Purpose and scope', [
-            'This policy explains how Gnomeo uses AI-assisted analysis and how data may be used to improve the product without turning the service into a raw-data warehouse. It applies to customer workspaces, uploaded exports, and derived operational patterns.'
+            'This policy explains how Gnomeo uses AI-assisted analysis and how data may be used to improve the product while keeping customer workspaces private by default. It applies to customer workspaces, uploaded exports, and derived operational patterns.'
         ]),
         section('How Gnomeo uses AI', [
             'Gnomeo uses AI-assisted analysis to help generate reports and recommendations from uploaded ad exports and workspace context. The goal is to produce readable analyst-style output that helps users understand waste, weak signal, budget allocation, and platform tradeoffs.'
         ]),
-        section('Human-readable report generation', [
-            'The product is intended to turn imported data into human-readable narrative reports. AI is used to support that analysis, but workspace context and business judgment remain important parts of the workflow.'
+        section('Report generation', [
+            'The product is intended to turn imported data into human-readable narrative reports. AI supports that analysis, while workspace context and business judgment remain part of the workflow.'
         ]),
         section('Customer workspace privacy', [
-            'Customer workspaces remain private by default. Raw uploads are not sold or publicly shared. Gnomeo does not claim ownership of customer ad accounts or uploaded exports.'
+            'Customer workspaces remain private by default. Raw uploads are not sold or publicly shared. Gnomeo does not claim ownership of customer ad accounts or customer exports.'
         ]),
         section('Raw uploads and model training', [
-            'Raw uploads are not used to train public foundation models. Gnomeo should not expose raw uploads from one customer to another, and raw exports should not be republished or reused as public examples without clear permission.'
+            'Raw uploads are not used to train public foundation models. Gnomeo should not expose raw uploads from one customer to another, and raw exports should not be republished or reused as public examples without permission.'
         ]),
-        section('Aggregated and anonymized improvement', items=[
-            'Gnomeo may use aggregated, anonymized, and non-identifiable operational patterns to improve report quality.',
-            'Those patterns may help improve recommendation systems, benchmarking, weak-signal detection, platform reliability, and operational insight.',
-            'Aggregate learning should not expose customer names, client names, campaign names, workspace details, or raw uploaded exports.'
+        section('Aggregated improvement', items=[
+            'Gnomeo may use aggregated, anonymized, and non-identifiable operational patterns to improve report quality, benchmarking, weak-signal detection, recommendation systems, platform reliability, and operational insight.',
+            'Those patterns should not expose customer names, client names, campaign names, workspace details, or raw uploaded exports.',
+            'This form of aggregate learning helps keep the product useful and affordable for small teams and agencies.'
         ]),
-        section('Why limited aggregate learning helps', [
-            'Gnomeo can become more useful over time by learning from broad, non-identifiable patterns such as common waste signals, weak-signal thresholds, fragmented budget patterns, platform tradeoffs, and recurring account issues. This should improve recommendations without turning Gnomeo into a raw ad-data warehouse.'
+        section('What Gnomeo does not do', items=[
+            'Gnomeo does not sell raw customer uploads.',
+            'Gnomeo does not publish customer data.',
+            'Gnomeo does not expose one workspace to another.',
+            'Gnomeo does not use raw uploads to train public foundation models.',
+            'Gnomeo does not claim ownership of customer ad accounts or customer exports.',
+            'Gnomeo does not use individual customer data to create public customer-identifiable benchmarks.'
         ]),
-        section('What we do not do', items=[
-            'We do not sell raw customer uploads.',
-            'We do not publish customer data.',
-            'We do not expose one workspace to another.',
-            'We do not use raw uploads to train public foundation models.',
-            'We do not claim ownership of customer ad accounts or customer exports.',
-            'We do not use individual customer data to create public customer-identifiable benchmarks.'
+        section('Why aggregate learning helps', [
+            'Gnomeo can improve over time by learning from broad, non-identifiable patterns such as common waste signals, weak-signal thresholds, fragmented budget patterns, platform tradeoffs, and recurring account issues. This improves recommendations without turning the service into a public dataset of customer uploads.'
         ]),
-        section('Affordability and product quality rationale', [
-            'Limited aggregate learning helps keep the product useful and affordable for small businesses and agencies. The objective is better recommendations and better operational reliability, not a public dataset of customer uploads.'
-        ]),
-        section('GDPR-aware improvement principles', [
-            'Any product-improvement use of data should prefer aggregated, anonymized, and non-identifiable signals. The policy is designed to support privacy-aware product improvement with minimal exposure of individual workspace data.'
+        section('Privacy-aware improvement principles', [
+            'Product-improvement use of data should prefer aggregated, anonymized, and non-identifiable signals. The policy is designed to support quality improvements with minimal exposure of individual workspace data.'
         ]),
         section('Future privacy controls', [
-            'Future controls may allow stricter opt-outs or immediate raw-deletion modes for customers that want the narrowest possible retention profile.'
+            'Future controls may give customers stricter opt-outs or narrower retention settings where the product supports them.'
         ]),
         section('Current limitations', [
-            'This policy is intentionally conservative and may evolve as the paid beta matures. It is designed to be clear about what the product intends to do and what it does not do.'
+            'This policy is intentionally conservative and may evolve as the paid beta matures. It is intended to be clear about what the product does and does not do today.'
         ]),
-        section('Review and updates', [
-            'Policy updates should remain consistent with the core promise: workspace data stays private by default, raw uploads are temporary, and improvement learning must remain aggregated and non-identifiable.'
+        section('Policy updates', [
+            'Any future updates should preserve the core promise: workspace data stays private by default, raw uploads remain temporary, and improvement learning stays aggregated and non-identifiable.'
         ]),
     ]
 
@@ -364,7 +327,7 @@ def main() -> None:
     docs = {
         'security-and-data-protection.pdf': (
             'Gnomeo Security & Data Protection Policy',
-            'Formal guidance on how Gnomeo protects uploaded ad data, generated reports, workspace context, and manual admin operations.',
+            'Formal guidance on how Gnomeo protects uploaded ad data, generated reports, workspace context, and administrative access.',
             doc_security(),
         ),
         'data-handling-and-retention.pdf': (

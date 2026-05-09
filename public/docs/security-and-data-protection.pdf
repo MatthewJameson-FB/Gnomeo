@@ -4,13 +4,13 @@
 << /Type /Catalog /Pages 2 0 R >>
 endobj
 2 0 obj
-<< /Type /Pages /Kids [ 3 0 R 5 0 R 7 0 R 9 0 R 11 0 R ] /Count 5 >>
+<< /Type /Pages /Kids [ 3 0 R 5 0 R 7 0 R 9 0 R ] /Count 4 >>
 endobj
 3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 13 0 R >> >> /Contents 4 0 R >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 11 0 R >> >> /Contents 4 0 R >>
 endobj
 4 0 obj
-<< /Length 1993 >>
+<< /Length 1875 >>
 stream
 BT
 /F1 18 Tf
@@ -24,7 +24,7 @@ BT
 (Formal guidance on how Gnomeo protects uploaded ad data, generated reports, workspace) Tj
 /F1 11 Tf
 1 0 0 1 54 678 Tm
-(context, and manual admin operations.) Tj
+(context, and administrative access.) Tj
 /F1 12 Tf
 1 0 0 1 54 648 Tm
 (PURPOSE AND SCOPE) Tj
@@ -33,63 +33,60 @@ BT
 (This policy explains how Gnomeo protects uploaded ad data, generated reports, workspace) Tj
 /F1 11 Tf
 1 0 0 1 54 610 Tm
-(context, and manual admin operations. It applies to customer-facing use of the product,) Tj
+(context, and administrative access. It applies to customer-facing use of the product,) Tj
 /F1 11 Tf
 1 0 0 1 54 596 Tm
-(internal operations that touch customer data, and the current manual concierge beta) Tj
-/F1 11 Tf
-1 0 0 1 54 582 Tm
-(workflow.) Tj
+(private storage and access handling, and the current manual beta operating model.) Tj
 /F1 12 Tf
-1 0 0 1 54 552 Tm
-(SECURITY PHILOSOPHY) Tj
+1 0 0 1 54 566 Tm
+(WHAT GNOMEO PROTECTS) Tj
+/F1 11 Tf
+1 0 0 1 54 542 Tm
+(Raw ad exports are commercially sensitive. They can reveal budget structure, campaign) Tj
 /F1 11 Tf
 1 0 0 1 54 528 Tm
-(Gnomeo is designed around minimal retention and privacy-aware operations. Raw ad exports) Tj
+(performance, audience segments, and operational decisions. Gnomeo is designed to protect) Tj
 /F1 11 Tf
 1 0 0 1 54 514 Tm
-(are sensitive commercial data. The product is intended to keep raw uploads temporary,) Tj
-/F1 11 Tf
-1 0 0 1 54 500 Tm
-(while allowing generated reports, workspace memory, and recommendation history to) Tj
-/F1 11 Tf
-1 0 0 1 54 486 Tm
-(persist where useful and where permitted.) Tj
+(that material as private customer data.) Tj
 /F1 12 Tf
-1 0 0 1 54 456 Tm
-(DATA CATEGORIES PROTECTED) Tj
+1 0 0 1 54 484 Tm
+(SECURITY PRINCIPLES) Tj
 /F1 11 Tf
-1 0 0 1 68 432 Tm
-(- Raw Google Ads and Meta Ads CSV exports.) Tj
+1 0 0 1 68 460 Tm
+(- Workspace data remains private by default.) Tj
 /F1 11 Tf
-1 0 0 1 68 410 Tm
-(- Generated reports and downloadable report files.) Tj
+1 0 0 1 68 438 Tm
+(- Raw uploads are handled as temporary processing data.) Tj
 /F1 11 Tf
-1 0 0 1 68 388 Tm
-(- Workspace preferences, notes, and business context.) Tj
+1 0 0 1 68 416 Tm
+(- Reports and analytical memory are kept separate from raw export files.) Tj
 /F1 11 Tf
-1 0 0 1 68 366 Tm
-(- Recommendation history, trend summaries, and usage metadata.) Tj
+1 0 0 1 68 394 Tm
+(- Customer data is isolated by workspace and access scope.) Tj
 /F1 11 Tf
-1 0 0 1 68 344 Tm
-(- Admin workflows that may touch customer-facing data.) Tj
+1 0 0 1 68 372 Tm
+(- Public exposure of uploaded files is avoided.) Tj
 /F1 12 Tf
-1 0 0 1 54 314 Tm
+1 0 0 1 54 342 Tm
 (RAW UPLOAD HANDLING) Tj
 /F1 11 Tf
-1 0 0 1 68 290 Tm
-(- Raw uploads should be treated as temporary processing data.) Tj
+1 0 0 1 68 318 Tm
+(- Raw uploads are not sold.) Tj
+/F1 11 Tf
+1 0 0 1 68 296 Tm
+(- Raw uploads are not publicly shared.) Tj
 /F1 9 Tf
 1 0 0 1 502 28 Tm
-(Page 1 of 5) Tj
+(Page 1 of 4) Tj
 ET
 endstream
 endobj
 5 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 13 0 R >> >> /Contents 6 0 R >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 11 0 R >> >> /Contents 6 0 R >>
 endobj
 6 0 obj
-<< /Length 1751 >>
+<< /Length 1774 >>
 stream
 BT
 /F1 18 Tf
@@ -100,69 +97,69 @@ BT
 (Version 1.0 | Date 2026-05-09 | Scope: Public policy document for Gnomeo) Tj
 /F1 11 Tf
 1 0 0 1 68 700 Tm
-(- Raw CSV contents should not appear in logs.) Tj
+(- Temporary processing files are removed when practical after processing.) Tj
 /F1 11 Tf
 1 0 0 1 68 678 Tm
-(- Temporary files should be removed when processing is complete where possible.) Tj
-/F1 11 Tf
-1 0 0 1 68 656 Tm
-(- Raw uploads should not be retained indefinitely.) Tj
+(- Raw uploads are not meant to be retained indefinitely.) Tj
 /F1 12 Tf
-1 0 0 1 54 626 Tm
-(WORKSPACE AND REPORT PROTECTION) Tj
+1 0 0 1 54 648 Tm
+(PRIVATE STORAGE AND ACCESS) Tj
+/F1 11 Tf
+1 0 0 1 68 624 Tm
+(- Customer files are stored in private locations.) Tj
 /F1 11 Tf
 1 0 0 1 68 602 Tm
-(- Workspace data should remain private by default.) Tj
+(- Short-lived access methods are used when files need to be downloaded.) Tj
 /F1 11 Tf
 1 0 0 1 68 580 Tm
-(- Reports may persist as part of analytical memory.) Tj
+(- Public file access is avoided unless a file is intentionally public.) Tj
 /F1 11 Tf
 1 0 0 1 68 558 Tm
-(- Private storage buckets should be used for customer data.) Tj
+(- Workspace isolation is preserved across customer records.) Tj
 /F1 11 Tf
 1 0 0 1 68 536 Tm
-(- Signed URLs should be used for private file access when applicable.) Tj
-/F1 11 Tf
-1 0 0 1 68 514 Tm
-(- No public indexing of customer data should be allowed.) Tj
+(- Service credentials remain server-side only.) Tj
 /F1 12 Tf
-1 0 0 1 54 484 Tm
-(ADMIN ACCESS CONTROLS) Tj
+1 0 0 1 54 506 Tm
+(ADMINISTRATIVE ACCESS) Tj
 /F1 11 Tf
-1 0 0 1 68 460 Tm
-(- Admin endpoints require `ADMIN_SECRET` and a bearer-token header.) Tj
+1 0 0 1 54 482 Tm
+(Administrative endpoints are protected by server-side access controls for the current) Tj
 /F1 11 Tf
-1 0 0 1 68 438 Tm
-(- The service-role key must remain server-side only.) Tj
-/F1 11 Tf
-1 0 0 1 68 416 Tm
-(- Admin access is suitable for the manual beta but is not a replacement for long-term user) Tj
-/F1 11 Tf
-1 0 0 1 54 402 Tm
-(  auth.) Tj
-/F1 11 Tf
-1 0 0 1 68 380 Tm
-(- Admin access should be limited and auditable.) Tj
-/F1 11 Tf
-1 0 0 1 68 358 Tm
-(- No secrets should be read from query strings or request bodies.) Tj
+1 0 0 1 54 468 Tm
+(manual beta. Administrative secrets are not exposed in frontend code.) Tj
 /F1 12 Tf
-1 0 0 1 54 328 Tm
-(STORAGE AND ACCESS MODEL) Tj
+1 0 0 1 54 438 Tm
+(SECRETS MANAGEMENT) Tj
 /F1 11 Tf
-1 0 0 1 68 304 Tm
-(- Customer files should live in private buckets.) Tj
+1 0 0 1 68 414 Tm
+(- Secrets are not committed to git.) Tj
+/F1 11 Tf
+1 0 0 1 68 392 Tm
+(- Frontend code must not contain service credentials.) Tj
+/F1 11 Tf
+1 0 0 1 68 370 Tm
+(- Operational secrets are stored on the server.) Tj
+/F1 11 Tf
+1 0 0 1 68 348 Tm
+(- If exposure is suspected, secrets should be rotated without delay.) Tj
+/F1 12 Tf
+1 0 0 1 54 318 Tm
+(TRANSPORT AND LOGGING) Tj
+/F1 11 Tf
+1 0 0 1 68 294 Tm
+(- Customer-facing requests are expected to use encrypted transport.) Tj
 /F1 9 Tf
 1 0 0 1 502 28 Tm
-(Page 2 of 5) Tj
+(Page 2 of 4) Tj
 ET
 endstream
 endobj
 7 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 13 0 R >> >> /Contents 8 0 R >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 11 0 R >> >> /Contents 8 0 R >>
 endobj
 8 0 obj
-<< /Length 1800 >>
+<< /Length 1972 >>
 stream
 BT
 /F1 18 Tf
@@ -173,148 +170,72 @@ BT
 (Version 1.0 | Date 2026-05-09 | Scope: Public policy document for Gnomeo) Tj
 /F1 11 Tf
 1 0 0 1 68 692 Tm
-(- Workspace isolation should be preserved across all customer-facing records.) Tj
+(- Operational records are retained only as long as needed for support, reliability, or) Tj
 /F1 11 Tf
-1 0 0 1 68 670 Tm
-(- Public frontend code should never contain service-role secrets.) Tj
+1 0 0 1 54 678 Tm
+(  incident review.) Tj
 /F1 11 Tf
-1 0 0 1 68 648 Tm
-(- The current storage model should minimize the amount of raw data retained.) Tj
+1 0 0 1 68 656 Tm
+(- Access to sensitive operations is limited.) Tj
 /F1 12 Tf
-1 0 0 1 54 618 Tm
-(TRANSPORT SECURITY) Tj
+1 0 0 1 54 626 Tm
+(DELETION AND RETENTION) Tj
 /F1 11 Tf
-1 0 0 1 54 594 Tm
-(Customer-facing requests should use HTTPS/encrypted transport. Any file transfer or API) Tj
+1 0 0 1 54 602 Tm
+(Security and retention are linked. Keeping less raw data reduces exposure. Users may) Tj
 /F1 11 Tf
-1 0 0 1 54 580 Tm
-(request that carries customer data should assume transport security as a baseline) Tj
+1 0 0 1 54 588 Tm
+(request deletion of workspace data, and temporary files are intended to be removed as) Tj
 /F1 11 Tf
-1 0 0 1 54 566 Tm
-(requirement.) Tj
+1 0 0 1 54 574 Tm
+(soon as they are no longer needed.) Tj
 /F1 12 Tf
-1 0 0 1 54 536 Tm
-(SECRETS MANAGEMENT) Tj
+1 0 0 1 54 544 Tm
+(INCIDENT RESPONSE) Tj
 /F1 11 Tf
-1 0 0 1 68 512 Tm
-(- Secrets must not be committed to git.) Tj
+1 0 0 1 68 520 Tm
+(- If a secret or customer file is exposed, credentials should be rotated.) Tj
 /F1 11 Tf
-1 0 0 1 68 490 Tm
-(- Frontend code must not contain service-role credentials.) Tj
+1 0 0 1 68 498 Tm
+(- Affected storage paths and access logs should be reviewed.) Tj
 /F1 11 Tf
-1 0 0 1 68 468 Tm
-(- Operational secrets should remain on the server.) Tj
+1 0 0 1 68 476 Tm
+(- Exposure should be contained by keeping customer data private by default.) Tj
 /F1 11 Tf
-1 0 0 1 68 446 Tm
-(- Secret rotation should be possible if exposure is suspected.) Tj
+1 0 0 1 68 454 Tm
+(- Corrective action should be documented before broader rollout.) Tj
 /F1 12 Tf
-1 0 0 1 54 416 Tm
-(LOGGING AND OPERATIONAL CONTROLS) Tj
+1 0 0 1 54 424 Tm
+(CURRENT MANUAL BETA LIMITATIONS) Tj
 /F1 11 Tf
-1 0 0 1 68 392 Tm
-(- Logs should avoid raw CSV contents and other unnecessary sensitive detail.) Tj
+1 0 0 1 54 400 Tm
+(The current manual beta uses a simpler administrative access model than a mature) Tj
 /F1 11 Tf
-1 0 0 1 68 370 Tm
-(- Operational logs should be kept only as long as needed.) Tj
+1 0 0 1 54 386 Tm
+(production system. It is appropriate for controlled operation, but it does not replace) Tj
 /F1 11 Tf
-1 0 0 1 68 348 Tm
-(- Access to admin functions should be restricted.) Tj
-/F1 11 Tf
-1 0 0 1 68 326 Tm
-(- Future audit logging should record meaningful actions without storing raw uploads.) Tj
+1 0 0 1 54 372 Tm
+(fully scoped user authorization, complete audit trails, or long-term security hardening.) Tj
 /F1 12 Tf
-1 0 0 1 54 296 Tm
-(WORKSPACE ISOLATION) Tj
+1 0 0 1 54 342 Tm
+(FUTURE SECURITY IMPROVEMENTS) Tj
+/F1 11 Tf
+1 0 0 1 68 318 Tm
+(- Stronger user authentication and workspace-scoped authorization.) Tj
+/F1 11 Tf
+1 0 0 1 68 296 Tm
+(- More complete audit logging for administrative actions.) Tj
 /F1 9 Tf
 1 0 0 1 502 28 Tm
-(Page 3 of 5) Tj
+(Page 3 of 4) Tj
 ET
 endstream
 endobj
 9 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 13 0 R >> >> /Contents 10 0 R >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 11 0 R >> >> /Contents 10 0 R >>
 endobj
 10 0 obj
-<< /Length 2025 >>
-stream
-BT
-/F1 18 Tf
-1 0 0 1 54 742 Tm
-(Gnomeo Security & Data Protection Policy) Tj
-/F1 9 Tf
-1 0 0 1 54 722 Tm
-(Version 1.0 | Date 2026-05-09 | Scope: Public policy document for Gnomeo) Tj
-/F1 11 Tf
-1 0 0 1 54 700 Tm
-(agency account must not be visible to another customer account. Aggregated product) Tj
-/F1 11 Tf
-1 0 0 1 54 686 Tm
-(improvement must avoid workspace-to-workspace exposure.) Tj
-/F1 12 Tf
-1 0 0 1 54 656 Tm
-(FILE ACCESS AND SIGNED URLS) Tj
-/F1 11 Tf
-1 0 0 1 54 632 Tm
-(Where private files need to be downloaded, signed URLs or equivalent short-lived access) Tj
-/F1 11 Tf
-1 0 0 1 54 618 Tm
-(should be used. Public file links should be avoided for customer data unless they are) Tj
-/F1 11 Tf
-1 0 0 1 54 604 Tm
-(intentionally public assets.) Tj
-/F1 12 Tf
-1 0 0 1 54 574 Tm
-(DELETION AND RETENTION RELATIONSHIP) Tj
-/F1 11 Tf
-1 0 0 1 54 550 Tm
-(Security and retention are linked. Keeping less raw data reduces exposure. Users should) Tj
-/F1 11 Tf
-1 0 0 1 54 536 Tm
-(be able to request deletion of workspace data, and retention windows should be minimized) Tj
-/F1 11 Tf
-1 0 0 1 54 522 Tm
-(where practical.) Tj
-/F1 12 Tf
-1 0 0 1 54 492 Tm
-(INCIDENT RESPONSE APPROACH) Tj
-/F1 11 Tf
-1 0 0 1 68 468 Tm
-(- If a secret or customer file is exposed, rotate credentials promptly.) Tj
-/F1 11 Tf
-1 0 0 1 68 446 Tm
-(- Review access logs and storage paths after an incident.) Tj
-/F1 11 Tf
-1 0 0 1 68 424 Tm
-(- Limit blast radius by keeping customer data private by default.) Tj
-/F1 11 Tf
-1 0 0 1 68 402 Tm
-(- Document corrective action before expanding paid usage.) Tj
-/F1 12 Tf
-1 0 0 1 54 372 Tm
-(CURRENT LIMITATIONS) Tj
-/F1 11 Tf
-1 0 0 1 54 348 Tm
-(The current bearer-token admin model is appropriate for a manual concierge beta but) Tj
-/F1 11 Tf
-1 0 0 1 54 334 Tm
-(still requires operational discipline. It does not replace full user authentication,) Tj
-/F1 11 Tf
-1 0 0 1 54 320 Tm
-(scoped authorization, or mature audit logging.) Tj
-/F1 12 Tf
-1 0 0 1 54 290 Tm
-(FUTURE IMPROVEMENTS) Tj
-/F1 9 Tf
-1 0 0 1 502 28 Tm
-(Page 4 of 5) Tj
-ET
-endstream
-endobj
-11 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 13 0 R >> >> /Contents 12 0 R >>
-endobj
-12 0 obj
-<< /Length 763 >>
+<< /Length 319 >>
 stream
 BT
 /F1 18 Tf
@@ -325,49 +246,32 @@ BT
 (Version 1.0 | Date 2026-05-09 | Scope: Public policy document for Gnomeo) Tj
 /F1 11 Tf
 1 0 0 1 68 700 Tm
-(- More complete audit logging for admin actions.) Tj
-/F1 11 Tf
-1 0 0 1 68 678 Tm
-(- Lifecycle cleanup for temporary raw uploads and artifacts.) Tj
-/F1 11 Tf
-1 0 0 1 68 656 Tm
-(- Clearer retention tooling and deletion workflows.) Tj
-/F1 12 Tf
-1 0 0 1 54 626 Tm
-(CONTACT / REVIEW NOTE) Tj
-/F1 11 Tf
-1 0 0 1 54 602 Tm
-(This document is an operational policy for product and engineering review. It is) Tj
-/F1 11 Tf
-1 0 0 1 54 588 Tm
-(intentionally conservative and may be refined as the paid beta matures.) Tj
+(- Further access-control hardening as paid usage expands.) Tj
 /F1 9 Tf
 1 0 0 1 502 28 Tm
-(Page 5 of 5) Tj
+(Page 4 of 4) Tj
 ET
 endstream
 endobj
-13 0 obj
+11 0 obj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 xref
-0 14
+0 12
 0000000000 65535 f 
 0000000015 00000 n 
 0000000064 00000 n 
-0000000148 00000 n 
-0000000275 00000 n 
-0000002320 00000 n 
-0000002447 00000 n 
-0000004250 00000 n 
-0000004377 00000 n 
-0000006229 00000 n 
-0000006357 00000 n 
-0000008435 00000 n 
-0000008564 00000 n 
-0000009379 00000 n 
+0000000141 00000 n 
+0000000268 00000 n 
+0000002195 00000 n 
+0000002322 00000 n 
+0000004148 00000 n 
+0000004275 00000 n 
+0000006299 00000 n 
+0000006427 00000 n 
+0000006798 00000 n 
 trailer
-<< /Size 14 /Root 1 0 R >>
+<< /Size 12 /Root 1 0 R >>
 startxref
-9450
+6869
 %%EOF
