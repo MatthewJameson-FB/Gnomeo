@@ -6,23 +6,12 @@
     <title>Gnomeo CRM Submissions</title>
     <link rel="stylesheet" href="submissions.css" />
   </head>
-  <body class="locked">
-    <div id="gate" class="gate">
-      <form id="gateForm" class="gate-card card">
-        <p class="eyebrow">Private access</p>
-        <h1>Gnomeo Admin</h1>
-        <p class="subtle">Enter the access password to open the submissions dashboard.</p>
-        <input id="gateInput" type="password" autocomplete="off" placeholder="Password" />
-        <button type="submit">Unlock</button>
-        <p id="gateError" class="gate-error" aria-live="polite"></p>
-      </form>
-    </div>
-
-    <main id="app" class="shell hidden">
+  <body>
+    <main id="app" class="shell">
       <header class="hero">
         <div>
           <p class="eyebrow">Gnomeo Admin</p>
-          <p class="notice warning">Internal dashboard only. Do not expose real customer data publicly.</p>
+          <p class="notice warning">Protected admin dashboard. Do not expose customer data publicly.</p>
           <h1>Submissions</h1>
           <p class="subtle">Reloading pulls the latest data from Supabase.</p>
         </div>
@@ -31,6 +20,7 @@
           <a class="pill-link" href="http://localhost:6060" target="_blank" rel="noreferrer">Local Runner</a>
           <button id="reloadBtn" class="secondary" type="button">Reload from Supabase</button>
           <button id="openManualBtn" class="secondary" type="button">Add manual submission</button>
+          <button type="button" class="secondary" data-admin-logout>Log out</button>
         </div>
       </header>
 
@@ -38,7 +28,7 @@
 
       <section class="card explainer-card">
         <h2>How to use this dashboard</h2>
-        <p>Use this dashboard to track submissions and send finished reports. CSV files arrive in your admin email as attachments. Generate the report locally, then upload the finished HTML/PDF here and send it to the customer.</p>
+        <p>Use this dashboard to track submissions and send finished reports. CSV files arrive in your admin email as attachments. Generate the report locally, then upload the finished HTML or PDF here and send it to the customer.</p>
       </section>
 
       <section class="workflow-strip card">
@@ -97,7 +87,7 @@
           <p class="subtle" id="detailHint">Select a submission to manage report delivery.</p>
           <div id="detailPlaceholder" class="empty-detail">
             <strong>Upload report lives here</strong>
-            <p>Select a submission from the table on the left, then use the large “Upload finished report” box to add the HTML/PDF.</p>
+            <p>Select a submission from the table on the left, then use the large “Upload finished report” box to add the HTML or PDF.</p>
           </div>
           <div id="detailContent" class="hidden"></div>
         </aside>

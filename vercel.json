@@ -3,12 +3,16 @@
   "version": 2,
   "routes": [
     {
+      "src": "/admin",
+      "dest": "/api/admin/page?path=index.html"
+    },
+    {
       "src": "/admin/",
-      "dest": "/admin/index.html"
+      "dest": "/api/admin/page?path=index.html"
     },
     {
       "src": "/admin/(.*)",
-      "dest": "/admin/$1"
+      "dest": "/api/admin/page?path=$1"
     },
     {
       "src": "/",

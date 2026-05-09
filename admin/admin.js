@@ -1,16 +1,9 @@
-const ADMIN_PASSWORD = "gnomeo-admin";
-const STORAGE_KEY = "gnomeo-admin-unlocked";
-
 const state = {
   candidates: [],
   rawText: "",
 };
 
 const els = {
-  gate: document.getElementById("gate"),
-  gateForm: document.getElementById("gateForm"),
-  gateInput: document.getElementById("gateInput"),
-  gateError: document.getElementById("gateError"),
   app: document.getElementById("app"),
   cards: document.getElementById("cards"),
   summary: document.getElementById("summary"),
@@ -184,45 +177,9 @@ async function loadFromRelativePath() {
   await loadCSVText(await res.text());
 }
 
-function unlock() {
-  document.body.classList.remove("locked");
-  els.gate.classList.add("hidden");
-  els.app.classList.remove("hidden");
-  sessionStorage.setItem(STORAGE_KEY, "1");
-  els.gateError.textContent = "";
-}
-
-function lockMessage(message) {
-  els.gateError.textContent = message;
-  els.gateInput.value = "";
-  els.gateInput.focus();
-}
-
 function startApp() {
-  document.body.classList.add("locked");
-  els.app.classList.add("hidden");
-  els.gate.classList.remove("hidden");
-
-  if (sessionStorage.getItem(STORAGE_KEY) === "1") {
-    unlock();
-    loadFromRelativePath().catch(() => {
-      els.summary.textContent = "Pick candidates.csv to load the review list.";
-    });
-    return;
-  }
-
-  els.gateForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    if (els.gateInput.value === ADMIN_PASSWORD) {
-      unlock();
-      try {
-        await loadFromRelativePath();
-      } catch {
-        els.summary.textContent = "Pick candidates.csv to load the review list.";
-      }
-    } else {
-      lockMessage("Wrong password.");
-    }
+  loadFromRelativePath().catch(() => {
+    els.summary.textContent = "Pick candidates.csv to load the review list.";
   });
 }
 

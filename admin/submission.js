@@ -1,8 +1,5 @@
-const PASSWORD_HEADER = 'x-admin-password';
-const ADMIN_PASSWORD = 'gnomeo-admin';
-
 function authHeaders() {
-  return { [PASSWORD_HEADER]: ADMIN_PASSWORD };
+  return {};
 }
 
 function esc(value) {

@@ -1,6 +1,3 @@
-const PASSWORD_HEADER = 'x-admin-password';
-const ADMIN_PASSWORD = '***';
-
 const submissionStatuses = ['received', 'processing', 'report_ready', 'report_sent', 'follow_up', 'converted', 'lost'];
 const customerStatuses = ['lead', 'qualified', 'active_trial', 'paid', 'lost'];
 
@@ -35,7 +32,7 @@ const state = {
 };
 
 function authHeaders() {
-  return { [PASSWORD_HEADER]: ADMIN_PASSWORD };
+  return {};
 }
 
 function esc(value) {

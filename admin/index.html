@@ -6,25 +6,17 @@
     <title>Gnomeo Admin</title>
     <link rel="stylesheet" href="admin.css" />
   </head>
-  <body class="locked">
-    <div id="gate" class="gate">
-      <form id="gateForm" class="gate-card card">
-        <p class="eyebrow">Private access</p>
-        <h1>Gnomeo Admin</h1>
-        <p class="subtle">Enter the access password to open the internal admin landing page.</p>
-        <input id="gateInput" type="password" autocomplete="off" placeholder="Password" />
-        <button type="submit">Unlock</button>
-        <p id="gateError" class="gate-error" aria-live="polite"></p>
-      </form>
-    </div>
-
-    <main id="app" class="shell hidden">
+  <body>
+    <main id="app" class="shell">
       <header class="hero">
         <div>
           <p class="eyebrow">Gnomeo</p>
-          <p class="notice">Internal admin only. Do not expose customer data publicly.</p>
+          <p class="notice">Protected admin portal. Customer data stays private.</p>
           <h1>Gnomeo Admin</h1>
           <p class="subtle">Submission processing is currently handled manually.</p>
+        </div>
+        <div class="actions">
+          <button type="button" class="secondary" data-admin-logout>Log out</button>
         </div>
       </header>
 
@@ -50,5 +42,6 @@
     </main>
 
     <script src="auth.js"></script>
+    <script src="admin.js"></script>
   </body>
 </html>

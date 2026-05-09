@@ -1,33 +1,17 @@
-const ADMIN_PASSWORD = 'gnomeo-admin';
-const STORAGE_KEY = 'gnomeo-admin-unlocked';
-
 (() => {
-  const gate = document.getElementById('gate');
-  const gateForm = document.getElementById('gateForm');
-  const gateInput = document.getElementById('gateInput');
-  const gateError = document.getElementById('gateError');
-  const app = document.getElementById('app');
-
-  if (!gate || !gateForm || !gateInput || !gateError || !app) return;
-
-  const unlock = () => {
-    document.body.classList.remove('locked');
-    gate.classList.add('hidden');
-    app.classList.remove('hidden');
-    sessionStorage.setItem(STORAGE_KEY, '1');
-    gateError.textContent = '';
+  const logout = async () => {
+    try {
+      await fetch('/api/admin/logout', { method: 'POST' });
+    } catch {
+      // Best-effort logout; redirect still clears the protected flow.
+    }
+    window.location.href = '/admin/login.html';
   };
 
-  if (sessionStorage.getItem(STORAGE_KEY) === '1') unlock();
-
-  gateForm.addEventListener('submit', (event) => {
-    event.preventDefault();
-    if (gateInput.value === ADMIN_PASSWORD) {
-      unlock();
-    } else {
-      gateError.textContent = 'Wrong password.';
-      gateInput.value = '';
-      gateInput.focus();
-    }
+  document.querySelectorAll('[data-admin-logout]').forEach((element) => {
+    element.addEventListener('click', (event) => {
+      event.preventDefault();
+      logout();
+    });
   });
 })();
