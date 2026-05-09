@@ -4,92 +4,256 @@
 << /Type /Catalog /Pages 2 0 R >>
 endobj
 2 0 obj
-<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+<< /Type /Pages /Kids [ 3 0 R 5 0 R 7 0 R ] /Count 3 >>
 endobj
 3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 9 0 R >> >> /Contents 4 0 R >>
 endobj
 4 0 obj
-<< /Length 1104 >>
+<< /Length 2310 >>
 stream
 BT
-/F1 11 Tf
-54 740 Td
+/F1 18 Tf
+1 0 0 1 54 742 Tm
 (Gnomeo AI & Product Improvement Policy) Tj
-0 -14 Td
-54 726 Td
-() Tj
-0 -14 Td
-54 712 Td
-(We use AI-assisted analysis to produce reports and recommendations.) Tj
-0 -14 Td
-54 698 Td
-(Customer workspaces stay private by default.) Tj
-0 -14 Td
-54 684 Td
-(Raw uploads are not sold.) Tj
-0 -14 Td
-54 670 Td
-(Raw uploads are not publicly shared.) Tj
-0 -14 Td
-54 656 Td
-(Raw uploads are not used to train public foundation models.) Tj
-0 -14 Td
-54 642 Td
-() Tj
-0 -14 Td
-54 628 Td
-(Allowed improvement signals) Tj
-0 -14 Td
-54 614 Td
-(- Aggregated, anonymized, non-identifiable patterns.) Tj
-0 -14 Td
-54 600 Td
-(- Report quality.) Tj
-0 -14 Td
-54 586 Td
-(- Recommendation systems.) Tj
-0 -14 Td
-54 572 Td
-(- Benchmarking.) Tj
-0 -14 Td
-54 558 Td
-(- Weak-signal detection.) Tj
-0 -14 Td
-54 544 Td
-(- Platform reliability.) Tj
-0 -14 Td
-54 530 Td
-() Tj
-0 -14 Td
-54 516 Td
-(What we do not do) Tj
-0 -14 Td
-54 502 Td
-(- No customer-identifiable benchmarking.) Tj
-0 -14 Td
-54 488 Td
-(- No workspace-to-workspace exposure.) Tj
-0 -14 Td
-54 474 Td
-(- No ownership claim over customer exports.) Tj
-0 -14 Td
+/F1 9 Tf
+1 0 0 1 54 722 Tm
+(Version 1.0 | Date 2026-05-09 | Scope: Public policy document for Gnomeo) Tj
+/F1 11 Tf
+1 0 0 1 54 692 Tm
+(Formal guidance on how Gnomeo uses AI-assisted analysis and how privacy-preserving) Tj
+/F1 11 Tf
+1 0 0 1 54 678 Tm
+(product improvement may work.) Tj
+/F1 12 Tf
+1 0 0 1 54 648 Tm
+(PURPOSE AND SCOPE) Tj
+/F1 11 Tf
+1 0 0 1 54 624 Tm
+(This policy explains how Gnomeo uses AI-assisted analysis and how data may be used to) Tj
+/F1 11 Tf
+1 0 0 1 54 610 Tm
+(improve the product without turning the service into a raw-data warehouse. It applies to) Tj
+/F1 11 Tf
+1 0 0 1 54 596 Tm
+(customer workspaces, uploaded exports, and derived operational patterns.) Tj
+/F1 12 Tf
+1 0 0 1 54 566 Tm
+(HOW GNOMEO USES AI) Tj
+/F1 11 Tf
+1 0 0 1 54 542 Tm
+(Gnomeo uses AI-assisted analysis to help generate reports and recommendations from) Tj
+/F1 11 Tf
+1 0 0 1 54 528 Tm
+(uploaded ad exports and workspace context. The goal is to produce readable analyst-style) Tj
+/F1 11 Tf
+1 0 0 1 54 514 Tm
+(output that helps users understand waste, weak signal, budget allocation, and platform) Tj
+/F1 11 Tf
+1 0 0 1 54 500 Tm
+(tradeoffs.) Tj
+/F1 12 Tf
+1 0 0 1 54 470 Tm
+(HUMAN-READABLE REPORT GENERATION) Tj
+/F1 11 Tf
+1 0 0 1 54 446 Tm
+(The product is intended to turn imported data into human-readable narrative reports. AI) Tj
+/F1 11 Tf
+1 0 0 1 54 432 Tm
+(is used to support that analysis, but workspace context and business judgment remain) Tj
+/F1 11 Tf
+1 0 0 1 54 418 Tm
+(important parts of the workflow.) Tj
+/F1 12 Tf
+1 0 0 1 54 388 Tm
+(CUSTOMER WORKSPACE PRIVACY) Tj
+/F1 11 Tf
+1 0 0 1 54 364 Tm
+(Customer workspaces remain private by default. Raw uploads are not sold or publicly) Tj
+/F1 11 Tf
+1 0 0 1 54 350 Tm
+(shared. Gnomeo does not claim ownership of customer ad accounts or uploaded exports.) Tj
+/F1 12 Tf
+1 0 0 1 54 320 Tm
+(RAW UPLOADS AND MODEL TRAINING) Tj
+/F1 11 Tf
+1 0 0 1 54 296 Tm
+(Raw uploads are not used to train public foundation models. Gnomeo should not expose raw) Tj
+/F1 11 Tf
+1 0 0 1 54 282 Tm
+(uploads from one customer to another, and raw exports should not be republished or) Tj
+/F1 11 Tf
+1 0 0 1 54 268 Tm
+(reused as public examples without clear permission.) Tj
+/F1 9 Tf
+1 0 0 1 502 28 Tm
+(Page 1 of 3) Tj
 ET
 endstream
 endobj
 5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 9 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 2103 >>
+stream
+BT
+/F1 18 Tf
+1 0 0 1 54 742 Tm
+(Gnomeo AI & Product Improvement Policy) Tj
+/F1 9 Tf
+1 0 0 1 54 722 Tm
+(Version 1.0 | Date 2026-05-09 | Scope: Public policy document for Gnomeo) Tj
+/F1 12 Tf
+1 0 0 1 54 700 Tm
+(AGGREGATED AND ANONYMIZED IMPROVEMENT) Tj
+/F1 11 Tf
+1 0 0 1 68 676 Tm
+(- Gnomeo may use aggregated, anonymized, and non-identifiable operational patterns to) Tj
+/F1 11 Tf
+1 0 0 1 54 662 Tm
+(  improve report quality.) Tj
+/F1 11 Tf
+1 0 0 1 68 640 Tm
+(- Those patterns may help improve recommendation systems, benchmarking, weak-signal) Tj
+/F1 11 Tf
+1 0 0 1 54 626 Tm
+(  detection, platform reliability, and operational insight.) Tj
+/F1 11 Tf
+1 0 0 1 68 604 Tm
+(- Aggregate learning should not expose customer names, client names, campaign names,) Tj
+/F1 11 Tf
+1 0 0 1 54 590 Tm
+(  workspace details, or raw uploaded exports.) Tj
+/F1 12 Tf
+1 0 0 1 54 560 Tm
+(WHY LIMITED AGGREGATE LEARNING HELPS) Tj
+/F1 11 Tf
+1 0 0 1 54 536 Tm
+(Gnomeo can become more useful over time by learning from broad, non-identifiable) Tj
+/F1 11 Tf
+1 0 0 1 54 522 Tm
+(patterns such as common waste signals, weak-signal thresholds, fragmented budget) Tj
+/F1 11 Tf
+1 0 0 1 54 508 Tm
+(patterns, platform tradeoffs, and recurring account issues. This should improve) Tj
+/F1 11 Tf
+1 0 0 1 54 494 Tm
+(recommendations without turning Gnomeo into a raw ad-data warehouse.) Tj
+/F1 12 Tf
+1 0 0 1 54 464 Tm
+(WHAT WE DO NOT DO) Tj
+/F1 11 Tf
+1 0 0 1 68 440 Tm
+(- We do not sell raw customer uploads.) Tj
+/F1 11 Tf
+1 0 0 1 68 418 Tm
+(- We do not publish customer data.) Tj
+/F1 11 Tf
+1 0 0 1 68 396 Tm
+(- We do not expose one workspace to another.) Tj
+/F1 11 Tf
+1 0 0 1 68 374 Tm
+(- We do not use raw uploads to train public foundation models.) Tj
+/F1 11 Tf
+1 0 0 1 68 352 Tm
+(- We do not claim ownership of customer ad accounts or customer exports.) Tj
+/F1 11 Tf
+1 0 0 1 68 330 Tm
+(- We do not use individual customer data to create public customer-identifiable) Tj
+/F1 11 Tf
+1 0 0 1 54 316 Tm
+(  benchmarks.) Tj
+/F1 12 Tf
+1 0 0 1 54 286 Tm
+(AFFORDABILITY AND PRODUCT QUALITY RATIONALE) Tj
+/F1 9 Tf
+1 0 0 1 502 28 Tm
+(Page 2 of 3) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 9 0 R >> >> /Contents 8 0 R >>
+endobj
+8 0 obj
+<< /Length 1613 >>
+stream
+BT
+/F1 18 Tf
+1 0 0 1 54 742 Tm
+(Gnomeo AI & Product Improvement Policy) Tj
+/F1 9 Tf
+1 0 0 1 54 722 Tm
+(Version 1.0 | Date 2026-05-09 | Scope: Public policy document for Gnomeo) Tj
+/F1 11 Tf
+1 0 0 1 54 700 Tm
+(reliability, not a public dataset of customer uploads.) Tj
+/F1 12 Tf
+1 0 0 1 54 670 Tm
+(GDPR-AWARE IMPROVEMENT PRINCIPLES) Tj
+/F1 11 Tf
+1 0 0 1 54 646 Tm
+(Any product-improvement use of data should prefer aggregated, anonymized, and non-) Tj
+/F1 11 Tf
+1 0 0 1 54 632 Tm
+(identifiable signals. The policy is designed to support privacy-aware product) Tj
+/F1 11 Tf
+1 0 0 1 54 618 Tm
+(improvement with minimal exposure of individual workspace data.) Tj
+/F1 12 Tf
+1 0 0 1 54 588 Tm
+(FUTURE PRIVACY CONTROLS) Tj
+/F1 11 Tf
+1 0 0 1 54 564 Tm
+(Future controls may allow stricter opt-outs or immediate raw-deletion modes for) Tj
+/F1 11 Tf
+1 0 0 1 54 550 Tm
+(customers that want the narrowest possible retention profile.) Tj
+/F1 12 Tf
+1 0 0 1 54 520 Tm
+(CURRENT LIMITATIONS) Tj
+/F1 11 Tf
+1 0 0 1 54 496 Tm
+(This policy is intentionally conservative and may evolve as the paid beta matures. It is) Tj
+/F1 11 Tf
+1 0 0 1 54 482 Tm
+(designed to be clear about what the product intends to do and what it does not do.) Tj
+/F1 12 Tf
+1 0 0 1 54 452 Tm
+(REVIEW AND UPDATES) Tj
+/F1 11 Tf
+1 0 0 1 54 428 Tm
+(Policy updates should remain consistent with the core promise: workspace data stays) Tj
+/F1 11 Tf
+1 0 0 1 54 414 Tm
+(private by default, raw uploads are temporary, and improvement learning must remain) Tj
+/F1 11 Tf
+1 0 0 1 54 400 Tm
+(aggregated and non-identifiable.) Tj
+/F1 9 Tf
+1 0 0 1 502 28 Tm
+(Page 3 of 3) Tj
+ET
+endstream
+endobj
+9 0 obj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 xref
-0 6
+0 10
 0000000000 65535 f 
 0000000015 00000 n 
 0000000064 00000 n 
-0000000121 00000 n 
-0000000247 00000 n 
-0000001403 00000 n 
+0000000135 00000 n 
+0000000261 00000 n 
+0000002623 00000 n 
+0000002749 00000 n 
+0000004904 00000 n 
+0000005030 00000 n 
+0000006695 00000 n 
 trailer
-<< /Size 6 /Root 1 0 R >>
+<< /Size 10 /Root 1 0 R >>
 startxref
-1473
+6765
 %%EOF
