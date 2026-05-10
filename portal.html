@@ -407,7 +407,10 @@
 
     const setMessage = (text, kind = 'note') => {
       els.formMessage.className = kind === 'error' ? 'error-box' : kind === 'success' ? 'success-box' : 'helper-note';
-      els.formMessage.textContent = text || '';
+      const support = kind === 'error'
+        ? '<div class="helper-note" style="margin-top:8px;">If this keeps happening, email matt@gnomeo.nl with the workspace name and time.</div>'
+        : '';
+      els.formMessage.innerHTML = `${escapeHtml(text || '')}${support}`;
     };
 
     const setLoading = (loading) => {
@@ -428,7 +431,7 @@
       els.title.textContent = workspace?.workspace_name || 'Gnomeo Workspace';
       els.subtitle.textContent = workspace
         ? 'Quiet analyst workspace for saved ad-spend reviews and trend comparisons.'
-        : (state.token ? 'This portal link is invalid or expired.' : 'Open your private portal link to view workspace context, upload CSV exports, and review saved analysis.');
+        : (state.token ? 'This portal link is invalid or expired.' : 'Invite-only manual beta. Open your private portal link to view workspace context, upload CSV exports, and review saved analysis.');
 
       els.pills.innerHTML = workspace
         ? [
@@ -437,7 +440,7 @@
             workspace.business_type ? `Business: ${workspace.business_type}` : null,
             workspace.primary_goal ? `Goal: ${workspace.primary_goal}` : null,
           ].filter(Boolean).map(badge).join('')
-        : (state.token ? badge('Invalid or expired link') : badge('No portal link'));
+        : (state.token ? badge('Invalid or expired link') : badge('Invite-only manual beta'));
 
       if (!workspace) {
         els.context.innerHTML = `<div class="empty-state">${state.token ? 'This portal link could not be found or has been revoked.' : 'Paste the private portal link to load the workspace.'}</div>`;

@@ -13,6 +13,7 @@ const { requireAdmin } = require('../_adminAuth');
 const { generatePortalToken, hashPortalToken, buildPortalUrl, safeWorkspace, safeHistoryRun, safeLatestRun } = require('../_portal');
 
 const readRequestBuffer = async (req) => {
+  if (!req || typeof req[Symbol.asyncIterator] !== 'function') return Buffer.alloc(0);
   const chunks = [];
   for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   return Buffer.concat(chunks);
