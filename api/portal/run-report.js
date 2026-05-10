@@ -3,7 +3,7 @@ const os = require('os');
 const path = require('path');
 const { randomUUID } = require('crypto');
 const { parseMultipartForm } = require('../_multipart');
-const { restInsert, restSelect } = require('../_supabase');
+const { restInsert, restSelect, updateWorkspaceById } = require('../_supabase');
 const { validateCsvUploads } = require('../_limits');
 const {
   portalLimitsForPlan,
@@ -15,6 +15,8 @@ const {
   safeHistoryRun,
   safeLatestRun,
   parseReportMarkdown,
+  buildWorkspaceMemoryUpdate,
+  workspaceMemoryFromWorkspace,
   detectSourcePlatforms,
   runReportGenerator,
 } = require('../_portal');
@@ -154,6 +156,27 @@ module.exports = async (req, res) => {
       created_at: new Date().toISOString(),
     });
 
+    const memoryUpdate = buildWorkspaceMemoryUpdate({
+      workspace,
+      parsedReport,
+      detectedPlatforms,
+      sourceFilenames: files.map((file) => file.filename),
+      reportRun: {
+        created_at: reportRun.created_at,
+        report_title: parsedReport.title,
+        row_count: validation.totalRows,
+      },
+      currentMemory: workspace,
+    });
+
+    let updatedWorkspace = workspace;
+    try {
+      const [savedWorkspace] = await updateWorkspaceById(workspace.id, memoryUpdate);
+      if (savedWorkspace) updatedWorkspace = savedWorkspace;
+    } catch (memoryError) {
+      console.warn('[gnomeo portal run-report] workspace memory update failed (non-blocking):', memoryError);
+    }
+
     await logUsageEvent({
       workspace_id: workspace.id,
       event_type: 'portal_report_generated',
@@ -189,7 +212,7 @@ module.exports = async (req, res) => {
         }))
       : [];
 
-    const publicWorkspace = safeWorkspace(workspace);
+    const publicWorkspace = safeWorkspace(updatedWorkspace);
     delete publicWorkspace.owner_email;
 
     return respond(res, 200, {
@@ -199,6 +222,7 @@ module.exports = async (req, res) => {
       latest_report: latestRun,
       report_history: history,
       next_review_focus: parsedReport.next_review_focus || [],
+      workspace_memory: workspaceMemoryFromWorkspace(updatedWorkspace),
       upload_limits: {
         plan_label: limits.planLabel,
         max_files: limits.maxFiles,

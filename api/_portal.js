@@ -69,6 +69,12 @@ const safeWorkspace = (workspace) => ({
   portal_token_created_at: workspace.portal_token_created_at || null,
   portal_token_last_used_at: workspace.portal_token_last_used_at || null,
   portal_token_revoked_at: workspace.portal_token_revoked_at || null,
+  memory_summary: workspace.memory_summary || {},
+  recurring_issues: workspace.recurring_issues || [],
+  open_recommendations: workspace.open_recommendations || [],
+  trend_snapshot: workspace.trend_snapshot || [],
+  next_review_focus: workspace.next_review_focus || [],
+  last_handover_at: workspace.last_handover_at || null,
 });
 
 const safeHistoryRun = (run) => ({
@@ -179,6 +185,81 @@ const parseReportMarkdown = (markdown) => {
     next_review_focus: nextReviewFocus,
   };
 };
+
+const platformDisplayName = (platform) => ({
+  google_ads: 'Google Ads',
+  meta_ads: 'Meta Ads',
+  mixed: 'Mixed',
+  unknown: 'Unknown',
+}[String(platform || '').toLowerCase()] || String(platform || '').replace(/_/g, ' ').trim() || 'Unknown');
+
+const dedupeStrings = (values, limit = 10) => {
+  const seen = new Set();
+  const output = [];
+  for (const value of Array.isArray(values) ? values : []) {
+    const text = String(value || '').trim();
+    if (!text) continue;
+    const key = text.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    output.push(text);
+    if (output.length >= limit) break;
+  }
+  return output;
+};
+
+const buildWorkspaceMemoryUpdate = ({ workspace, parsedReport, detectedPlatforms = [], sourceFilenames = [], reportRun = {}, currentMemory = {} }) => {
+  const currentState = parsedReport.executive_summary || parsedReport.title || 'Report completed.';
+  const platformNotes = dedupeStrings([
+    detectedPlatforms.length ? `Analyzed: ${detectedPlatforms.map(platformDisplayName).join(' + ')}` : 'Platform detection was inconclusive.',
+    sourceFilenames.length ? `Sources: ${sourceFilenames.join(', ')}` : '',
+    reportRun.row_count ? `Rows analyzed: ${Number(reportRun.row_count).toLocaleString()}` : '',
+  ], 4);
+  const confidenceNotes = dedupeStrings(parsedReport.confidence_and_limitations, 5);
+  const recurringIssues = dedupeStrings([
+    ...confidenceNotes,
+    ...parsedReport.key_insights,
+  ], 8);
+  const openRecommendations = dedupeStrings(parsedReport.key_decisions.map((item) => {
+    const details = Array.isArray(item.details) ? item.details.filter(Boolean).join(' · ') : String(item.details || '').trim();
+    return details ? `${item.title}: ${details}` : item.title;
+  }), 8);
+  const trendSnapshot = dedupeStrings(parsedReport.key_insights, 8);
+  const nextReviewFocus = dedupeStrings(parsedReport.next_review_focus, 5);
+  const memorySummary = {
+    current_state: currentState,
+    report_title: parsedReport.title || reportRun.report_title || 'Gnomeo report',
+    last_report_date: reportRun.created_at || new Date().toISOString(),
+    platform_notes: platformNotes,
+    confidence_or_signal_notes: confidenceNotes,
+    workspace_context: {
+      workspace_name: workspace.workspace_name || '',
+      business_type: workspace.business_type || '',
+      primary_goal: workspace.primary_goal || '',
+      risk_appetite: workspace.risk_appetite || '',
+      budget_constraint: workspace.budget_constraint || '',
+      plan: workspace.plan || '',
+    },
+  };
+
+  return {
+    memory_summary: memorySummary,
+    recurring_issues: dedupeStrings([...(currentMemory.recurring_issues || []), ...recurringIssues], 10),
+    open_recommendations: dedupeStrings([...(currentMemory.open_recommendations || []), ...openRecommendations], 10),
+    trend_snapshot: dedupeStrings([...(currentMemory.trend_snapshot || []), ...trendSnapshot], 10),
+    next_review_focus: nextReviewFocus.length ? nextReviewFocus : dedupeStrings(currentMemory.next_review_focus || [], 5),
+    last_handover_at: new Date().toISOString(),
+  };
+};
+
+const workspaceMemoryFromWorkspace = (workspace) => ({
+  memory_summary: workspace.memory_summary || {},
+  recurring_issues: workspace.recurring_issues || [],
+  open_recommendations: workspace.open_recommendations || [],
+  trend_snapshot: workspace.trend_snapshot || [],
+  next_review_focus: workspace.next_review_focus || [],
+  last_handover_at: workspace.last_handover_at || null,
+});
 
 const collectCsvText = (files, buffers) => files.map((file, index) => ({
   filename: String(file?.filename || `file-${index + 1}.csv`),
@@ -325,6 +406,8 @@ module.exports = {
   safeHistoryRun,
   safeLatestRun,
   parseReportMarkdown,
+  buildWorkspaceMemoryUpdate,
+  workspaceMemoryFromWorkspace,
   detectSourcePlatforms,
   runReportGenerator,
   getPortalTokenFromRequest,

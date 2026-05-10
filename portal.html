@@ -5,175 +5,73 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="referrer" content="no-referrer" />
   <title>Gnomeo Workspace</title>
-  <meta name="description" content="Private Gnomeo workspace portal for uploaded CSV reviews and report history." />
+  <meta name="description" content="Private Gnomeo workspace portal for uploaded CSV reviews, memory, and report history." />
   <link rel="canonical" href="https://www.gnomeo.nl/portal.html" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="Gnomeo Workspace" />
-  <meta property="og:description" content="Private workspace portal for saved ad-spend reviews and history." />
+  <meta property="og:description" content="Private workspace portal for saved ad-spend reviews, memory, and history." />
   <meta property="og:url" content="https://www.gnomeo.nl/portal.html" />
   <meta property="og:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Gnomeo Workspace" />
-  <meta name="twitter:description" content="Private workspace portal for saved ad-spend reviews and history." />
+  <meta name="twitter:description" content="Private workspace portal for saved ad-spend reviews, memory, and history." />
   <meta name="twitter:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
   <link rel="stylesheet" href="/content-pages.css" />
   <style>
-    .portal-grid {
-      display: grid;
-      grid-template-columns: repeat(12, minmax(0, 1fr));
-      gap: 16px;
-    }
+    .portal-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
     .span-7 { grid-column: span 7; }
-    .span-5 { grid-column: span 5; }
     .span-6 { grid-column: span 6; }
+    .span-5 { grid-column: span 5; }
     .span-12 { grid-column: span 12; }
-    .context-list,
-    .report-list,
-    .history-list,
-    .focus-list {
-      display: grid;
-      gap: 10px;
-      margin-top: 14px;
-    }
+    .context-list, .report-list, .history-list, .focus-list { display: grid; gap: 10px; margin-top: 14px; }
     .row-item {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      align-items: flex-start;
-      padding: 14px 16px;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: #fff;
-      box-shadow: none;
+      display: flex; justify-content: space-between; gap: 16px; align-items: flex-start;
+      padding: 14px 16px; border: 1px solid var(--line); border-radius: 18px; background: #fff; box-shadow: none;
     }
     .row-item strong { display: block; margin-bottom: 4px; }
     .row-item p { margin: 0; color: var(--muted); }
-    .pill-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 14px;
-    }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
     .pill {
-      display: inline-flex;
-      align-items: center;
-      padding: 7px 11px;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      background: #fff;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 650;
+      display: inline-flex; align-items: center; padding: 7px 11px; border-radius: 999px;
+      border: 1px solid var(--line); background: #fff; color: var(--muted); font-size: 13px; font-weight: 650;
     }
     .status {
-      display: inline-flex;
-      align-items: center;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: #eff6ff;
-      color: #1d4ed8;
-      font-size: 12px;
-      font-weight: 700;
-      white-space: nowrap;
+      display: inline-flex; align-items: center; padding: 6px 10px; border-radius: 999px;
+      background: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 700; white-space: nowrap;
     }
-    .workspace-form {
-      display: grid;
-      gap: 14px;
-      margin-top: 12px;
-    }
-    .workspace-form label {
-      display: grid;
-      gap: 8px;
-      color: var(--muted);
-      font-size: 14px;
-      font-weight: 600;
-    }
+    .workspace-form { display: grid; gap: 14px; margin-top: 12px; }
+    .workspace-form label { display: grid; gap: 8px; color: var(--muted); font-size: 14px; font-weight: 600; }
     .workspace-form input[type="file"] {
-      width: 100%;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: #fff;
-      color: var(--text);
-      font: inherit;
-      padding: 12px 14px;
-      box-shadow: none;
-      outline: none;
+      width: 100%; border: 1px solid var(--line); border-radius: 16px; background: #fff; color: var(--text);
+      font: inherit; padding: 12px 14px; box-shadow: none; outline: none;
     }
-    .workspace-form input[type="file"]:focus {
-      border-color: rgba(29, 78, 216, 0.28);
-      box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.08);
-    }
+    .workspace-form input[type="file"]:focus { border-color: rgba(29, 78, 216, 0.28); box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.08); }
     .helper-note { color: var(--muted); font-size: 13px; }
     .form-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
-    .button.secondary {
-      background: #fff;
-      color: var(--text);
-      border: 1px solid var(--line);
-      box-shadow: none;
-    }
+    .button.secondary { background: #fff; color: var(--text); border: 1px solid var(--line); box-shadow: none; }
     .button.secondary:hover { background: #f8fafc; }
-    .button.is-disabled {
-      opacity: 0.6;
-      pointer-events: none;
-    }
+    .button.is-disabled { opacity: 0.6; pointer-events: none; }
     .report-body {
-      margin-top: 14px;
-      padding: 16px;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: #fff;
-      box-shadow: none;
+      margin-top: 14px; padding: 16px; border: 1px solid var(--line); border-radius: 18px; background: #fff; box-shadow: none;
     }
-    .report-body h2,
-    .report-body h3,
-    .report-body h4 { margin: 18px 0 10px; letter-spacing: -0.03em; }
-    .report-body h2:first-child,
-    .report-body h3:first-child,
-    .report-body h4:first-child { margin-top: 0; }
+    .report-body h2, .report-body h3, .report-body h4 { margin: 18px 0 10px; letter-spacing: -0.03em; }
+    .report-body h2:first-child, .report-body h3:first-child, .report-body h4:first-child { margin-top: 0; }
     .report-body p { margin: 0 0 12px; color: var(--text); }
-    .report-body ul,
-    .report-body ol { margin: 0 0 12px 20px; color: var(--text); }
+    .report-body ul, .report-body ol { margin: 0 0 12px 20px; color: var(--text); }
     .report-body li + li { margin-top: 6px; }
-    .report-body .muted { color: var(--muted); }
     .empty-state {
-      margin-top: 14px;
-      padding: 16px;
-      border: 1px dashed var(--line);
-      border-radius: 18px;
-      color: var(--muted);
-      background: #fff;
+      margin-top: 14px; padding: 16px; border: 1px dashed var(--line); border-radius: 18px; color: var(--muted); background: #fff;
     }
     .error-box {
-      margin-top: 12px;
-      padding: 12px 14px;
-      border-radius: 16px;
-      border: 1px solid rgba(185, 28, 28, 0.18);
-      background: #fef2f2;
-      color: #991b1b;
+      margin-top: 12px; padding: 12px 14px; border-radius: 16px;
+      border: 1px solid rgba(185, 28, 28, 0.18); background: #fef2f2; color: #991b1b;
     }
     .success-box {
-      margin-top: 12px;
-      padding: 12px 14px;
-      border-radius: 16px;
-      border: 1px solid rgba(21, 128, 61, 0.18);
-      background: #f0fdf4;
-      color: #166534;
+      margin-top: 12px; padding: 12px 14px; border-radius: 16px;
+      border: 1px solid rgba(21, 128, 61, 0.18); background: #f0fdf4; color: #166534;
     }
-    .muted-kicker {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-    .loading {
-      color: var(--muted);
-      font-size: 14px;
-    }
-    @media (max-width: 960px) {
-      .span-7, .span-5, .span-6, .span-12 { grid-column: span 12; }
-    }
+    .muted-kicker { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; margin-bottom: 8px; }
+    @media (max-width: 960px) { .span-7, .span-6, .span-5, .span-12 { grid-column: span 12; } }
   </style>
 </head>
 <body>
@@ -183,12 +81,9 @@
       <a class="nav-cta" href="/pricing.html">See plans</a>
     </header>
     <div class="nav-links" aria-label="Secondary navigation">
-      <a href="/">Home</a>
-      <span aria-hidden="true">•</span>
-      <a href="/pricing.html">Pricing</a>
-      <span aria-hidden="true">•</span>
-      <a href="/workspace.html">Workspace setup</a>
-      <span aria-hidden="true">•</span>
+      <a href="/">Home</a><span aria-hidden="true">•</span>
+      <a href="/pricing.html">Pricing</a><span aria-hidden="true">•</span>
+      <a href="/workspace.html">Workspace setup</a><span aria-hidden="true">•</span>
       <a href="/portal.html">Portal</a>
     </div>
 
@@ -196,11 +91,23 @@
       <section class="hero">
         <div class="eyebrow">Private workspace</div>
         <h1 id="workspaceTitle">Gnomeo Workspace</h1>
-        <p class="subhead" id="workspaceSubtitle">Open your private portal link to view workspace context, upload CSV exports, and review saved analysis.</p>
+        <p class="subhead" id="workspaceSubtitle">Invite-only manual beta. Open your private portal link to view workspace context, upload CSV exports, and review saved analysis.</p>
         <div class="pill-row" id="workspacePills"></div>
       </section>
 
       <section class="portal-grid">
+        <article class="card span-6">
+          <div class="muted-kicker">Workspace memory</div>
+          <h2>Analytical handover</h2>
+          <div id="workspaceMemory" class="context-list"></div>
+        </article>
+
+        <article class="card span-6">
+          <div class="muted-kicker">Recurring issues</div>
+          <h2>Risks to keep watching</h2>
+          <div id="recurringIssues" class="report-list"></div>
+        </article>
+
         <article class="card span-7">
           <div class="muted-kicker">Workspace context</div>
           <h2>Analyst workspace</h2>
@@ -232,9 +139,9 @@
         </article>
 
         <article class="card span-5">
-          <div class="muted-kicker">Top priorities</div>
-          <h2>What matters most</h2>
-          <div id="topPriorities" class="report-list"></div>
+          <div class="muted-kicker">Recommendations still open</div>
+          <h2>What still needs action</h2>
+          <div id="openRecommendations" class="report-list"></div>
         </article>
 
         <article class="card span-6">
@@ -259,9 +166,7 @@
           <div class="muted-kicker">Privacy and retention</div>
           <h2>Quiet handling</h2>
           <p class="helper-note">Raw uploads are handled temporarily for report generation. Reports and analytical summaries may be retained in your workspace.</p>
-          <div class="empty-state" style="margin-top: 12px;">
-            Workspace tokens are workspace-scoped, revocable, and separate from admin access.
-          </div>
+          <div class="empty-state" style="margin-top: 12px;">Workspace tokens are workspace-scoped, revocable, and separate from admin access.</div>
         </article>
       </section>
     </main>
@@ -276,14 +181,13 @@
     const state = {
       token: new URLSearchParams(window.location.search).get('token')?.trim() || '',
       workspace: null,
+      workspaceMemory: null,
       latestReport: null,
       history: [],
       nextReviewFocus: [],
       uploadLimits: null,
       loading: false,
       submitting: false,
-      error: '',
-      message: '',
     };
 
     const els = {
@@ -291,11 +195,13 @@
       subtitle: document.getElementById('workspaceSubtitle'),
       pills: document.getElementById('workspacePills'),
       context: document.getElementById('workspaceContext'),
+      memory: document.getElementById('workspaceMemory'),
+      recurringIssues: document.getElementById('recurringIssues'),
       uploadLimits: document.getElementById('uploadLimits'),
       formMessage: document.getElementById('formMessage'),
       latestMeta: document.getElementById('latestReportMeta'),
       latestReport: document.getElementById('latestReport'),
-      topPriorities: document.getElementById('topPriorities'),
+      openRecommendations: document.getElementById('openRecommendations'),
       trendSnapshot: document.getElementById('trendSnapshot'),
       reportHistory: document.getElementById('reportHistory'),
       nextReviewFocus: document.getElementById('nextReviewFocus'),
@@ -331,10 +237,7 @@
       if (!value) return '—';
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return '—';
-      return new Intl.DateTimeFormat('en-GB', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-      }).format(date);
+      return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
     };
 
     const renderInlineMarkdown = (value) => escapeHtml(String(value || ''))
@@ -345,53 +248,22 @@
       const lines = String(value || '').replace(/\r\n/g, '\n').split('\n');
       const html = [];
       let listMode = null;
-
       const closeList = () => {
         if (listMode === 'ul') html.push('</ul>');
         if (listMode === 'ol') html.push('</ol>');
         listMode = null;
       };
-
       for (const rawLine of lines) {
         const line = rawLine.trimEnd();
         const heading = line.match(/^(#{1,3})\s+(.*)$/);
-        if (heading) {
-          closeList();
-          html.push(`<h${heading[1].length}>${renderInlineMarkdown(heading[2])}</h${heading[1].length}>`);
-          continue;
-        }
-
+        if (heading) { closeList(); html.push(`<h${heading[1].length}>${renderInlineMarkdown(heading[2])}</h${heading[1].length}>`); continue; }
         const unordered = line.match(/^[-*]\s+(.*)$/);
-        if (unordered) {
-          if (listMode !== 'ul') {
-            closeList();
-            html.push('<ul>');
-            listMode = 'ul';
-          }
-          html.push(`<li>${renderInlineMarkdown(unordered[1])}</li>`);
-          continue;
-        }
-
+        if (unordered) { if (listMode !== 'ul') { closeList(); html.push('<ul>'); listMode = 'ul'; } html.push(`<li>${renderInlineMarkdown(unordered[1])}</li>`); continue; }
         const ordered = line.match(/^\d+\.\s+(.*)$/);
-        if (ordered) {
-          if (listMode !== 'ol') {
-            closeList();
-            html.push('<ol>');
-            listMode = 'ol';
-          }
-          html.push(`<li>${renderInlineMarkdown(ordered[1])}</li>`);
-          continue;
-        }
-
-        if (!line.trim()) {
-          closeList();
-          continue;
-        }
-
-        closeList();
-        html.push(`<p>${renderInlineMarkdown(line)}</p>`);
+        if (ordered) { if (listMode !== 'ol') { closeList(); html.push('<ol>'); listMode = 'ol'; } html.push(`<li>${renderInlineMarkdown(ordered[1])}</li>`); continue; }
+        if (!line.trim()) { closeList(); continue; }
+        closeList(); html.push(`<p>${renderInlineMarkdown(line)}</p>`);
       }
-
       closeList();
       return html.join('');
     };
@@ -399,9 +271,7 @@
     const badge = (label) => `<span class="pill">${escapeHtml(label)}</span>`;
 
     const renderLineItems = (items, emptyLabel) => {
-      if (!items || !items.length) {
-        return `<div class="empty-state">${escapeHtml(emptyLabel)}</div>`;
-      }
+      if (!items || !items.length) return `<div class="empty-state">${escapeHtml(emptyLabel)}</div>`;
       return items.map((item) => `<div class="row-item"><div><strong>${escapeHtml(item.title || item.label || item)}</strong>${item.details ? `<p>${escapeHtml(item.details)}</p>` : ''}</div>${item.badge ? `<span class="status">${escapeHtml(item.badge)}</span>` : ''}</div>`).join('');
     };
 
@@ -418,19 +288,21 @@
       els.title.textContent = loading ? 'Loading workspace…' : (state.workspace?.workspace_name || 'Gnomeo Workspace');
       els.subtitle.textContent = loading
         ? 'Checking your private portal link.'
-        : (state.workspace ? 'Your private workspace for saved ad-spend reviews and history.' : 'Open your private portal link to view workspace context, upload CSV exports, and review saved analysis.');
+        : (state.workspace ? 'Your private workspace for saved ad-spend reviews, memory, and history.' : 'Invite-only manual beta. Open your private portal link to view workspace context, upload CSV exports, and review saved analysis.');
       els.refreshButton.disabled = loading || !state.token || !state.workspace;
       els.refreshButton.classList.toggle('is-disabled', !state.token || !state.workspace || loading);
     };
 
     const renderWorkspace = () => {
       const workspace = state.workspace;
+      const memory = state.workspaceMemory || {};
+      const memorySummary = memory.memory_summary || {};
       const limits = state.uploadLimits;
       const latest = state.latestReport;
 
       els.title.textContent = workspace?.workspace_name || 'Gnomeo Workspace';
       els.subtitle.textContent = workspace
-        ? 'Quiet analyst workspace for saved ad-spend reviews and trend comparisons.'
+        ? 'Quiet analyst workspace for saved ad-spend reviews, memory, and trend comparisons.'
         : (state.token ? 'This portal link is invalid or expired.' : 'Invite-only manual beta. Open your private portal link to view workspace context, upload CSV exports, and review saved analysis.');
 
       els.pills.innerHTML = workspace
@@ -444,6 +316,8 @@
 
       if (!workspace) {
         els.context.innerHTML = `<div class="empty-state">${state.token ? 'This portal link could not be found or has been revoked.' : 'Paste the private portal link to load the workspace.'}</div>`;
+        els.memory.innerHTML = '<div class="empty-state">Workspace memory will appear after the first review.</div>';
+        els.recurringIssues.innerHTML = '<div class="empty-state">Recurring issues will appear after the first review.</div>';
         els.uploadLimits.textContent = 'Upload is disabled until a valid portal link is loaded.';
         els.csvFiles.disabled = true;
         els.runButton.disabled = true;
@@ -458,15 +332,29 @@
           { title: 'Created', details: formatDate(workspace.created_at) },
         ].map((item) => `<div class="row-item"><div><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.details)}</p></div></div>`).join('');
 
+        const memoryItems = [];
+        if (memorySummary.current_state) memoryItems.push({ title: 'Current state', details: memorySummary.current_state });
+        if (memorySummary.report_title) memoryItems.push({ title: 'Last report', details: memorySummary.report_title });
+        if (memorySummary.platform_notes?.length) memoryItems.push({ title: 'Platform notes', details: memorySummary.platform_notes.join(' · ') });
+        if (memorySummary.confidence_or_signal_notes?.length) memoryItems.push({ title: 'Signal notes', details: memorySummary.confidence_or_signal_notes.join(' · ') });
+        if (memorySummary.last_report_date) memoryItems.push({ title: 'Last handover', details: formatDate(memorySummary.last_report_date) });
+        els.memory.innerHTML = memoryItems.length
+          ? memoryItems.map((item) => `<div class="row-item"><div><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.details)}</p></div></div>`).join('')
+          : '<div class="empty-state">Workspace memory will appear after the first review.</div>';
+
+        const recurringIssues = Array.isArray(memory.recurring_issues) ? memory.recurring_issues : [];
+        els.recurringIssues.innerHTML = recurringIssues.length
+          ? recurringIssues.map((issue) => `<div class="row-item"><div><strong>Issue</strong><p>${escapeHtml(issue)}</p></div></div>`).join('')
+          : '<div class="empty-state">Recurring issues will appear after the first review.</div>';
+
         if (limits) {
-          const limitBits = [
+          els.uploadLimits.textContent = [
             `${limits.plan_label}`,
             `${limits.max_files} CSVs / report`,
             `${formatBytes(limits.max_file_bytes)} / file`,
             `${limits.max_total_rows?.toLocaleString?.() || limits.max_total_rows} rows / report`,
             `${limits.max_reports_per_month} reports / month`,
-          ];
-          els.uploadLimits.textContent = limitBits.join(' · ');
+          ].join(' · ');
         }
 
         els.csvFiles.disabled = false;
@@ -476,8 +364,10 @@
 
       if (latest) {
         const summary = latest.summary || {};
-        const priorities = Array.isArray(latest.top_recommendations) ? latest.top_recommendations : [];
-        const snapshot = Array.isArray(latest.trend_snapshot) ? latest.trend_snapshot : [];
+        const openRecommendations = Array.isArray(memory.open_recommendations) ? memory.open_recommendations : (Array.isArray(latest.top_recommendations) ? latest.top_recommendations : []);
+        const trendSnapshot = Array.isArray(memory.trend_snapshot) ? memory.trend_snapshot : (Array.isArray(latest.trend_snapshot) ? latest.trend_snapshot : []);
+        const nextFocus = state.nextReviewFocus.length ? state.nextReviewFocus : (memory.next_review_focus || latest.summary?.next_review_focus || latest.next_review_focus || []);
+
         els.latestMeta.innerHTML = [
           latest.report_title ? badge(latest.report_title) : null,
           badge(formatDate(latest.created_at)),
@@ -485,18 +375,17 @@
           latest.source_count ? badge(`${latest.source_count} file(s)`) : null,
         ].filter(Boolean).join('');
         els.latestReport.innerHTML = latest.report_content ? renderMarkdown(latest.report_content) : `<div class="empty-state">${escapeHtml(summary.executive_summary || 'No report content yet.')}</div>`;
-        els.topPriorities.innerHTML = renderLineItems(priorities.map((item, index) => ({
-          title: item.title || item.label || `Recommendation ${index + 1}`,
+        els.openRecommendations.innerHTML = renderLineItems(openRecommendations.map((item, index) => ({
+          title: item.title || item.label || item,
           details: Array.isArray(item.details) ? item.details.join(' · ') : item.details || '',
           badge: item.rank ? `#${item.rank}` : '',
-        })), 'No priorities yet.');
-        els.trendSnapshot.innerHTML = renderLineItems(snapshot.map((item) => ({ title: item })), 'No trend snapshot yet.');
-        const nextFocus = state.nextReviewFocus.length ? state.nextReviewFocus : (latest.summary?.next_review_focus || latest.next_review_focus || []);
+        })), 'No open recommendations yet.');
+        els.trendSnapshot.innerHTML = renderLineItems(trendSnapshot.map((item) => ({ title: item })), 'No trend snapshot yet.');
         els.nextReviewFocus.innerHTML = renderLineItems(nextFocus.map((item) => ({ title: item })), 'No next review focus yet.');
       } else {
         els.latestMeta.innerHTML = '';
         els.latestReport.innerHTML = '<div class="empty-state">No report yet. Upload CSV exports to generate the first workspace review.</div>';
-        els.topPriorities.innerHTML = '<div class="empty-state">Recommendations will appear after the first report.</div>';
+        els.openRecommendations.innerHTML = '<div class="empty-state">Recommendations will appear after the first report.</div>';
         els.trendSnapshot.innerHTML = '<div class="empty-state">Trend snapshots will appear after multiple reviews.</div>';
         els.nextReviewFocus.innerHTML = '<div class="empty-state">Next review focus will appear after the first analysis.</div>';
       }
@@ -524,6 +413,7 @@
     const fetchWorkspace = async () => {
       if (!state.token) {
         state.workspace = null;
+        state.workspaceMemory = null;
         state.latestReport = null;
         state.history = [];
         state.nextReviewFocus = [];
@@ -541,6 +431,7 @@
         const payload = await response.json();
         if (!response.ok || !payload.success) {
           state.workspace = null;
+          state.workspaceMemory = null;
           state.latestReport = null;
           state.history = [];
           state.uploadLimits = null;
@@ -550,6 +441,7 @@
         }
 
         state.workspace = payload.workspace;
+        state.workspaceMemory = payload.workspace_memory || null;
         state.latestReport = payload.latest_report || null;
         state.history = Array.isArray(payload.report_history) ? payload.report_history : [];
         state.nextReviewFocus = Array.isArray(payload.next_review_focus) ? payload.next_review_focus : [];
@@ -560,6 +452,7 @@
         els.refreshButton.classList.remove('is-disabled');
       } catch (error) {
         state.workspace = null;
+        state.workspaceMemory = null;
         state.latestReport = null;
         state.history = [];
         state.nextReviewFocus = [];
@@ -594,16 +487,12 @@
         formData.append('token', state.token);
         for (const file of files) formData.append('files', file, file.name);
 
-        const response = await fetch('/api/portal/run-report', {
-          method: 'POST',
-          body: formData,
-        });
+        const response = await fetch('/api/portal/run-report', { method: 'POST', body: formData });
         const payload = await response.json();
-        if (!response.ok || !payload.success) {
-          throw new Error(payload.error || 'Report generation failed.');
-        }
+        if (!response.ok || !payload.success) throw new Error(payload.error || 'Report generation failed.');
 
         state.workspace = payload.workspace || state.workspace;
+        state.workspaceMemory = payload.workspace_memory || state.workspaceMemory;
         state.latestReport = payload.latest_report || payload.report_run || state.latestReport;
         state.history = Array.isArray(payload.report_history) ? payload.report_history : state.history;
         state.nextReviewFocus = Array.isArray(payload.next_review_focus) ? payload.next_review_focus : state.nextReviewFocus;

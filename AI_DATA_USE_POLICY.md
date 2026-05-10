@@ -7,6 +7,7 @@
 - Raw uploads are not used to train public foundation models.
 - No cross-workspace exposure.
 - No customer-identifiable benchmarking.
-- Allowed derived insights include weak-signal thresholds, waste patterns, budget fragmentation, and platform tradeoffs.
+- Allowed derived insights include weak-signal thresholds, waste patterns, budget fragmentation, platform tradeoffs, and workspace memory summaries.
+- Workspace memory is derived, workspace-scoped context and does not retain raw rows or raw exports.
 - Future privacy controls may allow stricter opt-outs or immediate raw deletion modes.
 - The goal is better recommendations and an affordable product, not a raw ad-data warehouse.

@@ -8,6 +8,7 @@ const {
   safeWorkspace,
   safeHistoryRun,
   parseReportMarkdown,
+  workspaceMemoryFromWorkspace,
 } = require('../_portal');
 
 const respond = (res, statusCode, payload) => res.status(statusCode).json(payload);
@@ -107,6 +108,7 @@ module.exports = async (req, res) => {
   return respond(res, 200, {
     success: true,
     workspace: publicWorkspace,
+    workspace_memory: workspaceMemoryFromWorkspace(workspace),
     workspace_context: workspaceContext(workspace),
     upload_limits: {
       plan_label: limits.planLabel,

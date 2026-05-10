@@ -36,3 +36,10 @@
 - Reports appear in the portal with history and trend context.
 - Raw uploads are temporary and should be cleaned up after processing.
 - Full login/auth comes later.
+
+## Workspace memory / handover
+- After each report, retain a compact workspace memory summary.
+- Keep current state, recurring issues, open recommendations, trend snapshot, and next review focus.
+- This is derived analytical context, not raw CSV storage.
+- It helps the next review pick up unresolved risks and recurring patterns.
+- Full login/auth comes later.
