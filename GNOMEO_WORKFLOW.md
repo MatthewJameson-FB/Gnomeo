@@ -28,3 +28,11 @@
 - Use `.env.example` as the template.
 - Never commit `.env.local`.
 - Vercel still needs `ADMIN_SECRET` configured separately for Preview and Production.
+
+## Manual beta self-serve portal flow
+- Admin creates a workspace and issues a private portal link.
+- Admin sends the link to the customer.
+- Customer opens `portal.html?token=...`, uploads CSV exports, and generates a server-side report.
+- Reports appear in the portal with history and trend context.
+- Raw uploads are temporary and should be cleaned up after processing.
+- Full login/auth comes later.

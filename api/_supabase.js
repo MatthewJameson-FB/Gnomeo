@@ -82,6 +82,47 @@ const restUpdate = async (table, filters, values) => request(`/rest/v1/${table}`
   json: true,
 });
 
+const restDelete = async (table, filters) => request(`/rest/v1/${table}`, {
+  method: 'DELETE',
+  query: { ...filters, select: '*' },
+  headers: {
+    Prefer: 'return=representation',
+  },
+  json: true,
+});
+
+const upsertProfileByEmail = async ({ email }) => {
+  const existing = await restSingle('profiles', { select: '*', email: `eq.${email}`, limit: 1 });
+  if (existing) return existing;
+  const [created] = await restInsert('profiles', { email });
+  return created;
+};
+
+const createWorkspace = async (values) => {
+  const [created] = await restInsert('workspaces', values);
+  return created;
+};
+
+const listWorkspaces = async ({ limit = 20 } = {}) => restSelect('workspaces', { select: '*', order: 'created_at.desc', limit });
+
+const getWorkspaceByEmail = async (email) => restSingle('workspaces', { select: '*', owner_email: `eq.${email}`, limit: 1 });
+
+const getWorkspaceById = async (workspaceId) => restSingle('workspaces', { select: '*', id: `eq.${workspaceId}`, limit: 1 });
+
+const updateWorkspaceById = async (workspaceId, values) => restUpdate('workspaces', { id: `eq.${workspaceId}` }, values);
+
+const getWorkspaceReports = async (workspaceId, { limit = 20 } = {}) => restSelect('report_runs', { select: '*', workspace_id: `eq.${workspaceId}`, order: 'created_at.desc', limit });
+
+const logUsageEvent = async (values) => {
+  const payload = {
+    id: randomUUID(),
+    created_at: new Date().toISOString(),
+    ...values,
+  };
+  const [created] = await restInsert('usage_events', payload);
+  return created;
+};
+
 const storageUpload = async ({ bucket, objectPath, content, contentType, upsert = false }) => request(`/storage/v1/object/${bucket}/${encodePath(objectPath)}`, {
   method: 'POST',
   headers: {
@@ -122,6 +163,15 @@ module.exports = {
   restInsert,
   restUpsert,
   restUpdate,
+  restDelete,
+  upsertProfileByEmail,
+  createWorkspace,
+  listWorkspaces,
+  getWorkspaceByEmail,
+  getWorkspaceById,
+  updateWorkspaceById,
+  getWorkspaceReports,
+  logUsageEvent,
   storageUpload,
   storageDownload,
   storageDelete,

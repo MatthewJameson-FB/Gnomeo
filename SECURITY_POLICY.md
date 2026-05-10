@@ -5,6 +5,8 @@
 - Admin portal pages are protected separately from admin APIs.
 - `/admin/*` requires admin session access.
 - `/api/admin/*` requires server-side admin authorization.
+- Customer-facing portal code must never call `/api/admin/*`.
+- Workspace portal tokens are separate from admin access and must be revocable.
 - `ADMIN_SECRET` stays server-side only.
 - The service-role key stays server-side only.
 - No secrets in git, frontend code, or URLs.

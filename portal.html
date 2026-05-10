@@ -3,40 +3,19 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="referrer" content="no-referrer" />
   <title>Gnomeo Workspace</title>
-  <meta name="description" content="A lightweight static prototype of the Gnomeo workspace portal for saved reviews, business context, and trend snapshots." />
+  <meta name="description" content="Private Gnomeo workspace portal for uploaded CSV reviews and report history." />
   <link rel="canonical" href="https://www.gnomeo.nl/portal.html" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="Gnomeo Workspace" />
-  <meta property="og:description" content="A lightweight static prototype of the Gnomeo workspace portal for saved reviews, business context, and trend snapshots." />
+  <meta property="og:description" content="Private workspace portal for saved ad-spend reviews and history." />
   <meta property="og:url" content="https://www.gnomeo.nl/portal.html" />
   <meta property="og:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Gnomeo Workspace" />
-  <meta name="twitter:description" content="A lightweight static prototype of the Gnomeo workspace portal for saved reviews, business context, and trend snapshots." />
+  <meta name="twitter:description" content="Private workspace portal for saved ad-spend reviews and history." />
   <meta name="twitter:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
-  <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Organization",
-      "name": "Gnomeo",
-      "url": "https://www.gnomeo.nl/",
-      "logo": "https://www.gnomeo.nl/gnomeo-logo.png?v=3"
-    },
-    {
-      "@type": "WebSite",
-      "name": "Gnomeo",
-      "url": "https://www.gnomeo.nl/",
-      "publisher": {
-        "@type": "Organization",
-        "name": "Gnomeo"
-      }
-    }
-  ]
-}
-  </script>
   <link rel="stylesheet" href="/content-pages.css" />
   <style>
     .portal-grid {
@@ -46,16 +25,36 @@
     }
     .span-7 { grid-column: span 7; }
     .span-5 { grid-column: span 5; }
-    .span-4 { grid-column: span 4; }
     .span-6 { grid-column: span 6; }
     .span-12 { grid-column: span 12; }
-    .meta-row {
+    .context-list,
+    .report-list,
+    .history-list,
+    .focus-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .row-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: none;
+    }
+    .row-item strong { display: block; margin-bottom: 4px; }
+    .row-item p { margin: 0; color: var(--muted); }
+    .pill-row {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      margin-top: 12px;
+      margin-top: 14px;
     }
-    .meta-pill {
+    .pill {
       display: inline-flex;
       align-items: center;
       padding: 7px 11px;
@@ -64,86 +63,9 @@
       background: #fff;
       color: var(--muted);
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 650;
     }
-    .metric-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-      margin-top: 14px;
-    }
-    .metric-card {
-      padding: 16px;
-      border-radius: 18px;
-      border: 1px solid var(--line);
-      background: #fff;
-      box-shadow: none;
-    }
-    .metric-card .label {
-      color: var(--muted);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-bottom: 6px;
-    }
-    .metric-card .value {
-      font-size: 1.4rem;
-      font-weight: 800;
-      letter-spacing: -0.04em;
-    }
-    .workspace-form {
-      display: grid;
-      gap: 14px;
-    }
-    .workspace-form label {
-      display: grid;
-      gap: 8px;
-      color: var(--muted);
-      font-size: 14px;
-      font-weight: 600;
-    }
-    .workspace-form select,
-    .workspace-form textarea,
-    .workspace-form input {
-      width: 100%;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: #fff;
-      color: var(--text);
-      font: inherit;
-      padding: 12px 14px;
-      box-shadow: none;
-      outline: none;
-    }
-    .workspace-form select:focus,
-    .workspace-form textarea:focus,
-    .workspace-form input:focus {
-      border-color: rgba(29, 78, 216, 0.28);
-      box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.08);
-    }
-    .workspace-form textarea {
-      min-height: 106px;
-      resize: vertical;
-    }
-    .helper-note { color: var(--muted); font-size: 13px; }
-    .history-list {
-      display: grid;
-      gap: 10px;
-      margin-top: 14px;
-    }
-    .history-item {
-      display: flex;
-      justify-content: space-between;
-      gap: 14px;
-      align-items: center;
-      padding: 14px 16px;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: #fff;
-    }
-    .history-item strong { display: block; margin-bottom: 4px; }
-    .history-item p { margin: 0; color: var(--muted); }
-    .status-badge {
+    .status {
       display: inline-flex;
       align-items: center;
       padding: 6px 10px;
@@ -154,22 +76,35 @@
       font-weight: 700;
       white-space: nowrap;
     }
-    .coming-soon {
+    .workspace-form {
       display: grid;
-      gap: 10px;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      margin-top: 14px;
+      gap: 14px;
+      margin-top: 12px;
     }
-    .coming-soon .card {
-      box-shadow: none;
+    .workspace-form label {
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .workspace-form input[type="file"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 16px;
       background: #fff;
+      color: var(--text);
+      font: inherit;
+      padding: 12px 14px;
+      box-shadow: none;
+      outline: none;
     }
-    .form-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 4px;
+    .workspace-form input[type="file"]:focus {
+      border-color: rgba(29, 78, 216, 0.28);
+      box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.08);
     }
+    .helper-note { color: var(--muted); font-size: 13px; }
+    .form-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
     .button.secondary {
       background: #fff;
       color: var(--text);
@@ -181,13 +116,63 @@
       opacity: 0.6;
       pointer-events: none;
     }
-    @media (max-width: 960px) {
-      .span-7, .span-5, .span-4, .span-6, .span-12 { grid-column: span 12; }
-      .metric-grid, .coming-soon { grid-template-columns: 1fr 1fr; }
+    .report-body {
+      margin-top: 14px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: none;
     }
-    @media (max-width: 640px) {
-      .metric-grid, .coming-soon { grid-template-columns: 1fr; }
-      .history-item { flex-direction: column; align-items: flex-start; }
+    .report-body h2,
+    .report-body h3,
+    .report-body h4 { margin: 18px 0 10px; letter-spacing: -0.03em; }
+    .report-body h2:first-child,
+    .report-body h3:first-child,
+    .report-body h4:first-child { margin-top: 0; }
+    .report-body p { margin: 0 0 12px; color: var(--text); }
+    .report-body ul,
+    .report-body ol { margin: 0 0 12px 20px; color: var(--text); }
+    .report-body li + li { margin-top: 6px; }
+    .report-body .muted { color: var(--muted); }
+    .empty-state {
+      margin-top: 14px;
+      padding: 16px;
+      border: 1px dashed var(--line);
+      border-radius: 18px;
+      color: var(--muted);
+      background: #fff;
+    }
+    .error-box {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(185, 28, 28, 0.18);
+      background: #fef2f2;
+      color: #991b1b;
+    }
+    .success-box {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(21, 128, 61, 0.18);
+      background: #f0fdf4;
+      color: #166534;
+    }
+    .muted-kicker {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .loading {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    @media (max-width: 960px) {
+      .span-7, .span-5, .span-6, .span-12 { grid-column: span 12; }
     }
   </style>
 </head>
@@ -197,7 +182,7 @@
       <a class="brand" href="/"><span class="brand-name">Gnomeo.nl</span></a>
       <a class="nav-cta" href="/pricing.html">See plans</a>
     </header>
-    <div class="mini-links" aria-label="Secondary navigation">
+    <div class="nav-links" aria-label="Secondary navigation">
       <a href="/">Home</a>
       <span aria-hidden="true">•</span>
       <a href="/pricing.html">Pricing</a>
@@ -209,133 +194,434 @@
 
     <main>
       <section class="hero">
-        <div class="eyebrow">Workspace portal</div>
-        <h1>Gnomeo Workspace</h1>
-        <p class="subhead">Your private burrow for saved ad-spend reviews, goals, constraints, and trend comparisons.</p>
-        <div class="meta-row">
-          <span class="meta-pill">Static prototype</span>
-          <span class="meta-pill">No auth yet</span>
-          <span class="meta-pill">No persistence yet</span>
-        </div>
+        <div class="eyebrow">Private workspace</div>
+        <h1 id="workspaceTitle">Gnomeo Workspace</h1>
+        <p class="subhead" id="workspaceSubtitle">Open your private portal link to view workspace context, upload CSV exports, and review saved analysis.</p>
+        <div class="pill-row" id="workspacePills"></div>
       </section>
 
       <section class="portal-grid">
         <article class="card span-7">
-          <h2>Workspace overview</h2>
-          <div class="metric-grid">
-            <div class="metric-card"><div class="label">Workspace</div><div class="value">Skincare Growth Review</div></div>
-            <div class="metric-card"><div class="label">Business type</div><div class="value">Ecommerce</div></div>
-            <div class="metric-card"><div class="label">Primary goal</div><div class="value">Improve blended ROAS</div></div>
-            <div class="metric-card"><div class="label">Plan</div><div class="value">Pro Workspace</div></div>
-          </div>
-          <div class="meta-row">
-            <span class="meta-pill">Risk appetite: Conservative</span>
-            <span class="meta-pill">Budget constraint: Do not increase total spend</span>
-          </div>
+          <div class="muted-kicker">Workspace context</div>
+          <h2>Analyst workspace</h2>
+          <div id="workspaceContext" class="context-list"></div>
         </article>
 
         <article class="card span-5">
-          <h2>Latest review</h2>
-          <div class="metric-grid" style="grid-template-columns: 1fr 1fr;">
-            <div class="metric-card"><div class="label">Last report</div><div class="value">Sample review</div></div>
-            <div class="metric-card"><div class="label">Spend analysed</div><div class="value">€57,300</div></div>
-            <div class="metric-card"><div class="label">Current ROAS</div><div class="value">1.19x</div></div>
-            <div class="metric-card"><div class="label">Estimated wasted spend</div><div class="value">€14,325</div></div>
-          </div>
-          <div class="card" style="margin-top: 14px; box-shadow: none;">
-            <div class="label">Top move</div>
-            <p style="margin: 0;">Reduce Meta Prospecting Broad UK and reallocate into Google Brand Search.</p>
-          </div>
-        </article>
-
-        <article class="card span-6">
-          <h2>Report history</h2>
-          <div class="history-list">
-            <div class="history-item">
-              <div><strong>Sample Review — Google + Meta</strong><p>Completed</p></div>
-              <span class="status-badge">Ready</span>
-            </div>
-            <div class="history-item">
-              <div><strong>Previous Review</strong><p>Placeholder</p></div>
-              <span class="status-badge">Coming soon</span>
-            </div>
-            <div class="history-item">
-              <div><strong>Trend comparison</strong><p>Coming soon</p></div>
-              <span class="status-badge">Early access</span>
-            </div>
-          </div>
-        </article>
-
-        <article class="card span-6">
-          <h2>Trend snapshot</h2>
-          <p class="helper-note">Trend comparisons will show what changed since the last upload and whether recommendations are repeating over time.</p>
-          <div class="coming-soon">
-            <div class="card"><strong>Spend change</strong><p>Coming soon</p></div>
-            <div class="card"><strong>ROAS change</strong><p>Coming soon</p></div>
-            <div class="card"><strong>Wasted spend change</strong><p>Coming soon</p></div>
-            <div class="card"><strong>Recurring recommendations</strong><p>Coming soon</p></div>
-          </div>
-        </article>
-
-        <article class="card span-12">
-          <h2>Preferences / settings</h2>
-          <p class="helper-note">Editable-looking controls for now. In the real portal these settings will be stored against the workspace.</p>
-          <form class="workspace-form">
-            <div class="portal-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 8px;">
-              <label>Business type
-                <select>
-                  <option selected>Ecommerce</option>
-                  <option>SaaS / Lead generation</option>
-                  <option>Local services</option>
-                  <option>Mobile app</option>
-                  <option>Marketplace</option>
-                  <option>Other</option>
-                </select>
-              </label>
-              <label>Primary goal
-                <select>
-                  <option selected>Improve blended ROAS</option>
-                  <option>Reduce wasted spend</option>
-                  <option>Scale revenue carefully</option>
-                  <option>Lower CPA</option>
-                  <option>Stabilize performance volatility</option>
-                  <option>Improve lead efficiency</option>
-                </select>
-              </label>
-              <label>Risk appetite
-                <select>
-                  <option selected>Conservative</option>
-                  <option>Balanced</option>
-                  <option>Aggressive</option>
-                </select>
-              </label>
-              <label>Budget constraint
-                <select>
-                  <option selected>Do not increase total spend</option>
-                  <option>Max spend increase: 10%</option>
-                  <option>Max spend increase: 20%</option>
-                  <option>Need to reduce total spend</option>
-                  <option>Flexible budget</option>
-                </select>
-              </label>
-            </div>
-            <label style="margin-top: 6px;">Anything the gnome should know?
-              <textarea maxlength="280" placeholder="Margin pressure, seasonal campaign, board target, agency handover…">Board target: keep CPA flat while scaling spend carefully.</textarea>
+          <div class="muted-kicker">Run a new review</div>
+          <h2>Upload CSV exports</h2>
+          <form id="uploadForm" class="workspace-form">
+            <label>
+              Google Ads and/or Meta Ads CSVs
+              <input id="csvFiles" type="file" accept=".csv,text/csv" multiple disabled />
             </label>
+            <div class="helper-note" id="uploadLimits">Open a valid portal link to see upload limits.</div>
             <div class="form-actions">
-              <button class="button is-disabled" type="button" aria-disabled="true">Save preferences — prototype</button>
-              <a class="button secondary" href="/#contact">Upload next exports</a>
-              <a class="button secondary" href="/pricing.html">View pricing</a>
+              <button id="runButton" class="button is-disabled" type="submit" disabled>Generate report</button>
+              <button id="refreshButton" class="button secondary is-disabled" type="button" disabled>Refresh workspace</button>
             </div>
+            <div id="formMessage" class="helper-note"></div>
           </form>
+        </article>
+
+        <article class="card span-7">
+          <div class="muted-kicker">Latest review</div>
+          <h2>Most recent report</h2>
+          <div id="latestReportMeta" class="pill-row"></div>
+          <div id="latestReport" class="report-body empty-state">No report yet.</div>
+        </article>
+
+        <article class="card span-5">
+          <div class="muted-kicker">Top priorities</div>
+          <h2>What matters most</h2>
+          <div id="topPriorities" class="report-list"></div>
+        </article>
+
+        <article class="card span-6">
+          <div class="muted-kicker">Trend snapshot</div>
+          <h2>Recurring patterns</h2>
+          <div id="trendSnapshot" class="report-list"></div>
+        </article>
+
+        <article class="card span-6">
+          <div class="muted-kicker">Report history</div>
+          <h2>Saved reviews</h2>
+          <div id="reportHistory" class="history-list"></div>
+        </article>
+
+        <article class="card span-6">
+          <div class="muted-kicker">Next review focus</div>
+          <h2>What to check next</h2>
+          <div id="nextReviewFocus" class="focus-list"></div>
+        </article>
+
+        <article class="card span-6">
+          <div class="muted-kicker">Privacy and retention</div>
+          <h2>Quiet handling</h2>
+          <p class="helper-note">Raw uploads are handled temporarily for report generation. Reports and analytical summaries may be retained in your workspace.</p>
+          <div class="empty-state" style="margin-top: 12px;">
+            Workspace tokens are workspace-scoped, revocable, and separate from admin access.
+          </div>
         </article>
       </section>
     </main>
 
-    <footer>
-      <p class="footer-note">© 2026 Gnomeo.nl — independent analysis for Google Ads and Meta Ads exports.</p>
+    <footer class="footer">
+      <p>© 2026 Gnomeo.nl — conservative analysis for Google Ads and Meta Ads exports.</p>
       <p class="footer-links"><a href="/pricing.html">Pricing</a><span aria-hidden="true">•</span><a href="/workspace.html">Workspace</a><span aria-hidden="true">•</span><a href="/portal.html">Portal</a><span aria-hidden="true">•</span><a href="/privacy.html">Privacy</a><span aria-hidden="true">•</span><a href="/data-handling.html">Data handling</a><span aria-hidden="true">•</span><a href="/data-retention.html">Retention</a><span aria-hidden="true">•</span><a href="/security.html">Security</a><span aria-hidden="true">•</span><a href="/ai-policy.html">AI policy</a></p>
     </footer>
   </div>
+
+  <script>
+    const state = {
+      token: new URLSearchParams(window.location.search).get('token')?.trim() || '',
+      workspace: null,
+      latestReport: null,
+      history: [],
+      nextReviewFocus: [],
+      uploadLimits: null,
+      loading: false,
+      submitting: false,
+      error: '',
+      message: '',
+    };
+
+    const els = {
+      title: document.getElementById('workspaceTitle'),
+      subtitle: document.getElementById('workspaceSubtitle'),
+      pills: document.getElementById('workspacePills'),
+      context: document.getElementById('workspaceContext'),
+      uploadLimits: document.getElementById('uploadLimits'),
+      formMessage: document.getElementById('formMessage'),
+      latestMeta: document.getElementById('latestReportMeta'),
+      latestReport: document.getElementById('latestReport'),
+      topPriorities: document.getElementById('topPriorities'),
+      trendSnapshot: document.getElementById('trendSnapshot'),
+      reportHistory: document.getElementById('reportHistory'),
+      nextReviewFocus: document.getElementById('nextReviewFocus'),
+      csvFiles: document.getElementById('csvFiles'),
+      uploadForm: document.getElementById('uploadForm'),
+      runButton: document.getElementById('runButton'),
+      refreshButton: document.getElementById('refreshButton'),
+    };
+
+    const escapeHtml = (value) => String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+    const formatBytes = (value) => {
+      const bytes = Number(value || 0);
+      if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+      if (bytes < 1024) return `${bytes} B`;
+      const units = ['KB', 'MB', 'GB'];
+      let size = bytes / 1024;
+      let unit = units[0];
+      for (const nextUnit of units) {
+        unit = nextUnit;
+        if (size < 1024 || nextUnit === units[units.length - 1]) break;
+        size /= 1024;
+      }
+      return `${size.toFixed(size >= 10 ? 0 : 1)} ${unit}`;
+    };
+
+    const formatDate = (value) => {
+      if (!value) return '—';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '—';
+      return new Intl.DateTimeFormat('en-GB', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }).format(date);
+    };
+
+    const renderInlineMarkdown = (value) => escapeHtml(String(value || ''))
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/`(.+?)`/g, '<code>$1</code>');
+
+    const renderMarkdown = (value) => {
+      const lines = String(value || '').replace(/\r\n/g, '\n').split('\n');
+      const html = [];
+      let listMode = null;
+
+      const closeList = () => {
+        if (listMode === 'ul') html.push('</ul>');
+        if (listMode === 'ol') html.push('</ol>');
+        listMode = null;
+      };
+
+      for (const rawLine of lines) {
+        const line = rawLine.trimEnd();
+        const heading = line.match(/^(#{1,3})\s+(.*)$/);
+        if (heading) {
+          closeList();
+          html.push(`<h${heading[1].length}>${renderInlineMarkdown(heading[2])}</h${heading[1].length}>`);
+          continue;
+        }
+
+        const unordered = line.match(/^[-*]\s+(.*)$/);
+        if (unordered) {
+          if (listMode !== 'ul') {
+            closeList();
+            html.push('<ul>');
+            listMode = 'ul';
+          }
+          html.push(`<li>${renderInlineMarkdown(unordered[1])}</li>`);
+          continue;
+        }
+
+        const ordered = line.match(/^\d+\.\s+(.*)$/);
+        if (ordered) {
+          if (listMode !== 'ol') {
+            closeList();
+            html.push('<ol>');
+            listMode = 'ol';
+          }
+          html.push(`<li>${renderInlineMarkdown(ordered[1])}</li>`);
+          continue;
+        }
+
+        if (!line.trim()) {
+          closeList();
+          continue;
+        }
+
+        closeList();
+        html.push(`<p>${renderInlineMarkdown(line)}</p>`);
+      }
+
+      closeList();
+      return html.join('');
+    };
+
+    const badge = (label) => `<span class="pill">${escapeHtml(label)}</span>`;
+
+    const renderLineItems = (items, emptyLabel) => {
+      if (!items || !items.length) {
+        return `<div class="empty-state">${escapeHtml(emptyLabel)}</div>`;
+      }
+      return items.map((item) => `<div class="row-item"><div><strong>${escapeHtml(item.title || item.label || item)}</strong>${item.details ? `<p>${escapeHtml(item.details)}</p>` : ''}</div>${item.badge ? `<span class="status">${escapeHtml(item.badge)}</span>` : ''}</div>`).join('');
+    };
+
+    const setMessage = (text, kind = 'note') => {
+      els.formMessage.className = kind === 'error' ? 'error-box' : kind === 'success' ? 'success-box' : 'helper-note';
+      els.formMessage.textContent = text || '';
+    };
+
+    const setLoading = (loading) => {
+      state.loading = loading;
+      els.title.textContent = loading ? 'Loading workspace…' : (state.workspace?.workspace_name || 'Gnomeo Workspace');
+      els.subtitle.textContent = loading
+        ? 'Checking your private portal link.'
+        : (state.workspace ? 'Your private workspace for saved ad-spend reviews and history.' : 'Open your private portal link to view workspace context, upload CSV exports, and review saved analysis.');
+      els.refreshButton.disabled = loading || !state.token || !state.workspace;
+      els.refreshButton.classList.toggle('is-disabled', !state.token || !state.workspace || loading);
+    };
+
+    const renderWorkspace = () => {
+      const workspace = state.workspace;
+      const limits = state.uploadLimits;
+      const latest = state.latestReport;
+
+      els.title.textContent = workspace?.workspace_name || 'Gnomeo Workspace';
+      els.subtitle.textContent = workspace
+        ? 'Quiet analyst workspace for saved ad-spend reviews and trend comparisons.'
+        : (state.token ? 'This portal link is invalid or expired.' : 'Open your private portal link to view workspace context, upload CSV exports, and review saved analysis.');
+
+      els.pills.innerHTML = workspace
+        ? [
+            `Plan: ${workspace.plan || 'manual_beta'}`,
+            `Status: ${workspace.status || 'active'}`,
+            workspace.business_type ? `Business: ${workspace.business_type}` : null,
+            workspace.primary_goal ? `Goal: ${workspace.primary_goal}` : null,
+          ].filter(Boolean).map(badge).join('')
+        : (state.token ? badge('Invalid or expired link') : badge('No portal link'));
+
+      if (!workspace) {
+        els.context.innerHTML = `<div class="empty-state">${state.token ? 'This portal link could not be found or has been revoked.' : 'Paste the private portal link to load the workspace.'}</div>`;
+        els.uploadLimits.textContent = 'Upload is disabled until a valid portal link is loaded.';
+        els.csvFiles.disabled = true;
+        els.runButton.disabled = true;
+        els.runButton.classList.add('is-disabled');
+      } else {
+        els.context.innerHTML = [
+          { title: 'Workspace', details: workspace.workspace_name },
+          { title: 'Business type', details: workspace.business_type || 'Not set' },
+          { title: 'Primary goal', details: workspace.primary_goal || 'Not set' },
+          { title: 'Risk appetite', details: workspace.risk_appetite || 'Not set' },
+          { title: 'Budget constraint', details: workspace.budget_constraint || 'Not set' },
+          { title: 'Created', details: formatDate(workspace.created_at) },
+        ].map((item) => `<div class="row-item"><div><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.details)}</p></div></div>`).join('');
+
+        if (limits) {
+          const limitBits = [
+            `${limits.plan_label}`,
+            `${limits.max_files} CSVs / report`,
+            `${formatBytes(limits.max_file_bytes)} / file`,
+            `${limits.max_total_rows?.toLocaleString?.() || limits.max_total_rows} rows / report`,
+            `${limits.max_reports_per_month} reports / month`,
+          ];
+          els.uploadLimits.textContent = limitBits.join(' · ');
+        }
+
+        els.csvFiles.disabled = false;
+        els.runButton.disabled = false;
+        els.runButton.classList.remove('is-disabled');
+      }
+
+      if (latest) {
+        const summary = latest.summary || {};
+        const priorities = Array.isArray(latest.top_recommendations) ? latest.top_recommendations : [];
+        const snapshot = Array.isArray(latest.trend_snapshot) ? latest.trend_snapshot : [];
+        els.latestMeta.innerHTML = [
+          latest.report_title ? badge(latest.report_title) : null,
+          badge(formatDate(latest.created_at)),
+          latest.source_platforms?.length ? badge(latest.source_platforms.join(' + ')) : null,
+          latest.source_count ? badge(`${latest.source_count} file(s)`) : null,
+        ].filter(Boolean).join('');
+        els.latestReport.innerHTML = latest.report_content ? renderMarkdown(latest.report_content) : `<div class="empty-state">${escapeHtml(summary.executive_summary || 'No report content yet.')}</div>`;
+        els.topPriorities.innerHTML = renderLineItems(priorities.map((item, index) => ({
+          title: item.title || item.label || `Recommendation ${index + 1}`,
+          details: Array.isArray(item.details) ? item.details.join(' · ') : item.details || '',
+          badge: item.rank ? `#${item.rank}` : '',
+        })), 'No priorities yet.');
+        els.trendSnapshot.innerHTML = renderLineItems(snapshot.map((item) => ({ title: item })), 'No trend snapshot yet.');
+        const nextFocus = state.nextReviewFocus.length ? state.nextReviewFocus : (latest.summary?.next_review_focus || latest.next_review_focus || []);
+        els.nextReviewFocus.innerHTML = renderLineItems(nextFocus.map((item) => ({ title: item })), 'No next review focus yet.');
+      } else {
+        els.latestMeta.innerHTML = '';
+        els.latestReport.innerHTML = '<div class="empty-state">No report yet. Upload CSV exports to generate the first workspace review.</div>';
+        els.topPriorities.innerHTML = '<div class="empty-state">Recommendations will appear after the first report.</div>';
+        els.trendSnapshot.innerHTML = '<div class="empty-state">Trend snapshots will appear after multiple reviews.</div>';
+        els.nextReviewFocus.innerHTML = '<div class="empty-state">Next review focus will appear after the first analysis.</div>';
+      }
+
+      if (state.history.length) {
+        els.reportHistory.innerHTML = state.history.map((item) => {
+          const recommendations = Array.isArray(item.top_recommendations) ? item.top_recommendations : [];
+          const preview = item.summary?.executive_summary || item.summary?.expected_impact || 'Saved review';
+          return `
+            <div class="row-item">
+              <div>
+                <strong>${escapeHtml(item.report_title || 'Gnomeo report')}</strong>
+                <p>${escapeHtml(formatDate(item.created_at))}</p>
+                <p>${escapeHtml(preview)}</p>
+              </div>
+              <span class="status">${escapeHtml(item.status || 'completed')}${recommendations.length ? ` · ${recommendations.length}` : ''}</span>
+            </div>
+          `;
+        }).join('');
+      } else {
+        els.reportHistory.innerHTML = '<div class="empty-state">No report history yet.</div>';
+      }
+    };
+
+    const fetchWorkspace = async () => {
+      if (!state.token) {
+        state.workspace = null;
+        state.latestReport = null;
+        state.history = [];
+        state.nextReviewFocus = [];
+        state.uploadLimits = null;
+        renderWorkspace();
+        setMessage('Add a portal token to the URL, like /portal.html?token=…', 'note');
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setMessage('Loading workspace…', 'note');
+      try {
+        const response = await fetch(`/api/portal/workspace?token=${encodeURIComponent(state.token)}`, { cache: 'no-store' });
+        const payload = await response.json();
+        if (!response.ok || !payload.success) {
+          state.workspace = null;
+          state.latestReport = null;
+          state.history = [];
+          state.uploadLimits = null;
+          renderWorkspace();
+          setMessage(payload.error || 'This portal link is invalid or has been revoked.', 'error');
+          return;
+        }
+
+        state.workspace = payload.workspace;
+        state.latestReport = payload.latest_report || null;
+        state.history = Array.isArray(payload.report_history) ? payload.report_history : [];
+        state.nextReviewFocus = Array.isArray(payload.next_review_focus) ? payload.next_review_focus : [];
+        state.uploadLimits = payload.upload_limits || null;
+        renderWorkspace();
+        setMessage('Workspace loaded.', 'success');
+        els.refreshButton.disabled = false;
+        els.refreshButton.classList.remove('is-disabled');
+      } catch (error) {
+        state.workspace = null;
+        state.latestReport = null;
+        state.history = [];
+        state.nextReviewFocus = [];
+        state.uploadLimits = null;
+        renderWorkspace();
+        setMessage(error?.message || 'Unable to load the workspace.', 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const submitReport = async (event) => {
+      event.preventDefault();
+      if (!state.token || !state.workspace) {
+        setMessage('Open a valid portal link before uploading files.', 'error');
+        return;
+      }
+
+      const files = Array.from(els.csvFiles.files || []);
+      if (!files.length) {
+        setMessage('Choose one or more CSV exports first.', 'error');
+        return;
+      }
+
+      state.submitting = true;
+      els.runButton.disabled = true;
+      els.runButton.textContent = 'Processing…';
+      setMessage('Processing CSVs and generating the report…', 'note');
+
+      try {
+        const formData = new FormData();
+        formData.append('token', state.token);
+        for (const file of files) formData.append('files', file, file.name);
+
+        const response = await fetch('/api/portal/run-report', {
+          method: 'POST',
+          body: formData,
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.error || 'Report generation failed.');
+        }
+
+        state.workspace = payload.workspace || state.workspace;
+        state.latestReport = payload.latest_report || payload.report_run || state.latestReport;
+        state.history = Array.isArray(payload.report_history) ? payload.report_history : state.history;
+        state.nextReviewFocus = Array.isArray(payload.next_review_focus) ? payload.next_review_focus : state.nextReviewFocus;
+        state.uploadLimits = payload.upload_limits || state.uploadLimits;
+        els.csvFiles.value = '';
+        renderWorkspace();
+        setMessage('Report generated and saved to this workspace.', 'success');
+      } catch (error) {
+        setMessage(error?.message || 'Report generation failed.', 'error');
+      } finally {
+        state.submitting = false;
+        els.runButton.textContent = 'Generate report';
+        els.runButton.disabled = !state.workspace;
+      }
+    };
+
+    els.uploadForm.addEventListener('submit', submitReport);
+    els.refreshButton.addEventListener('click', fetchWorkspace);
+
+    renderWorkspace();
+    fetchWorkspace();
+  </script>
 </body>
 </html>
