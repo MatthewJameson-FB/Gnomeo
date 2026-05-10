@@ -20,5 +20,11 @@
 ## Starting the local runner from Desktop
 - Run `scripts/install_local_runner_desktop_shortcut.sh` once.
 - Then double-click `Gnomeo Local Runner.command` on the Desktop.
-- Make sure `RESEND_API_KEY` is available in the shell or configured locally before starting.
 - This launcher is local-only and is not part of production deployment.
+
+## Local secrets
+- Create a git-ignored `.env.local` in the repo root.
+- Add `ADMIN_SECRET` and `RESEND_API_KEY` there.
+- Use `.env.example` as the template.
+- Never commit `.env.local`.
+- Vercel still needs `ADMIN_SECRET` configured separately for Preview and Production.

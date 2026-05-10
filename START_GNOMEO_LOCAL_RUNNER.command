@@ -1,10 +1,13 @@
 #!/bin/bash
 
+set -u
+
 REPO_ROOT="/Users/matthewjameson/Gnomeo"
 APP_PATH="$REPO_ROOT/agent_mvp/admin_report_tool/app.py"
 TEMPLATE_PATH="$REPO_ROOT/agent_mvp/report_email_template.txt"
 AGENT_PATH="$REPO_ROOT/agent_mvp/agent_test.py"
 INDEX_TEMPLATE_PATH="$REPO_ROOT/agent_mvp/admin_report_tool/templates/index.html"
+ENV_FILE="$REPO_ROOT/.env.local"
 
 fail() {
   printf '\n%s\n' "$1"
@@ -12,6 +15,50 @@ fail() {
   IFS= read -r -n 1 -s _ </dev/tty || true
   printf '\n'
   exit 1
+}
+
+load_env_file() {
+  local env_file="$1"
+  [ -f "$env_file" ] || return 0
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+    case "$line" in
+      ''|'#'*)
+        continue
+        ;;
+      export\ *)
+        line="${line#export }"
+        ;;
+    esac
+
+    case "$line" in
+      *=*)
+        local key value
+        key="${line%%=*}"
+        value="${line#*=}"
+        key="${key//[[:space:]]/}"
+
+        case "$key" in
+          ''|*[!A-Za-z0-9_]*|[0-9]*)
+            continue
+            ;;
+        esac
+
+        if [[ "$value" == \"*\" && "$value" == *\" ]]; then
+          value="${value:1:-1}"
+        elif [[ "$value" == \"* ]]; then
+          value="${value#\"}"
+        elif [[ "$value" == \'*\' && "$value" == *\' ]]; then
+          value="${value:1:-1}"
+        elif [[ "$value" == \'* ]]; then
+          value="${value#\'}"
+        fi
+
+        export "$key=$value"
+        ;;
+    esac
+  done < "$env_file"
 }
 
 printf 'Starting Gnomeo Local Runner\n'
@@ -22,12 +69,18 @@ if [ "$(pwd)" != "$REPO_ROOT" ]; then
   fail "Repository path check failed. Expected $REPO_ROOT but found $(pwd)."
 fi
 
+load_env_file "$ENV_FILE"
+
 for required in "$APP_PATH" "$TEMPLATE_PATH" "$AGENT_PATH" "$INDEX_TEMPLATE_PATH"; do
   [ -f "$required" ] || fail "Missing required file: $required"
 done
 
-if [ -z "${RESEND_API_KEY:-}" ]; then
-  fail "RESEND_API_KEY is not set. Export it in this shell or configure it locally before starting the runner."
+missing_vars=()
+[ -n "${ADMIN_SECRET:-}" ] || missing_vars+=("ADMIN_SECRET")
+[ -n "${RESEND_API_KEY:-}" ] || missing_vars+=("RESEND_API_KEY")
+
+if [ "${#missing_vars[@]}" -ne 0 ]; then
+  fail "Missing local env vars: ${missing_vars[*]}. Create $ENV_FILE from .env.example, add the values, and relaunch."
 fi
 
 PYTHON_BIN=""
@@ -50,7 +103,7 @@ if [ -z "$PYTHON_BIN" ]; then
 fi
 
 printf 'Launching local report tool on http://localhost:5050\n'
-printf 'Tip: keep RESEND_API_KEY available in this shell so email sending can succeed.\n\n'
+printf 'Loaded local secrets from .env.local if present.\n\n'
 
 "$PYTHON_BIN" "$APP_PATH"
 EXIT_CODE=$?

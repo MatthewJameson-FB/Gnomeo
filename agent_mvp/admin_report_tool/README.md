@@ -9,9 +9,11 @@ cd agent_mvp/admin_report_tool
 python3 -m venv .venv
 source .venv/bin/activate
 pip install flask resend
-export RESEND_API_KEY=your_key
+export RESEND_API_KEY=replace-with-resend-api-key
 python3 app.py
 ```
+
+Or create a local `.env.local` in the repo root and let the app load it automatically.
 
 Then open:
 

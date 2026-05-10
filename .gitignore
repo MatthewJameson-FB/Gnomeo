@@ -12,4 +12,6 @@ agent_mvp/output_report.json
 
 data/free_snapshot_usage.json
 .env
+.env.local
 .env.*
+!.env.example
