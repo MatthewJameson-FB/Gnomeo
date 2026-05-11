@@ -64,6 +64,13 @@ const resendSend = async ({ to, subject, body, attachments = [] }) => {
   if (!response.ok) throw new Error(await response.text());
 };
 
+const safeSupabaseError = (error) => ({
+  code: error?.code || null,
+  message: String(error?.message || error || 'Unknown error'),
+  details: error?.details || null,
+  hint: error?.hint || null,
+});
+
 const mapSchemaError = (error) => {
   const message = String(error?.message || error || 'Unknown error');
   if (/SUPABASE_URL|SUPABASE_SERVICE_ROLE_KEY/i.test(message)) return 'Supabase env vars are missing. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.';
@@ -284,13 +291,28 @@ module.exports = async (req, res) => {
       if (action === 'create-workspace' || action === 'create') {
         const betaRequest = await restSingle('beta_requests', { select: '*', id: `eq.${requestId}`, limit: 1 });
         if (!betaRequest) return respondError(res, 404, 'Beta request not found');
-        const result = await createWorkspaceFromBetaRequest(betaRequest, req);
-        return respond(res, 200, {
-          success: true,
-          request: result.request,
-          workspace: safeWorkspace(result.workspace),
-          portal: result.portal,
-        });
+        try {
+          const result = await createWorkspaceFromBetaRequest(betaRequest, req);
+          return respond(res, 200, {
+            success: true,
+            request: result.request,
+            workspace: safeWorkspace(result.workspace),
+            portal: result.portal,
+          });
+        } catch (error) {
+          const supabase = safeSupabaseError(error);
+          const safeError = {
+            code: 'beta_request_workspace_create_failed',
+            operation: 'beta_requests.create_workspace',
+            supabase,
+          };
+          console.error('[gnomeo admin] create-workspace failed:', {
+            operation: safeError.operation,
+            request_id: requestId,
+            supabase,
+          });
+          return respond(res, 500, { success: false, error: safeError });
+        }
       }
 
       if (action !== 'update-status' && action !== 'update') return respondError(res, 400, 'Unsupported action');
