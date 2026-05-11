@@ -78,7 +78,7 @@
   <div class="wrap">
     <header class="site-nav">
       <a class="brand" href="/"><span class="brand-name">Gnomeo.nl</span></a>
-      <a class="nav-cta" href="/pricing.html">See plans</a>
+      <a class="nav-cta" href="/checkout.html">Request access</a>
     </header>
     <div class="nav-links" aria-label="Secondary navigation">
       <a href="/">Home</a><span aria-hidden="true">•</span>
@@ -93,6 +93,13 @@
         <h1 id="workspaceTitle">Gnomeo Workspace</h1>
         <p class="subhead" id="workspaceSubtitle">Invite-only manual beta. Open your private portal link to view workspace context, upload CSV exports, and review saved analysis.</p>
         <div class="pill-row" id="workspacePills"></div>
+        <div id="accessCallout" class="card" style="margin-top: 18px; display: none;">
+          <h2>Need access?</h2>
+          <p class="helper-note">Request the manual workspace beta and we’ll review it before creating a private portal link.</p>
+          <div style="margin-top: 14px;">
+            <a class="button" href="/checkout.html">Request Workspace Beta</a>
+          </div>
+        </div>
       </section>
 
       <section class="portal-grid">
@@ -194,6 +201,7 @@
       title: document.getElementById('workspaceTitle'),
       subtitle: document.getElementById('workspaceSubtitle'),
       pills: document.getElementById('workspacePills'),
+      accessCallout: document.getElementById('accessCallout'),
       context: document.getElementById('workspaceContext'),
       memory: document.getElementById('workspaceMemory'),
       recurringIssues: document.getElementById('recurringIssues'),
@@ -288,7 +296,13 @@
       els.title.textContent = loading ? 'Loading workspace…' : (state.workspace?.workspace_name || 'Gnomeo Workspace');
       els.subtitle.textContent = loading
         ? 'Checking your private portal link.'
-        : (state.workspace ? 'Your private workspace for saved ad-spend reviews, memory, and history.' : 'Invite-only manual beta. Open your private portal link to view workspace context, upload CSV exports, and review saved analysis.');
+        : (state.workspace ? 'Your private workspace for saved ad-spend reviews, memory, and history.' : 'Request workspace beta to get a private portal link.');
+      if (els.accessCallout) {
+        const shouldHide = Boolean(state.workspace || loading);
+        els.accessCallout.style.display = shouldHide ? 'none' : 'block';
+        els.accessCallout.hidden = shouldHide;
+        els.accessCallout.setAttribute('aria-hidden', shouldHide ? 'true' : 'false');
+      }
       els.refreshButton.disabled = loading || !state.token || !state.workspace;
       els.refreshButton.classList.toggle('is-disabled', !state.token || !state.workspace || loading);
     };
@@ -303,7 +317,7 @@
       els.title.textContent = workspace?.workspace_name || 'Gnomeo Workspace';
       els.subtitle.textContent = workspace
         ? 'Quiet analyst workspace for saved ad-spend reviews, memory, and trend comparisons.'
-        : (state.token ? 'This portal link is invalid or expired.' : 'Invite-only manual beta. Open your private portal link to view workspace context, upload CSV exports, and review saved analysis.');
+        : (state.token ? 'This portal link is invalid or expired.' : 'Request workspace beta to get a private portal link.');
 
       els.pills.innerHTML = workspace
         ? [
@@ -312,13 +326,13 @@
             workspace.business_type ? `Business: ${workspace.business_type}` : null,
             workspace.primary_goal ? `Goal: ${workspace.primary_goal}` : null,
           ].filter(Boolean).map(badge).join('')
-        : (state.token ? badge('Invalid or expired link') : badge('Invite-only manual beta'));
+        : (state.token ? badge('Invalid or expired link') : badge('Request workspace beta'));
 
       if (!workspace) {
         els.context.innerHTML = `<div class="empty-state">${state.token ? 'This portal link could not be found or has been revoked.' : 'Paste the private portal link to load the workspace.'}</div>`;
         els.memory.innerHTML = '<div class="empty-state">Workspace memory will appear after the first review.</div>';
         els.recurringIssues.innerHTML = '<div class="empty-state">Recurring issues will appear after the first review.</div>';
-        els.uploadLimits.textContent = 'Upload is disabled until a valid portal link is loaded.';
+        els.uploadLimits.textContent = state.token ? 'Upload is disabled until a valid portal link is loaded.' : 'Request workspace beta to get a private portal link.';
         els.csvFiles.disabled = true;
         els.runButton.disabled = true;
         els.runButton.classList.add('is-disabled');
@@ -419,7 +433,7 @@
         state.nextReviewFocus = [];
         state.uploadLimits = null;
         renderWorkspace();
-        setMessage('Add a portal token to the URL, like /portal.html?token=…', 'note');
+        setMessage('Request workspace beta to get a private portal link.', 'note');
         setLoading(false);
         return;
       }

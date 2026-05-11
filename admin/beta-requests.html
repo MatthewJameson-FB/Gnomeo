@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gnomeo Beta Requests</title>
+    <link rel="stylesheet" href="admin.css" />
+    <style>
+      .beta-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+      .beta-card {
+        padding: 18px;
+      }
+      .beta-card h3 { margin: 0 0 6px; }
+      .beta-card .meta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .beta-card .meta-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: #f8fafc;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .beta-card .status-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin-top: 14px;
+      }
+      .beta-card select {
+        min-width: 220px;
+      }
+      .beta-card .detail {
+        margin-top: 12px;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+      .beta-card .detail strong {
+        color: var(--text);
+      }
+      .beta-card .notes {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+      }
+      .summary-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 16px;
+      }
+      .summary-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #eef4ff;
+        color: #2347d7;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .empty-state {
+        padding: 18px;
+        border: 1px dashed var(--border);
+        border-radius: 18px;
+        color: var(--muted);
+        background: #fff;
+      }
+      @media (max-width: 900px) {
+        .beta-grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main id="app" class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Gnomeo Admin</p>
+          <p class="notice">Protected admin portal. Beta requests stay private.</p>
+          <h1>Beta requests</h1>
+          <p class="subtle">Review manual workspace requests, create the workspace, then send the private portal link.</p>
+          <div id="summary" class="summary-strip"></div>
+        </div>
+        <div class="actions">
+          <a class="pill-link" href="/admin/index.html">Admin home</a>
+          <a class="pill-link" href="/admin/submissions.html">Submissions</a>
+          <button id="reloadBtn" class="secondary" type="button">Reload from Supabase</button>
+          <button type="button" class="secondary" data-admin-logout>Log out</button>
+        </div>
+      </header>
+
+      <section class="card" style="margin-top: 16px;">
+        <h2>Manual workflow</h2>
+        <p class="subtle">Create the workspace manually, issue a private portal token, and send the link to the customer. Do not expose beta requests publicly.</p>
+      </section>
+
+      <section id="list" class="beta-grid" style="margin-top: 16px;"></section>
+    </main>
+
+    <script src="auth.js"></script>
+    <script src="beta-requests.js"></script>
+  </body>
+</html>

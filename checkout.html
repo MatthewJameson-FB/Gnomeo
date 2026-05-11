@@ -3,69 +3,137 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Checkout placeholder — Gnomeo</title>
-  <meta name="description" content="Placeholder checkout page for the future Stripe flow. No payment is taken in this prototype." />
+  <title>Request Workspace Beta — Gnomeo</title>
+  <meta name="description" content="Request access to Gnomeo's manual workspace beta. No payment is taken here; approved users get a private portal link." />
   <link rel="canonical" href="https://www.gnomeo.nl/checkout.html" />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Checkout placeholder — Gnomeo" />
-  <meta property="og:description" content="Placeholder checkout page for the future Stripe flow. No payment is taken in this prototype." />
+  <meta property="og:title" content="Request Workspace Beta — Gnomeo" />
+  <meta property="og:description" content="Request access to Gnomeo's manual workspace beta. No payment is taken here; approved users get a private portal link." />
   <meta property="og:url" content="https://www.gnomeo.nl/checkout.html" />
   <meta property="og:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Checkout placeholder — Gnomeo" />
-  <meta name="twitter:description" content="Placeholder checkout page for the future Stripe flow. No payment is taken in this prototype." />
+  <meta name="twitter:title" content="Request Workspace Beta — Gnomeo" />
+  <meta name="twitter:description" content="Request access to Gnomeo's manual workspace beta. No payment is taken here; approved users get a private portal link." />
   <meta name="twitter:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
   <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Organization",
-      "name": "Gnomeo",
-      "url": "https://www.gnomeo.nl/",
-      "logo": "https://www.gnomeo.nl/gnomeo-logo.png?v=3"
-    },
-    {
-      "@type": "WebSite",
-      "name": "Gnomeo",
-      "url": "https://www.gnomeo.nl/",
-      "publisher": {
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
         "@type": "Organization",
-        "name": "Gnomeo"
+        "name": "Gnomeo",
+        "url": "https://www.gnomeo.nl/",
+        "logo": "https://www.gnomeo.nl/gnomeo-logo.png?v=3"
+      },
+      {
+        "@type": "WebSite",
+        "name": "Gnomeo",
+        "url": "https://www.gnomeo.nl/",
+        "publisher": {
+          "@type": "Organization",
+          "name": "Gnomeo"
+        }
       }
-    }
-  ]
-}
+    ]
+  }
   </script>
   <link rel="stylesheet" href="/content-pages.css" />
   <style>
-    .status-box {
-      max-width: 760px;
-      margin: 0 auto;
-      padding: 24px;
-      border: 1px solid var(--line);
-      border-radius: 24px;
-      background: #fff;
-      box-shadow: var(--shadow);
+    .beta-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+      gap: 16px;
+      align-items: start;
     }
-    .status-box h2 { margin-top: 0; }
-    .status-box p { color: var(--muted); }
-    .badge-row {
+    .form-grid {
+      display: grid;
+      gap: 14px;
+    }
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+    .field label,
+    .fieldset legend {
+      font-size: 14px;
+      font-weight: 650;
+      color: var(--muted);
+    }
+    .field input,
+    .field textarea,
+    .field select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      color: var(--text);
+      padding: 12px 14px;
+      font: inherit;
+      outline: none;
+    }
+    .field input:focus,
+    .field textarea:focus,
+    .field select:focus {
+      border-color: rgba(29, 78, 216, 0.28);
+      box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.08);
+    }
+    .field textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+    .helper {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: -2px;
+    }
+    .fieldset {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      display: grid;
+      gap: 8px;
+    }
+    .checkbox-row {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      margin-top: 16px;
     }
-    .badge {
+    .checkbox-row label {
       display: inline-flex;
       align-items: center;
-      padding: 7px 11px;
-      border-radius: 999px;
+      gap: 8px;
+      padding: 10px 12px;
       border: 1px solid var(--line);
-      background: #f8fafc;
+      border-radius: 999px;
+      background: #fff;
       color: var(--text);
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 600;
+      cursor: pointer;
+    }
+    .checkbox-row input { width: auto; }
+    .consent-box {
+      display: grid;
+      gap: 10px;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #f8fafc;
+    }
+    .consent-box label {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .consent-box input { margin-top: 3px; }
+    .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 4px;
     }
     .button.secondary {
       background: #fff;
@@ -74,49 +142,166 @@
       box-shadow: none;
     }
     .button.secondary:hover { background: #f8fafc; }
+    .status-box {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      display: none;
+    }
+    .status-box.error {
+      border-color: rgba(185, 28, 28, 0.18);
+      background: #fef2f2;
+      color: #991b1b;
+    }
+    .status-box.success {
+      border-color: rgba(21, 128, 61, 0.18);
+      background: #f0fdf4;
+      color: #166534;
+    }
+    .info-list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--text);
+    }
+    .info-list li + li { margin-top: 10px; }
+    .subtle-links a { color: var(--accent-soft); text-decoration: none; }
+    .subtle-links a:hover { text-decoration: underline; }
+    @media (max-width: 900px) {
+      .beta-layout { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header class="site-nav">
       <a class="brand" href="/"><span class="brand-name">Gnomeo.nl</span></a>
-      <a class="nav-cta" href="/pricing.html">Back to pricing</a>
+      <a class="nav-cta" href="/checkout.html">Request Workspace Beta</a>
     </header>
-    <div class="mini-links" aria-label="Secondary navigation">
+    <div class="nav-links" aria-label="Secondary navigation">
       <a href="/">Home</a>
       <span aria-hidden="true">•</span>
       <a href="/pricing.html">Pricing</a>
       <span aria-hidden="true">•</span>
       <a href="/workspace.html">Workspace</a>
       <span aria-hidden="true">•</span>
-      <a href="/privacy.html">Privacy</a>
+      <a href="/portal.html">Portal</a>
     </div>
 
     <main>
       <section class="hero">
-        <div class="eyebrow">Checkout</div>
-        <h1>Your burrow is ready</h1>
-        <p class="subhead">Payment wiring comes next. In production this will redirect to Stripe Checkout.</p>
+        <div class="eyebrow">Manual beta</div>
+        <h1>Request Workspace Beta</h1>
+        <p class="subhead">Gnomeo is onboarding the first customers manually. Payment is not automated yet. If approved, you get a private portal link for exports and report history.</p>
+        <div class="cta-row">
+          <a class="button" href="#request-form">Request access</a>
+          <a class="button ghost" href="/workspace.html">See how the beta works</a>
+        </div>
       </section>
 
-      <section>
-        <div class="status-box">
-          <h2>No payment has been taken in this prototype.</h2>
-          <p>This page exists to show the future paid flow without wiring billing yet.</p>
-          <div class="badge-row">
-            <span class="badge">Workspace set up</span>
-            <span class="badge">Plan selection placeholder</span>
-            <span class="badge">Stripe later</span>
-          </div>
-          <div class="cta-strip" style="margin-top: 20px;">
-            <div>
-              <strong>What happens next?</strong>
-              <p>Once billing is wired, this page can hand off to Stripe Checkout.</p>
+      <section class="beta-layout">
+        <div class="card">
+          <h2 id="request-form">Beta request form</h2>
+          <p class="subhead" style="margin-top: 0; font-size: 1rem;">Tell us enough to review fit. No file uploads here.</p>
+          <form id="betaRequestForm" class="form-grid" novalidate>
+            <div class="field">
+              <label for="name">Name</label>
+              <input id="name" name="name" type="text" autocomplete="name" required maxlength="120" />
             </div>
-            <a class="button secondary" href="/workspace.html">Back to workspace</a>
-            <a class="button" href="/portal.html">Continue to workspace prototype</a>
-          </div>
+            <div class="field">
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" autocomplete="email" required maxlength="254" />
+            </div>
+            <div class="field">
+              <label for="company">Company / business name</label>
+              <input id="company" name="company" type="text" required maxlength="160" />
+            </div>
+            <div class="field">
+              <label for="website">Website</label>
+              <input id="website" name="website" type="text" inputmode="url" placeholder="example.com" required maxlength="2048" />
+            </div>
+
+            <fieldset class="fieldset">
+              <legend>Ad platforms used</legend>
+              <div class="checkbox-row">
+                <label><input type="checkbox" name="platforms" value="Google Ads" /> Google Ads</label>
+                <label><input type="checkbox" name="platforms" value="Meta Ads" /> Meta Ads</label>
+              </div>
+              <div class="helper">Pick at least one platform.</div>
+            </fieldset>
+
+            <div class="field">
+              <label for="monthly_spend_range">Approximate monthly ad spend range</label>
+              <select id="monthly_spend_range" name="monthly_spend_range" required>
+                <option value="">Select one</option>
+                <option value="under-5k">Under 5k</option>
+                <option value="5k-20k">5k–20k</option>
+                <option value="20k-50k">20k–50k</option>
+                <option value="50k-plus">50k+</option>
+                <option value="prefer-not-to-say">Prefer not to say</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="is_agency">Are you an agency?</label>
+              <select id="is_agency" name="is_agency" required>
+                <option value="">Select one</option>
+                <option value="false">No</option>
+                <option value="true">Yes</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="review_goal">What do you want reviewed?</label>
+              <textarea id="review_goal" name="review_goal" maxlength="2000" required placeholder="For example: wasted spend, account structure, conversion quality, budget allocation, or a specific client account."></textarea>
+            </div>
+
+            <div class="field">
+              <label for="notes">Optional notes</label>
+              <textarea id="notes" name="notes" maxlength="2000" placeholder="Anything useful for review timing, data shape, or constraints."></textarea>
+            </div>
+
+            <div class="consent-box">
+              <label for="consent">
+                <input id="consent" name="consent" type="checkbox" required />
+                <span>I understand Gnomeo will use this information to review my beta request and, if accepted, create a private workspace. I’ve read the privacy and data handling notes.</span>
+              </label>
+              <div class="subtle-links note">
+                <a href="/privacy.html">Privacy</a> · <a href="/data-handling.html">Data handling</a> · <a href="/data-retention.html">Data retention</a> · <a href="/security.html">Security</a>
+              </div>
+            </div>
+
+            <div class="actions-row">
+              <button id="submitBtn" class="button" type="submit">Submit request</button>
+              <a class="button secondary" href="/portal.html">Portal invite state</a>
+            </div>
+
+            <div id="statusBox" class="status-box" role="status" aria-live="polite"></div>
+          </form>
         </div>
+
+        <aside class="grid" style="gap: 16px;">
+          <div class="card">
+            <h2>How manual beta works</h2>
+            <ul class="info-list">
+              <li>You send a concise request.</li>
+              <li>We review fit manually.</li>
+              <li>If accepted, we create a workspace and private portal link.</li>
+              <li>You upload Google/Meta exports inside the portal.</li>
+              <li>Raw uploads are temporary and handled under the data policy.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h2>What comes later</h2>
+            <p>Full login/auth and automated billing come later. This is a conservative manual onboarding path, not a fake checkout.</p>
+          </div>
+          <div class="card">
+            <h2>Current promise</h2>
+            <p>Practical, privacy-aware ad-spend review. No hype, no public data, and no file requests on this page.</p>
+          </div>
+        </aside>
       </section>
     </main>
 
@@ -125,5 +310,74 @@
       <p class="footer-links"><a href="/pricing.html">Pricing</a><span aria-hidden="true">•</span><a href="/workspace.html">Workspace</a><span aria-hidden="true">•</span><a href="/portal.html">Portal</a><span aria-hidden="true">•</span><a href="/privacy.html">Privacy</a><span aria-hidden="true">•</span><a href="/data-handling.html">Data handling</a><span aria-hidden="true">•</span><a href="/data-retention.html">Retention</a><span aria-hidden="true">•</span><a href="/security.html">Security</a><span aria-hidden="true">•</span><a href="/ai-policy.html">AI policy</a></p>
     </footer>
   </div>
+
+  <script>
+    const form = document.getElementById('betaRequestForm');
+    const statusBox = document.getElementById('statusBox');
+    const submitBtn = document.getElementById('submitBtn');
+
+    const escapeHtml = (value) => String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+    const setStatus = (message, kind = 'note') => {
+      statusBox.className = `status-box ${kind === 'error' ? 'error' : kind === 'success' ? 'success' : ''}`;
+      statusBox.style.display = message ? 'block' : 'none';
+      statusBox.innerHTML = escapeHtml(message || '');
+    };
+
+    const setBusy = (busy) => {
+      submitBtn.disabled = busy;
+      submitBtn.textContent = busy ? 'Submitting…' : 'Submit request';
+    };
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      setStatus('');
+
+      const platforms = Array.from(form.querySelectorAll('input[name="platforms"]:checked')).map((input) => input.value);
+      const fields = form.elements;
+      const payload = {
+        name: fields.name.value,
+        email: fields.email.value,
+        company: fields.company.value,
+        website: fields.website.value,
+        platforms,
+        monthly_spend_range: fields.monthly_spend_range.value,
+        is_agency: fields.is_agency.value,
+        review_goal: fields.review_goal.value,
+        notes: fields.notes.value,
+        consent: fields.consent.checked,
+      };
+
+      if (!platforms.length) {
+        setStatus('Pick at least one ad platform.', 'error');
+        return;
+      }
+
+      setBusy(true);
+      try {
+        const response = await fetch('/api/beta-request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'Request failed.');
+        }
+
+        form.reset();
+        setStatus('Request received. If the fit looks right, we will create a private workspace and send the portal link.', 'success');
+      } catch (error) {
+        setStatus(error?.message || 'Request failed.', 'error');
+      } finally {
+        setBusy(false);
+      }
+    });
+  </script>
 </body>
 </html>

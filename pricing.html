@@ -4,38 +4,38 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Pricing — Gnomeo</title>
-  <meta name="description" content="Early-access pricing for Gnomeo's free snapshot, Pro Workspace, and Agency plans. EUR is the default display currency." />
+  <meta name="description" content="Early-access pricing context for Gnomeo. Access is currently manual through the workspace beta request flow." />
   <link rel="canonical" href="https://www.gnomeo.nl/pricing.html" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="Pricing — Gnomeo" />
-  <meta property="og:description" content="Early-access pricing for Gnomeo's free snapshot, Pro Workspace, and Agency plans. EUR is the default display currency." />
+  <meta property="og:description" content="Early-access pricing context for Gnomeo. Access is currently manual through the workspace beta request flow." />
   <meta property="og:url" content="https://www.gnomeo.nl/pricing.html" />
   <meta property="og:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Pricing — Gnomeo" />
-  <meta name="twitter:description" content="Early-access pricing for Gnomeo's free snapshot, Pro Workspace, and Agency plans. EUR is the default display currency." />
+  <meta name="twitter:description" content="Early-access pricing context for Gnomeo. Access is currently manual through the workspace beta request flow." />
   <meta name="twitter:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
   <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Organization",
-      "name": "Gnomeo",
-      "url": "https://www.gnomeo.nl/",
-      "logo": "https://www.gnomeo.nl/gnomeo-logo.png?v=3"
-    },
-    {
-      "@type": "WebSite",
-      "name": "Gnomeo",
-      "url": "https://www.gnomeo.nl/",
-      "publisher": {
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
         "@type": "Organization",
-        "name": "Gnomeo"
+        "name": "Gnomeo",
+        "url": "https://www.gnomeo.nl/",
+        "logo": "https://www.gnomeo.nl/gnomeo-logo.png?v=3"
+      },
+      {
+        "@type": "WebSite",
+        "name": "Gnomeo",
+        "url": "https://www.gnomeo.nl/",
+        "publisher": {
+          "@type": "Organization",
+          "name": "Gnomeo"
+        }
       }
-    }
-  ]
-}
+    ]
+  }
   </script>
   <link rel="stylesheet" href="/content-pages.css" />
   <style>
@@ -73,10 +73,6 @@
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 16px;
       margin-top: 18px;
-    }
-    .price-card {
-      position: relative;
-      overflow: hidden;
     }
     .price-card.featured {
       border-color: rgba(29, 78, 216, 0.18);
@@ -144,9 +140,9 @@
   <div class="wrap">
     <header class="site-nav">
       <a class="brand" href="/"><span class="brand-name">Gnomeo.nl</span></a>
-      <a class="nav-cta" href="/workspace.html">Set up your burrow</a>
+      <a class="nav-cta" href="/checkout.html">Request Workspace Beta</a>
     </header>
-    <div class="mini-links" aria-label="Secondary navigation">
+    <div class="nav-links" aria-label="Secondary navigation">
       <a href="/">Home</a>
       <span aria-hidden="true">•</span>
       <a href="/pricing.html">Pricing</a>
@@ -158,14 +154,14 @@
 
     <main>
       <section class="hero">
-        <div class="eyebrow">Pricing</div>
-        <h1>Early-access pricing for the burrow</h1>
-        <p class="subhead">EUR is the default. Switch display currency if you need GBP or USD for a quick regional read.</p>
+        <div class="eyebrow">Pricing context</div>
+        <h1>Manual beta first, billing later</h1>
+        <p class="subhead">These plan shapes are here for context. Access is currently reviewed manually through the workspace beta request flow.</p>
         <div class="pricing-tools">
-          <div class="pill-row" aria-label="Current defaults">
-            <span class="pill">Default currency: EUR</span>
-            <span class="pill">Early access</span>
-            <span class="pill">No platform incentives</span>
+          <div class="badge-row" aria-label="Current defaults">
+            <span class="badge">Manual beta</span>
+            <span class="badge">No live billing</span>
+            <span class="badge">Privacy-first</span>
           </div>
           <label class="currency-switch" for="currency">
             Currency
@@ -182,7 +178,7 @@
         <div class="price-grid">
           <article class="card price-card">
             <span class="price-tag">Free Snapshot</span>
-            <h2>Best for trying Gnomeo once</h2>
+            <h2>Try Gnomeo once</h2>
             <div class="price-amount" data-price-group="free">€0</div>
             <ul class="feature-list">
               <li>2 reports/month</li>
@@ -192,81 +188,66 @@
               <li>No saved history</li>
             </ul>
             <div class="price-actions">
-              <a class="button" href="/#contact">Upload your data</a>
+              <a class="button ghost" href="/#contact">Use the free snapshot</a>
             </div>
           </article>
 
           <article class="card price-card featured">
-            <span class="price-tag">Pro Workspace</span>
-            <h2>Best for one brand reviewing ad spend regularly</h2>
+            <span class="price-tag">Workspace beta</span>
+            <h2>Manual early access</h2>
             <div class="price-amount" data-price-group="pro">
               <span data-currency-price="pro">€29/month</span>
             </div>
             <p class="price-note">GBP display: <span data-currency-price="pro-gbp">£25/month</span> · USD display: <span data-currency-price="pro-usd">$29/month</span></p>
             <ul class="feature-list">
-              <li>20 reports/month</li>
-              <li>1 saved workspace</li>
-              <li>Goals and constraints remembered</li>
-              <li>Upload history + trend comparisons</li>
-              <li>Multi-file Google + Meta reviews</li>
-              <li>More: larger CSVs, saved reports, early report intelligence.</li>
+              <li>Private workspace</li>
+              <li>Report history and memory</li>
+              <li>Google + Meta CSV review</li>
+              <li>Manual onboarding and review</li>
+              <li>Billing not automated yet</li>
             </ul>
             <div class="price-actions">
-              <a class="button" href="/workspace.html">Set up your burrow</a>
+              <a class="button" href="/checkout.html">Request Workspace Beta</a>
             </div>
           </article>
 
           <article class="card price-card">
             <span class="price-tag">Agency</span>
-            <h2>Best for consultants and small agencies</h2>
+            <h2>For later</h2>
             <div class="price-amount" data-price-group="agency">
               <span data-currency-price="agency">€79/month</span>
             </div>
             <p class="price-note">GBP display: <span data-currency-price="agency-gbp">£69/month</span> · USD display: <span data-currency-price="agency-usd">$89/month</span></p>
             <ul class="feature-list">
-              <li>200 reports/month</li>
-              <li>Up to 5 client workspaces</li>
-              <li>Saved history per client</li>
-              <li>Multi-account review workflow</li>
-              <li>Shareable report exports</li>
-              <li>More: higher limits, early TikTok support, client-ready exports.</li>
+              <li>Agency workflows come later</li>
+              <li>No team roles yet</li>
+              <li>No public client portal sharing</li>
+              <li>Manual review still applies</li>
+              <li>Private portal links only</li>
             </ul>
             <div class="price-actions">
-              <a class="button" href="/workspace.html">Set up agency burrows</a>
+              <a class="button ghost" href="/checkout.html">Request access</a>
             </div>
           </article>
         </div>
 
         <div class="trust-strip">
-          <strong>Early access pricing.</strong> Final pricing may change as saved workspaces, history, and monitoring features mature.
-          <br />No platform incentives. No media buying. Just the signal.
+          <strong>Conservative rollout.</strong> The current path is manual onboarding, not a live checkout. Full auth and automated billing come later.
         </div>
       </section>
     </main>
 
-    <footer>
-      <p class="footer-note">© 2026 Gnomeo.nl — independent analysis for Google Ads and Meta Ads exports.</p>
-      <p class="footer-links"><a href="/pricing.html">Pricing</a><span aria-hidden="true">•</span><a href="/workspace.html">Workspace</a><span aria-hidden="true">•</span><a href="/portal.html">Portal</a><span aria-hidden="true">•</span><a href="/privacy.html">Privacy</a><span aria-hidden="true">•</span><a href="/data-handling.html">Data handling</a><span aria-hidden="true">•</span><a href="/data-retention.html">Retention</a><span aria-hidden="true">•</span><a href="/security.html">Security</a><span aria-hidden="true">•</span><a href="/ai-policy.html">AI policy</a></p>
+    <footer class="footer">
+      <div>© 2026 Gnomeo.nl — independent analysis for Google Ads and Meta Ads exports.</div>
+      <div class="footer-links"><a href="/pricing.html">Pricing</a><a href="/workspace.html">Workspace</a><a href="/portal.html">Portal</a><a href="/privacy.html">Privacy</a><a href="/data-handling.html">Data handling</a><a href="/data-retention.html">Retention</a><a href="/security.html">Security</a><a href="/ai-policy.html">AI policy</a></div>
     </footer>
   </div>
 
   <script>
     const pricingByCurrency = {
-      EUR: {
-        pro: '€29/month',
-        agency: '€79/month',
-        free: '€0',
-      },
-      GBP: {
-        pro: '£25/month',
-        agency: '£69/month',
-        free: '£0',
-      },
-      USD: {
-        pro: '$29/month',
-        agency: '$89/month',
-        free: '$0',
-      },
+      EUR: { pro: '€29/month', agency: '€79/month', free: '€0' },
+      GBP: { pro: '£25/month', agency: '£69/month', free: '£0' },
+      USD: { pro: '$29/month', agency: '$89/month', free: '$0' },
     };
 
     const currencySelect = document.getElementById('currency');

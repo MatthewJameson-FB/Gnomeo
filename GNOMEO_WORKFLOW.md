@@ -29,13 +29,22 @@
 - Never commit `.env.local`.
 - Vercel still needs `ADMIN_SECRET` configured separately for Preview and Production.
 
-## Manual beta self-serve portal flow
-- Admin creates a workspace and issues a private portal link.
-- Admin sends the link to the customer.
-- Customer opens `portal.html?token=...`, uploads CSV exports, and generates a server-side report.
-- Reports appear in the portal with history and trend context.
-- Raw uploads are temporary and should be cleaned up after processing.
+## Manual beta onboarding flow
+1. User requests workspace beta.
+2. Admin reviews the request.
+3. Admin creates the workspace.
+4. Admin generates or copies the private portal link.
+5. User opens the private portal link.
+6. User uploads Google/Meta CSVs and generates reports.
+7. Workspace memory updates over time.
+
+Notes:
+- Payment is manual / not automated yet.
+- Stripe comes later.
 - Full login/auth comes later.
+- Privacy docs support the flow.
+- Beta requests should not include raw ad exports.
+- Raw uploads are temporary and should be cleaned up after processing.
 
 ## Workspace memory / handover
 - After each report, retain a compact workspace memory summary.

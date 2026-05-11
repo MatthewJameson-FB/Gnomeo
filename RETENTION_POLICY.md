@@ -7,6 +7,7 @@
 - Temporary parsed artifacts should be deleted within 24 hours where possible.
 - Generated reports, workspace memory, and trend history persist until deletion or account closure.
 - Raw CSV uploads for portal reviews should be temporary and deleted after processing where possible.
+- Beta request records are onboarding data and may be retained for manual review, but should stay separate from raw CSV uploads.
 - Handle deletion requests promptly.
 - A cleanup job should exist for temporary files and stale uploads.
 - Backups and logs may retain data for limited operational reasons only.

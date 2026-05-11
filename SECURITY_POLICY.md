@@ -11,6 +11,7 @@
 - The service-role key stays server-side only.
 - No secrets in git, frontend code, or URLs.
 - Customer data must stay in private buckets.
+- Beta request records are onboarding data only and must not be exposed publicly.
 - Use signed URLs only for private file access.
 - Preserve workspace isolation.
 - Do not log raw CSV contents.
