@@ -45,6 +45,7 @@ Notes:
 - Privacy docs support the flow.
 - Beta requests should not include raw ad exports.
 - Raw uploads are temporary and should be cleaned up after processing.
+- Consolidate API routes behind `/api/admin/*` and `/api/portal/*` rewrites so Hobby stays under the Vercel function cap.
 
 ## Workspace memory / handover
 - After each report, retain a compact workspace memory summary.

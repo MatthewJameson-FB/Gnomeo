@@ -3,6 +3,14 @@
   "version": 2,
   "routes": [
     {
+      "src": "/api/admin/(.*)",
+      "dest": "/api/admin.js?endpoint=$1"
+    },
+    {
+      "src": "/api/portal/(.*)",
+      "dest": "/api/portal.js?endpoint=$1"
+    },
+    {
       "src": "/admin",
       "dest": "/api/admin/page?path=index.html"
     },
