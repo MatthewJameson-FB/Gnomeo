@@ -47,6 +47,20 @@ Notes:
 - Raw uploads are temporary and should be cleaned up after processing.
 - Consolidate API routes behind `/api/admin/*` and `/api/portal/*` rewrites so Hobby stays under the Vercel function cap.
 
+## Admin beta request conversion
+1. Open admin beta requests.
+2. Review the request.
+3. Click `Create workspace + portal link`.
+4. Copy the private portal link.
+5. Send it to the customer.
+6. Customer runs reports from the portal.
+
+Notes:
+- The portal link is private.
+- The token is separate from admin access.
+- Raw uploads are not part of beta request intake.
+- Stripe/auth comes later.
+
 ## Workspace memory / handover
 - After each report, retain a compact workspace memory summary.
 - Keep current state, recurring issues, open recommendations, trend snapshot, and next review focus.

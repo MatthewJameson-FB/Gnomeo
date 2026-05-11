@@ -155,6 +155,78 @@ const cleanupSubmissionCsv = async (submission) => {
   try { await storageDelete({ bucket: CSV_BUCKET, objectPath: submission.csv_file_url }); } catch {}
 };
 
+const getOrCreateProfile = async (email) => {
+  const normalizedEmail = normalize(email).toLowerCase();
+  const existing = await restSingle('profiles', { select: '*', email: `eq.${normalizedEmail}`, limit: 1 });
+  if (existing) return existing;
+  const [created] = await restInsert('profiles', { email: normalizedEmail });
+  return created || null;
+};
+
+const buildWorkspaceNotes = (betaRequest) => {
+  const parts = [
+    `Beta request: ${betaRequest.id}`,
+    betaRequest.website ? `Website: ${betaRequest.website}` : null,
+    Array.isArray(betaRequest.platforms) && betaRequest.platforms.length ? `Platforms: ${betaRequest.platforms.join(', ')}` : null,
+    betaRequest.monthly_spend_range ? `Monthly spend range: ${betaRequest.monthly_spend_range}` : null,
+    betaRequest.is_agency ? 'Agency request: yes' : 'Agency request: no',
+    betaRequest.review_goal ? `Review goal: ${betaRequest.review_goal}` : null,
+    betaRequest.notes ? `Beta notes: ${betaRequest.notes}` : null,
+  ].filter(Boolean);
+  return parts.join('\n');
+};
+
+const createWorkspaceFromBetaRequest = async (betaRequest, req) => {
+  const profile = await getOrCreateProfile(betaRequest.email);
+  const workspaceName = betaRequest.company || betaRequest.name || betaRequest.email;
+  const existingWorkspace = betaRequest.workspace_id
+    ? await restSingle('workspaces', { select: '*', id: `eq.${betaRequest.workspace_id}`, limit: 1 })
+    : await restSingle('workspaces', { select: '*', beta_request_id: `eq.${betaRequest.id}`, limit: 1 });
+
+  let workspace = existingWorkspace || null;
+  if (!workspace) {
+    const [createdWorkspace] = await restInsert('workspaces', {
+      profile_id: profile?.id || null,
+      owner_email: betaRequest.email,
+      workspace_name: workspaceName,
+      business_type: betaRequest.is_agency ? 'agency' : 'manual_beta',
+      primary_goal: betaRequest.review_goal,
+      notes: buildWorkspaceNotes(betaRequest),
+      plan: 'manual_beta',
+      status: 'active',
+      website: betaRequest.website,
+      platforms: betaRequest.platforms,
+      review_goal: betaRequest.review_goal,
+      is_agency: Boolean(betaRequest.is_agency),
+      beta_request_id: betaRequest.id,
+    });
+    workspace = createdWorkspace;
+  }
+
+  if (!workspace) {
+    throw new Error('Failed to create workspace');
+  }
+
+  const issued = await issuePortalToken(req, workspace, 'portal_token_generated');
+  const updatedWorkspace = issued.workspace || workspace;
+
+  const [updatedRequest] = await restUpdate('beta_requests', { id: `eq.${betaRequest.id}` }, {
+    status: 'workspace_created',
+    workspace_id: updatedWorkspace.id,
+  });
+
+  return {
+    workspace: updatedWorkspace,
+    request: updatedRequest || betaRequest,
+    portal: {
+      has_token: true,
+      token: issued.portal_token,
+      url: issued.portal_url,
+      created_at: updatedWorkspace.portal_token_created_at || null,
+    },
+  };
+};
+
 const requireProtectedAdmin = (req, res) => {
   if (!requireAdmin(req, res)) return false;
   return true;
@@ -206,10 +278,23 @@ module.exports = async (req, res) => {
       const body = await parseJsonBody(req, raw);
       if (!body || typeof body !== 'object') return respondError(res, 400, 'Invalid JSON payload');
       const action = normalize(body.action || 'update-status').toLowerCase();
-      if (action !== 'update-status' && action !== 'update') return respondError(res, 400, 'Unsupported action');
       const requestId = normalize(body.id || body.request_id);
-      const status = normalize(body.status).toLowerCase();
       if (!requestId) return respondError(res, 400, 'id is required');
+
+      if (action === 'create-workspace' || action === 'create') {
+        const betaRequest = await restSingle('beta_requests', { select: '*', id: `eq.${requestId}`, limit: 1 });
+        if (!betaRequest) return respondError(res, 404, 'Beta request not found');
+        const result = await createWorkspaceFromBetaRequest(betaRequest, req);
+        return respond(res, 200, {
+          success: true,
+          request: result.request,
+          workspace: safeWorkspace(result.workspace),
+          portal: result.portal,
+        });
+      }
+
+      if (action !== 'update-status' && action !== 'update') return respondError(res, 400, 'Unsupported action');
+      const status = normalize(body.status).toLowerCase();
       if (!ALLOWED_BETA_STATUSES.has(status)) return respondError(res, 400, 'Invalid status');
       const [updated] = await restUpdate('beta_requests', { id: `eq.${requestId}` }, { status });
       if (!updated) return respondError(res, 404, 'Beta request not found');
