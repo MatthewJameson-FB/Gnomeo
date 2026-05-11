@@ -3,7 +3,7 @@ const path = require('path');
 const { parseMultipartForm } = require('./_multipart');
 const { generateId, restSelect, restSingle, restInsert, restUpdate, storageUpload, storageDownload, storageDelete, ensureConfig } = require('./_supabase');
 const { requireAdmin, buildAdminSessionCookie, createAdminSessionToken, clearAdminSessionCookie, SESSION_TTL_SECONDS } = require('./_adminAuth');
-const { generatePortalToken, hashPortalToken, buildPortalUrl, safeWorkspace, safeHistoryRun, safeLatestRun } = require('./_portal');
+const { generatePortalToken, hashPortalToken, buildPortalUrl, safeWorkspace, safeHistoryRun, safeLatestRun, safePortalReview } = require('./_portal');
 
 const ADMIN_ROOT = path.join(process.cwd(), 'admin');
 const CSV_BUCKET = 'submissions';
@@ -274,8 +274,15 @@ module.exports = async (req, res) => {
 
     if (endpoint === 'beta-requests') {
       if (method === 'GET') {
-        const rows = await restSelect('beta_requests', { select: '*', order: 'created_at.desc', limit: 100 });
-        return respond(res, 200, { success: true, requests: Array.isArray(rows) ? rows : [] });
+        const [requests, reviews] = await Promise.all([
+          restSelect('beta_requests', { select: '*', order: 'created_at.desc', limit: 100 }),
+          restSelect('portal_review_submissions', { select: '*', order: 'created_at.desc', limit: 100 }).catch(() => []),
+        ]);
+        return respond(res, 200, {
+          success: true,
+          requests: Array.isArray(requests) ? requests : [],
+          portal_reviews: Array.isArray(reviews) ? reviews.map((row) => safePortalReview(row)) : [],
+        });
       }
       if (method !== 'POST') {
         res.setHeader('Allow', 'GET, POST');

@@ -3,11 +3,13 @@ const statusOptions = ['new', 'contacted', 'workspace_created', 'declined'];
 const els = {
   summary: document.getElementById('summary'),
   list: document.getElementById('list'),
+  portalReviews: document.getElementById('portalReviews'),
   reloadBtn: document.getElementById('reloadBtn'),
 };
 
 const state = {
   requests: [],
+  portalReviews: [],
   portalById: {},
   busyById: {},
 };
@@ -68,7 +70,22 @@ function renderSummary() {
     `<span class="summary-chip">Contacted: ${esc(counts.contacted || 0)}</span>`,
     `<span class="summary-chip">Workspace created: ${esc(counts.workspace_created || 0)}</span>`,
     `<span class="summary-chip">Declined: ${esc(counts.declined || 0)}</span>`,
+    `<span class="summary-chip">Portal reviews: ${esc(state.portalReviews.length)}</span>`,
   ].join('');
+}
+
+function renderPortalReviews() {
+  if (!state.portalReviews.length) {
+    els.portalReviews.innerHTML = '<div class="empty-state">No portal reviews yet.</div>';
+    return;
+  }
+  els.portalReviews.innerHTML = state.portalReviews.map((review) => `
+    <div class="portal-box" style="margin-bottom: 10px;">
+      <div><strong>${esc(review.status || 'received')}</strong> · ${esc(fmtDate(review.created_at))}</div>
+      <div class="portal-note" style="margin-top: 6px;">Workspace: ${esc(review.workspace_id || '—')} · Files: ${esc((Array.isArray(review.filenames) ? review.filenames : []).join(', ') || '—')} · Platforms: ${esc((Array.isArray(review.platforms) ? review.platforms : []).join(' · ') || '—')}</div>
+      <div class="portal-note">${review.report_run_id ? 'Report ready' : 'Waiting for processing'}</div>
+    </div>
+  `).join('');
 }
 
 function portalPanel(request) {
@@ -89,6 +106,7 @@ function portalPanel(request) {
 
 function render() {
   renderSummary();
+  renderPortalReviews();
   if (!state.requests.length) {
     els.list.innerHTML = '<div class="empty-state">No beta requests yet.</div>';
     return;
@@ -154,6 +172,7 @@ function render() {
         const payload = await response.json();
         if (!response.ok || !payload.success) throw new Error(payload.error || 'Failed to update status.');
         state.requests = state.requests.map((item) => (item.id === requestId ? payload.request : item));
+        state.portalReviews = Array.isArray(payload.portal_reviews) ? payload.portal_reviews : state.portalReviews;
         render();
       } catch (error) {
         alert(error?.message || 'Failed to update status.');
@@ -220,6 +239,7 @@ async function loadRequests(renderNow = true) {
     throw new Error(payload.error || 'Failed to load beta requests.');
   }
   state.requests = Array.isArray(payload.requests) ? payload.requests : [];
+  state.portalReviews = Array.isArray(payload.portal_reviews) ? payload.portal_reviews : [];
   if (renderNow) render();
 }
 
@@ -229,4 +249,5 @@ els.reloadBtn.addEventListener('click', () => {
 
 loadRequests().catch((error) => {
   els.list.innerHTML = `<div class="empty-state">${esc(error?.message || 'Failed to load beta requests.')}</div>`;
+  if (els.portalReviews) els.portalReviews.innerHTML = '<div class="empty-state">Failed to load portal reviews.</div>';
 });

@@ -1,15 +1,8 @@
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
 const { createHash, randomBytes } = require('crypto');
-const { execFile } = require('child_process');
-const { promisify } = require('util');
 
 const { restSelect, restInsert, restUpdate } = require('./_supabase');
 const { FREE_REPORT_LIMITS, PRO_REPORT_LIMITS, AGENCY_REPORT_LIMITS } = require('./_limits');
-
-const execFileAsync = promisify(execFile);
-const AGENT_SCRIPT = path.join(process.cwd(), 'agent_mvp', 'agent_test.py');
+const { generatePortalReport, detectPlatformFromHints } = require('./_reportGenerator');
 
 const sha256Hex = (value) => createHash('sha256').update(String(value || ''), 'utf8').digest('hex');
 
@@ -102,6 +95,19 @@ const safeLatestRun = (run) => run ? {
   ...safeHistoryRun(run),
   report_content: run.report_content || '',
 } : null;
+
+const safePortalReview = (row) => ({
+  id: row.id,
+  workspace_id: row.workspace_id,
+  status: row.status,
+  filenames: Array.isArray(row.filenames) ? row.filenames : [],
+  platforms: Array.isArray(row.platforms) ? row.platforms : [],
+  file_count: row.file_count ?? 0,
+  report_run_id: row.report_run_id || null,
+  created_at: row.created_at,
+  completed_at: row.completed_at || null,
+  notes: row.notes || null,
+});
 
 const parseListItems = (lines) => {
   const items = [];
@@ -312,49 +318,19 @@ const detectSourcePlatforms = (files, buffers) => {
   return inputs.map((input) => detectSourcePlatform({ filename: input.filename, text: input.text }));
 };
 
-const resolvePythonCommand = async () => {
-  for (const command of ['python3', 'python']) {
-    try {
-      await execFileAsync(command, ['-c', 'import sys; sys.exit(0)'], { timeout: 5000 });
-      return command;
-    } catch (error) {
-      if (error?.code === 'ENOENT') continue;
-      if (String(error?.message || '').includes('not found')) continue;
-    }
-  }
-  throw new Error('Python runtime not available');
-};
-
-const runReportGenerator = async ({ csvPaths, timeoutMs = 180000 } = {}) => {
-  const command = await resolvePythonCommand();
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gnomeo-portal-'));
-  const outputMarkdown = path.join(tempDir, 'report.md');
-  const outputHtml = path.join(tempDir, 'report.html');
-
-  try {
-    const args = [
-      AGENT_SCRIPT,
-      '--graph',
-      ...csvPaths,
-      '--output-report',
-      outputMarkdown,
-      '--output-html',
-      outputHtml,
-    ];
-
-    await execFileAsync(command, args, {
-      cwd: path.dirname(AGENT_SCRIPT),
-      timeout: timeoutMs,
-      maxBuffer: 10 * 1024 * 1024,
-      env: { ...process.env },
-    });
-
-    const markdown = fs.readFileSync(outputMarkdown, 'utf8');
-    const html = fs.existsSync(outputHtml) ? fs.readFileSync(outputHtml, 'utf8') : '';
-    return { command, markdown, html };
-  } finally {
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  }
+const runReportGenerator = async ({ files = [] } = {}) => {
+  const result = generatePortalReport({ files });
+  return {
+    markdown: result.markdown,
+    html: '',
+    title: result.title,
+    summary: result.summary,
+    source_platforms: result.source_platforms || [],
+    source_filenames: result.source_filenames || [],
+    row_count: result.row_count || 0,
+    input_bytes: result.input_bytes || 0,
+    metrics: result.metrics || {},
+  };
 };
 
 const getPortalTokenFromRequest = (req, body = {}) => {
@@ -414,6 +390,7 @@ module.exports = {
   buildWorkspaceMemoryUpdate,
   workspaceMemoryFromWorkspace,
   detectSourcePlatforms,
+  safePortalReview,
   runReportGenerator,
   getPortalTokenFromRequest,
   getWorkspaceByPortalToken,

@@ -35,8 +35,10 @@
 3. Admin creates the workspace.
 4. Admin generates or copies the private portal link.
 5. User opens the private portal link.
-6. User uploads Google/Meta CSVs and generates reports.
-7. Workspace memory updates over time.
+6. User uploads Google/Meta CSVs and runs a portal review.
+7. The portal first tries a cloud-native JS report path.
+8. If cloud generation fails, the review is queued and the user sees a calm received message.
+9. Workspace memory updates over time.
 
 Notes:
 - Payment is manual / not automated yet.
@@ -45,6 +47,8 @@ Notes:
 - Privacy docs support the flow.
 - Beta requests should not include raw ad exports.
 - Raw uploads are temporary and should be cleaned up after processing.
+- The customer portal should not show Python/runtime/internal infrastructure errors.
+- Local Python runner remains an admin fallback only; it is not required for customer portal reviews.
 - Consolidate API routes behind `/api/admin/*` and `/api/portal/*` rewrites so Hobby stays under the Vercel function cap.
 
 ## Admin beta request conversion

@@ -131,7 +131,7 @@
             </label>
             <div class="helper-note" id="uploadLimits">Open a valid portal link to see upload limits.</div>
             <div class="form-actions">
-              <button id="runButton" class="button is-disabled" type="submit" disabled>Generate report</button>
+              <button id="runButton" class="button is-disabled" type="submit" disabled>Run review</button>
               <button id="refreshButton" class="button secondary is-disabled" type="button" disabled>Refresh workspace</button>
             </div>
             <div id="formMessage" class="helper-note"></div>
@@ -164,6 +164,12 @@
         </article>
 
         <article class="card span-6">
+          <div class="muted-kicker">Portal review queue</div>
+          <h2>Recent uploads</h2>
+          <div id="portalReviewQueue" class="history-list"></div>
+        </article>
+
+        <article class="card span-6">
           <div class="muted-kicker">Next review focus</div>
           <h2>What to check next</h2>
           <div id="nextReviewFocus" class="focus-list"></div>
@@ -191,6 +197,7 @@
       workspaceMemory: null,
       latestReport: null,
       history: [],
+      portalReviews: [],
       nextReviewFocus: [],
       uploadLimits: null,
       loading: false,
@@ -212,6 +219,7 @@
       openRecommendations: document.getElementById('openRecommendations'),
       trendSnapshot: document.getElementById('trendSnapshot'),
       reportHistory: document.getElementById('reportHistory'),
+      portalReviewQueue: document.getElementById('portalReviewQueue'),
       nextReviewFocus: document.getElementById('nextReviewFocus'),
       csvFiles: document.getElementById('csvFiles'),
       uploadForm: document.getElementById('uploadForm'),
@@ -313,6 +321,7 @@
       const memorySummary = memory.memory_summary || {};
       const limits = state.uploadLimits;
       const latest = state.latestReport;
+      const portalReviews = Array.isArray(state.portalReviews) ? state.portalReviews : [];
 
       els.title.textContent = workspace?.workspace_name || 'Gnomeo Workspace';
       els.subtitle.textContent = workspace
@@ -422,6 +431,26 @@
       } else {
         els.reportHistory.innerHTML = '<div class="empty-state">No report history yet.</div>';
       }
+
+      if (els.portalReviewQueue) {
+        els.portalReviewQueue.innerHTML = portalReviews.length
+          ? portalReviews.map((review) => {
+              const filenames = Array.isArray(review.filenames) ? review.filenames : [];
+              const platforms = Array.isArray(review.platforms) ? review.platforms : [];
+              const statusLabel = review.report_run_id ? 'ready' : (review.status || 'received');
+              return `
+                <div class="row-item">
+                  <div>
+                    <strong>${escapeHtml(filenames.join(', ') || 'Portal review')}</strong>
+                    <p>${escapeHtml(statusLabel.toUpperCase())} · ${escapeHtml(formatDate(review.created_at))}</p>
+                    <p>${escapeHtml(platforms.join(' · ') || 'Platform detection pending')}</p>
+                  </div>
+                  <span class="status">${escapeHtml(review.report_run_id ? 'ready' : 'queued')}</span>
+                </div>
+              `;
+            }).join('')
+          : '<div class="empty-state">No queued portal reviews yet.</div>';
+      }
     };
 
     const fetchWorkspace = async () => {
@@ -430,6 +459,7 @@
         state.workspaceMemory = null;
         state.latestReport = null;
         state.history = [];
+        state.portalReviews = [];
         state.nextReviewFocus = [];
         state.uploadLimits = null;
         renderWorkspace();
@@ -458,6 +488,7 @@
         state.workspaceMemory = payload.workspace_memory || null;
         state.latestReport = payload.latest_report || null;
         state.history = Array.isArray(payload.report_history) ? payload.report_history : [];
+        state.portalReviews = Array.isArray(payload.portal_reviews) ? payload.portal_reviews : [];
         state.nextReviewFocus = Array.isArray(payload.next_review_focus) ? payload.next_review_focus : [];
         state.uploadLimits = payload.upload_limits || null;
         renderWorkspace();
@@ -469,6 +500,7 @@
         state.workspaceMemory = null;
         state.latestReport = null;
         state.history = [];
+        state.portalReviews = [];
         state.nextReviewFocus = [];
         state.uploadLimits = null;
         renderWorkspace();
@@ -509,16 +541,17 @@
         state.workspaceMemory = payload.workspace_memory || state.workspaceMemory;
         state.latestReport = payload.latest_report || payload.report_run || state.latestReport;
         state.history = Array.isArray(payload.report_history) ? payload.report_history : state.history;
+        state.portalReviews = Array.isArray(payload.portal_reviews) ? payload.portal_reviews : state.portalReviews;
         state.nextReviewFocus = Array.isArray(payload.next_review_focus) ? payload.next_review_focus : state.nextReviewFocus;
         state.uploadLimits = payload.upload_limits || state.uploadLimits;
         els.csvFiles.value = '';
         renderWorkspace();
-        setMessage('Report generated and saved to this workspace.', 'success');
+        setMessage(payload.queued ? (payload.message || 'Review received. Gnomeo will process this shortly.') : 'Report generated and saved to this workspace.', payload.queued ? 'note' : 'success');
       } catch (error) {
         setMessage(error?.message || 'Report generation failed.', 'error');
       } finally {
         state.submitting = false;
-        els.runButton.textContent = 'Generate report';
+        els.runButton.textContent = 'Run review';
         els.runButton.disabled = !state.workspace;
       }
     };
