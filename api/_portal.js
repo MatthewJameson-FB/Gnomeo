@@ -73,6 +73,13 @@ const safeWorkspace = (workspace) => ({
   trend_snapshot: workspace.trend_snapshot || [],
   next_review_focus: workspace.next_review_focus || [],
   last_handover_at: workspace.last_handover_at || null,
+  changed_since_last_review: workspace.changed_since_last_review || [],
+  still_unresolved: workspace.still_unresolved || [],
+  likely_actioned_or_improved: workspace.likely_actioned_or_improved || [],
+  new_this_time: workspace.new_this_time || [],
+  top_actions_now: workspace.top_actions_now || [],
+  previous_recommendations_status: workspace.previous_recommendations_status || [],
+  comparison_note: workspace.comparison_note || null,
 });
 
 const safeHistoryRun = (run) => ({
@@ -96,12 +103,14 @@ const safeHistoryRun = (run) => ({
   completed_at: run.completed_at || null,
   error_message: run.error_message || null,
   metadata: run.metadata || {},
+  comparison_summary: run.comparison_summary || {},
 });
 
 const safeLatestRun = (run) => run ? {
   ...safeHistoryRun(run),
   report_content: run.report_content || '',
   report_markdown: run.report_markdown || run.report_content || '',
+  comparison_summary: run.comparison_summary || {},
 } : null;
 
 const safePortalReview = (row) => ({
@@ -116,6 +125,218 @@ const safePortalReview = (row) => ({
   completed_at: row.completed_at || null,
   notes: row.notes || null,
 });
+
+const segmentDisplayName = (segment = {}) => {
+  const candidates = [segment.campaign_name, segment.ad_group, segment.ad_name, segment.keyword, segment.search_term, segment.segment_label];
+  const selected = candidates.find((value) => String(value || '').trim()) || 'Unknown segment';
+  return String(selected).trim();
+};
+
+const normalizeComparisonText = (value) => String(value || '')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const formatDelta = (current, previous, { format = 'number', label = '' } = {}) => {
+  if (!Number.isFinite(Number(current)) || !Number.isFinite(Number(previous))) return null;
+  const cur = Number(current);
+  const prev = Number(previous);
+  const diff = cur - prev;
+  const pct = prev !== 0 ? (diff / Math.abs(prev)) * 100 : null;
+  const fmt = (value) => {
+    if (format === 'currency') return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 2 }).format(value);
+    if (format === 'ratio') return `${Number(value).toFixed(2)}x`;
+    if (format === 'percent') return `${Number(value).toFixed(1)}%`;
+    return new Intl.NumberFormat('en-GB', { maximumFractionDigits: 2 }).format(value);
+  };
+  const direction = diff === 0 ? 'unchanged' : diff > 0 ? 'up' : 'down';
+  const changeText = pct === null ? `${fmt(prev)} → ${fmt(cur)} (${direction})` : `${fmt(prev)} → ${fmt(cur)} (${direction} ${Math.abs(pct).toFixed(Math.abs(pct) >= 10 ? 0 : 1)}%)`;
+  return label ? `${label}: ${changeText}` : changeText;
+};
+
+const classifyRecommendation = ({ recommendation, currentSegments = [], previousSegments = [], currentMetrics = {}, previousMetrics = {} }) => {
+  const text = normalizeComparisonText([recommendation?.title, recommendation?.details].filter(Boolean).join(' ')).toLowerCase();
+  const currentLabels = currentSegments.map((segment) => segmentDisplayName(segment).toLowerCase());
+  const previousLabels = previousSegments.map((segment) => segmentDisplayName(segment).toLowerCase());
+  const matchedCurrent = currentSegments.find((segment) => currentLabels.some((label) => label && text.includes(label)));
+  const matchedPrevious = previousSegments.find((segment) => previousLabels.some((label) => label && text.includes(label)));
+  const currentFocus = matchedCurrent || currentSegments[0] || null;
+  const previousFocus = matchedPrevious || previousSegments[0] || null;
+  const previousConversions = Number(previousFocus?.conversions ?? previousMetrics.conversions ?? 0);
+  const currentConversions = Number(currentFocus?.conversions ?? currentMetrics.conversions ?? 0);
+  const previousSpend = Number(previousFocus?.spend ?? previousMetrics.spend ?? 0);
+  const currentSpend = Number(currentFocus?.spend ?? currentMetrics.spend ?? 0);
+  const previousCpa = Number(previousFocus?.cpa ?? previousMetrics.cpa ?? previousMetrics.cost_per_result ?? 0);
+  const currentCpa = Number(currentFocus?.cpa ?? currentMetrics.cpa ?? currentMetrics.cost_per_result ?? 0);
+  const previousRoas = Number(previousFocus?.roas ?? previousMetrics.roas ?? 0);
+  const currentRoas = Number(currentFocus?.roas ?? currentMetrics.roas ?? 0);
+
+  if (!matchedCurrent && !matchedPrevious) {
+    return {
+      status: 'not_enough_evidence',
+      notes: 'The export does not include enough matching structure to confirm whether this recommendation was actioned.',
+    };
+  }
+
+  if (matchedCurrent && !matchedPrevious) {
+    return {
+      status: 'still_open',
+      notes: 'A similar segment is still present in the current export, so the recommendation remains relevant.',
+    };
+  }
+
+  if (!matchedCurrent && matchedPrevious) {
+    return {
+      status: 'no_longer_visible',
+      notes: 'The previously referenced segment is not visible in the current export, so it may have been changed or removed.',
+    };
+  }
+
+  if (!Number.isFinite(previousSpend) || !Number.isFinite(currentSpend)) {
+    return {
+      status: 'not_enough_evidence',
+      notes: 'Spend comparison is limited, so the report cannot confidently tell whether this recommendation improved.',
+    };
+  }
+
+  const spendDown = currentSpend < previousSpend * 0.85;
+  const cpaDown = previousCpa && currentCpa && currentCpa < previousCpa * 0.9;
+  const roasUp = previousRoas && currentRoas && currentRoas > previousRoas * 1.1;
+  const conversionsUp = currentConversions > previousConversions;
+
+  if (spendDown || cpaDown || roasUp || conversionsUp) {
+    return {
+      status: 'appears_improved',
+      notes: 'The current export suggests this area may have improved, but the export alone does not prove the change was caused by a specific action.',
+    };
+  }
+
+  return {
+    status: 'still_open',
+    notes: 'The same area still looks relevant in the current export, so the recommendation remains open.',
+  };
+};
+
+const buildComparisonSummary = ({ current = {}, previous = null, currentSummary = {}, currentTopSegments = [], currentPlatformSummaries = [] } = {}) => {
+  const currentMetrics = current.metrics || currentSummary.metrics || {};
+  const previousSummary = previous?.summary || {};
+  const previousComparison = previous?.comparison_summary || {};
+  const previousMetrics = previousSummary.metrics || previousComparison.current_metrics || {};
+  const previousTopSegments = Array.isArray(previousComparison.top_segments) ? previousComparison.top_segments : [];
+  const previousPlatformSummaries = Array.isArray(previousComparison.platform_summaries) ? previousComparison.platform_summaries : (Array.isArray(previousMetrics.platforms) ? previousMetrics.platforms : []);
+  const previousRecommendations = Array.isArray(previousSummary.key_decisions) && previousSummary.key_decisions.length
+    ? previousSummary.key_decisions
+    : (Array.isArray(previousComparison.previous_recommendations) ? previousComparison.previous_recommendations : []);
+  const currentRecommendations = Array.isArray(currentSummary.key_decisions) && currentSummary.key_decisions.length ? currentSummary.key_decisions : [];
+
+  const changedSinceLastReview = [];
+  const stillUnresolved = [];
+  const likelyActionedOrImproved = [];
+  const newThisTime = [];
+  const previousRecommendationsStatus = [];
+
+  if (!previous) {
+    const baselineNote = 'This is the baseline review. Future reviews will compare against this export.';
+    return {
+      is_baseline: true,
+      changed_since_last_review: [baselineNote],
+      still_unresolved: currentRecommendations.slice(0, 3).map((item) => normalizeComparisonText([item.title, item.details].filter(Boolean).join(' — '))),
+      likely_actioned_or_improved: [],
+      new_this_time: [],
+      top_actions_now: currentRecommendations.slice(0, 3),
+      previous_recommendations_status: [],
+      comparison_note: baselineNote,
+      previous_recommendations: [],
+      current_metrics: currentMetrics,
+      previous_metrics: {},
+      current_top_segments: currentTopSegments,
+      previous_top_segments: [],
+      platform_mix_current: currentPlatformSummaries,
+      platform_mix_previous: [],
+    };
+  }
+
+  const metricDeltas = [
+    formatDelta(currentMetrics.spend, previousMetrics.spend, { format: 'currency', label: 'Spend' }),
+    formatDelta(currentMetrics.conversions, previousMetrics.conversions, { format: 'number', label: 'Conversions' }),
+    formatDelta(currentMetrics.revenue, previousMetrics.revenue, { format: 'currency', label: 'Revenue / value' }),
+    formatDelta(currentMetrics.cpa, previousMetrics.cpa, { format: 'currency', label: 'CPA / cost per result' }),
+    formatDelta(currentMetrics.roas, previousMetrics.roas, { format: 'ratio', label: 'ROAS' }),
+  ].filter(Boolean);
+  if (metricDeltas.length) changedSinceLastReview.push(...metricDeltas);
+
+  const previousPlatformMap = new Map(previousPlatformSummaries.map((item) => [String(item.platform || '').toLowerCase(), item]));
+  const currentPlatformMap = new Map(currentPlatformSummaries.map((item) => [String(item.platform || '').toLowerCase(), item]));
+  for (const platform of ['google_ads', 'meta_ads']) {
+    const currentPlatform = currentPlatformMap.get(platform);
+    const prevPlatform = previousPlatformMap.get(platform);
+    if (!currentPlatform || !prevPlatform) continue;
+    const spendDelta = formatDelta(currentPlatform.spend, prevPlatform.spend, { format: 'currency', label: `${currentPlatform.platform === 'google_ads' ? 'Google Ads' : 'Meta Ads'} spend` });
+    if (spendDelta) changedSinceLastReview.push(spendDelta);
+  }
+
+  const currentSegmentMap = new Map(currentTopSegments.map((segment) => [segmentDisplayName(segment).toLowerCase(), segment]));
+  const previousSegmentMap = new Map(previousTopSegments.map((segment) => [segmentDisplayName(segment).toLowerCase(), segment]));
+
+  for (const segment of currentTopSegments) {
+    const label = segmentDisplayName(segment).toLowerCase();
+    if (!previousSegmentMap.has(label)) {
+      newThisTime.push(`New this time: ${segmentDisplayName(segment)} is visible in the current export.`);
+    }
+  }
+  for (const segment of previousTopSegments) {
+    const label = segmentDisplayName(segment).toLowerCase();
+    if (!currentSegmentMap.has(label)) {
+      likelyActionedOrImproved.push(`No longer visible: ${segmentDisplayName(segment)} no longer appears in the current top segments.`);
+    }
+  }
+
+  for (const prevRec of previousRecommendations) {
+    const classification = classifyRecommendation({ recommendation: prevRec, currentSegments: currentTopSegments, previousSegments: previousTopSegments, currentMetrics, previousMetrics });
+    previousRecommendationsStatus.push({
+      title: prevRec.title || prevRec.label || 'Previous recommendation',
+      status: classification.status,
+      notes: classification.notes,
+    });
+    if (classification.status === 'still_open') stillUnresolved.push(`${prevRec.title || prevRec.label || 'Previous recommendation'} — ${classification.notes}`);
+    if (classification.status === 'appears_improved' || classification.status === 'no_longer_visible') likelyActionedOrImproved.push(`${prevRec.title || prevRec.label || 'Previous recommendation'} — ${classification.notes}`);
+    if (classification.status === 'not_enough_evidence') changedSinceLastReview.push(`${prevRec.title || prevRec.label || 'Previous recommendation'} — ${classification.notes}`);
+  }
+
+  if (!stillUnresolved.length && currentRecommendations.length) {
+    stillUnresolved.push(...currentRecommendations.slice(0, 3).map((item) => normalizeComparisonText([item.title, item.details].filter(Boolean).join(' — '))));
+  }
+
+  if (!newThisTime.length) {
+    newThisTime.push('No clearly new segments were visible in the top results, so the current export looks like a continuation of the previous pattern.');
+  }
+
+  const topActionsNow = currentRecommendations.slice(0, 3).map((item) => ({
+    title: item.title || item.label || 'Review latest segment',
+    details: item.details || '',
+  }));
+
+  const comparisonNote = metricDeltas.length
+    ? `The current export shows ${metricDeltas[0].toLowerCase()}.`
+    : 'The current export can be compared to the previous review, but the movement is limited by the available fields.';
+
+  return {
+    is_baseline: false,
+    changed_since_last_review: changedSinceLastReview.slice(0, 8),
+    still_unresolved: stillUnresolved.slice(0, 8),
+    likely_actioned_or_improved: likelyActionedOrImproved.slice(0, 8),
+    new_this_time: newThisTime.slice(0, 8),
+    top_actions_now: topActionsNow,
+    previous_recommendations_status: previousRecommendationsStatus.slice(0, 8),
+    comparison_note: comparisonNote,
+    previous_recommendations: previousRecommendations,
+    current_metrics: currentMetrics,
+    previous_metrics: previousMetrics,
+    current_top_segments: currentTopSegments,
+    previous_top_segments: previousTopSegments,
+    platform_mix_current: currentPlatformSummaries,
+    platform_mix_previous: previousPlatformSummaries,
+  };
+};
 
 const parseListItems = (lines) => {
   const items = [];
@@ -338,6 +559,9 @@ const runReportGenerator = async ({ files = [] } = {}) => {
     row_count: result.row_count || 0,
     input_bytes: result.input_bytes || 0,
     metrics: result.metrics || {},
+    top_segments: result.top_segments || [],
+    platform_summaries: result.platform_summaries || [],
+    overall: result.overall || {},
   };
 };
 
@@ -404,4 +628,5 @@ module.exports = {
   getWorkspaceByPortalToken,
   logUsageEvent,
   updatePortalTokenUse,
+  buildComparisonSummary,
 };

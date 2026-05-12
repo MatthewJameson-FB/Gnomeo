@@ -71,6 +71,12 @@ Notes:
 - Keep the portal calm and rigid; avoid dashboard-style density.
 - Collapse long report bodies and keep deeper memory/details lower on the page.
 
+## Comparison-aware reviews
+- The portal is comparison-aware: the first report becomes the baseline, later reports compare against the previous review.
+- Track what changed, what still needs attention, what appears improved, and what is new this time.
+- The primary customer-facing action section is `What to change now`.
+- Keep recommendation tracking conservative; do not claim causality unless the export clearly supports it.
+
 ## Beta readiness / schema health
 - Before testing any beta portal flow, open the protected admin Beta Readiness page.
 - Confirm the schema health check is Ready.

@@ -131,7 +131,28 @@
           <h2>Here is what Gnomeo found</h2>
           <div id="latestReviewMeta" class="pill-row"></div>
           <div id="latestReviewSummary" class="summary-panel"></div>
+          <div class="muted-kicker" style="margin-top: 18px;">What to change now</div>
           <div id="latestActionCards" class="action-grid"></div>
+        </article>
+
+        <article class="card span-4">
+          <div class="muted-kicker">What changed since last review</div>
+          <h2>What changed since last review</h2>
+          <div id="changedSinceLastReview" class="report-list"></div>
+          <div class="muted-kicker" style="margin-top: 14px;">What appears improved</div>
+          <div id="likelyActionedOrImproved" class="report-list"></div>
+        </article>
+
+        <article class="card span-4">
+          <div class="muted-kicker">Still needs attention</div>
+          <h2>Still needs attention</h2>
+          <div id="stillUnresolved" class="report-list"></div>
+        </article>
+
+        <article class="card span-4">
+          <div class="muted-kicker">New this time</div>
+          <h2>New this time</h2>
+          <div id="newThisTime" class="report-list"></div>
         </article>
 
         <article class="card span-5 upload-card">
@@ -207,6 +228,13 @@
       latestReport: null,
       history: [],
       portalReviews: [],
+      changedSinceLastReview: [],
+      stillUnresolved: [],
+      likelyActionedOrImproved: [],
+      newThisTime: [],
+      topActionsNow: [],
+      previousRecommendationsStatus: [],
+      comparisonNote: '',
       nextReviewFocus: [],
       uploadLimits: null,
       loading: false,
@@ -226,6 +254,10 @@
       latestMeta: document.getElementById('latestReviewMeta'),
       latestSummary: document.getElementById('latestReviewSummary'),
       latestActions: document.getElementById('latestActionCards'),
+      changedSinceLastReview: document.getElementById('changedSinceLastReview'),
+      likelyActionedOrImproved: document.getElementById('likelyActionedOrImproved'),
+      stillUnresolved: document.getElementById('stillUnresolved'),
+      newThisTime: document.getElementById('newThisTime'),
       latestReport: document.getElementById('latestReport'),
       fullReportDetails: document.getElementById('fullReportDetails'),
       queuedReviewState: document.getElementById('queuedReviewState'),
@@ -371,6 +403,13 @@
       state.latestReport = payload.latest_report || payload.report_run || state.latestReport;
       state.history = Array.isArray(payload.report_history) ? payload.report_history : state.history;
       state.portalReviews = Array.isArray(payload.portal_reviews) ? payload.portal_reviews : state.portalReviews;
+      state.changedSinceLastReview = Array.isArray(payload.changed_since_last_review) ? payload.changed_since_last_review : state.changedSinceLastReview;
+      state.stillUnresolved = Array.isArray(payload.still_unresolved) ? payload.still_unresolved : state.stillUnresolved;
+      state.likelyActionedOrImproved = Array.isArray(payload.likely_actioned_or_improved) ? payload.likely_actioned_or_improved : state.likelyActionedOrImproved;
+      state.newThisTime = Array.isArray(payload.new_this_time) ? payload.new_this_time : state.newThisTime;
+      state.topActionsNow = Array.isArray(payload.top_actions_now) ? payload.top_actions_now : state.topActionsNow;
+      state.previousRecommendationsStatus = Array.isArray(payload.previous_recommendations_status) ? payload.previous_recommendations_status : state.previousRecommendationsStatus;
+      state.comparisonNote = String(payload.comparison_note || state.comparisonNote || '').trim();
       state.nextReviewFocus = Array.isArray(payload.next_review_focus) ? payload.next_review_focus : state.nextReviewFocus;
       state.uploadLimits = payload.upload_limits || state.uploadLimits;
       renderWorkspace();
@@ -496,7 +535,7 @@
             title: hasToken ? 'Request help.' : 'Request access.',
             details: hasToken ? 'This private link may be expired or incorrect.' : 'Gnomeo workspaces are currently invite-only.',
           }]
-        : collectTopActions(latest, memory, nextFocus);
+        : (state.topActionsNow.length ? state.topActionsNow : collectTopActions(latest, memory, nextFocus));
       const hasStructuredActions = Boolean(latest && (Array.isArray(latest.top_priorities) && latest.top_priorities.length || Array.isArray(latest.top_recommendations) && latest.top_recommendations.length || Array.isArray(latest.recommendations) && latest.recommendations.length));
       const memoryActionCards = [
         ...openRecommendations.map((item) => ({
@@ -529,9 +568,10 @@
         ? `
           <div>
             <h3>${escapeHtml(latest.report_title || 'Latest review ready')}</h3>
-            <p>${escapeHtml(latestSummaryText || 'No summary text yet.')}</p>
+            <p>${escapeHtml(latestSummaryText || 'Gnomeo found spend and conversion signal in this export, but comparison is limited until another matching export is uploaded.')}</p>
           </div>
           ${signalNote ? `<div class="row-item"><div><strong>Signal note</strong><p>${escapeHtml(signalNote)}</p></div></div>` : ''}
+          ${state.comparisonNote ? `<div class="row-item"><div><strong>Comparison note</strong><p>${escapeHtml(state.comparisonNote)}</p></div></div>` : ''}
         `
         : queuedReview
           ? `
@@ -549,6 +589,22 @@
           `;
 
       els.latestActions.innerHTML = renderActionCards(topActions);
+
+      els.changedSinceLastReview.innerHTML = hasLatest
+        ? renderLineItems((state.changedSinceLastReview || []).slice(0, 5).map((item) => ({ title: item })), 'Gnomeo will compare future reviews against this baseline.')
+        : (queuedReview && !hasLatest ? '<div class="empty-state">Gnomeo is processing this review. Return here to see what changed.</div>' : '<div class="empty-state">Gnomeo will compare future reviews against this baseline.</div>');
+
+      els.likelyActionedOrImproved.innerHTML = hasLatest
+        ? renderLineItems((state.likelyActionedOrImproved || []).slice(0, 5).map((item) => ({ title: item })), 'Gnomeo will compare future reviews against this baseline.')
+        : '<div class="empty-state">Gnomeo will compare future reviews against this baseline.</div>';
+
+      els.stillUnresolved.innerHTML = hasLatest
+        ? renderLineItems((state.stillUnresolved || []).slice(0, 5).map((item) => ({ title: item })), 'Gnomeo will build memory after repeated reviews.')
+        : '<div class="empty-state">Gnomeo will build memory after repeated reviews.</div>';
+
+      els.newThisTime.innerHTML = hasLatest
+        ? renderLineItems((state.newThisTime || []).slice(0, 5).map((item) => ({ title: item })), 'Gnomeo will compare future reviews against this baseline.')
+        : '<div class="empty-state">Gnomeo will compare future reviews against this baseline.</div>';
 
       if (hasLatest) {
         const reportMarkdown = latest.report_markdown || latest.report_content || '';
@@ -610,6 +666,13 @@
         state.latestReport = null;
         state.history = [];
         state.portalReviews = [];
+        state.changedSinceLastReview = [];
+        state.stillUnresolved = [];
+        state.likelyActionedOrImproved = [];
+        state.newThisTime = [];
+        state.topActionsNow = [];
+        state.previousRecommendationsStatus = [];
+        state.comparisonNote = '';
         state.nextReviewFocus = [];
         state.uploadLimits = null;
         renderWorkspace();
@@ -631,6 +694,13 @@
             state.workspaceMemory = null;
             state.latestReport = null;
             state.history = [];
+            state.changedSinceLastReview = [];
+            state.stillUnresolved = [];
+            state.likelyActionedOrImproved = [];
+            state.newThisTime = [];
+            state.topActionsNow = [];
+            state.previousRecommendationsStatus = [];
+            state.comparisonNote = '';
             state.uploadLimits = null;
             renderWorkspace();
             setMessage(payload.error || 'This portal link is invalid or has been revoked.', 'error');
@@ -649,6 +719,13 @@
           state.latestReport = null;
           state.history = [];
           state.portalReviews = [];
+          state.changedSinceLastReview = [];
+          state.stillUnresolved = [];
+          state.likelyActionedOrImproved = [];
+          state.newThisTime = [];
+          state.topActionsNow = [];
+          state.previousRecommendationsStatus = [];
+          state.comparisonNote = '';
           state.nextReviewFocus = [];
           state.uploadLimits = null;
           renderWorkspace();
@@ -691,12 +768,19 @@
         state.latestReport = payload.latest_report || payload.report_run || state.latestReport;
         state.history = Array.isArray(payload.report_history) ? payload.report_history : state.history;
         state.portalReviews = Array.isArray(payload.portal_reviews) ? payload.portal_reviews : state.portalReviews;
+        state.changedSinceLastReview = Array.isArray(payload.changed_since_last_review) ? payload.changed_since_last_review : state.changedSinceLastReview;
+        state.stillUnresolved = Array.isArray(payload.still_unresolved) ? payload.still_unresolved : state.stillUnresolved;
+        state.likelyActionedOrImproved = Array.isArray(payload.likely_actioned_or_improved) ? payload.likely_actioned_or_improved : state.likelyActionedOrImproved;
+        state.newThisTime = Array.isArray(payload.new_this_time) ? payload.new_this_time : state.newThisTime;
+        state.topActionsNow = Array.isArray(payload.top_actions_now) ? payload.top_actions_now : state.topActionsNow;
+        state.previousRecommendationsStatus = Array.isArray(payload.previous_recommendations_status) ? payload.previous_recommendations_status : state.previousRecommendationsStatus;
+        state.comparisonNote = String(payload.comparison_note || state.comparisonNote || '').trim();
         state.nextReviewFocus = Array.isArray(payload.next_review_focus) ? payload.next_review_focus : state.nextReviewFocus;
         state.uploadLimits = payload.upload_limits || state.uploadLimits;
         els.csvFiles.value = '';
         renderWorkspace();
         await fetchWorkspace({ silent: true }).catch(() => {});
-        setMessage(payload.queued ? (payload.message || 'We could not finish the review immediately, so it has been queued for processing.') : 'Report generated and saved to this workspace.', payload.queued ? 'note' : 'success');
+        setMessage(payload.queued ? (payload.message || 'Review received. Gnomeo will process it shortly.') : 'Review complete. Your latest review has been updated.', payload.queued ? 'note' : 'success');
       } catch (error) {
         setMessage(error?.message || 'Report generation failed.', 'error');
       } finally {

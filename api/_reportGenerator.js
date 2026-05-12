@@ -277,6 +277,25 @@ const summarizePlatform = (platform, records) => {
   };
 };
 
+const segmentDisplayName = (segment) => {
+  const candidates = [
+    segment.campaign_name,
+    segment.ad_group,
+    segment.ad_name,
+    segment.keyword,
+    segment.search_term,
+  ];
+  const selected = candidates.find((value) => String(value || '').trim()) || segment.segment_label || 'All rows';
+  return String(selected).trim();
+};
+
+const platformDisplayName = (platform) => ({
+  google_ads: 'Google Ads',
+  meta_ads: 'Meta Ads',
+  mixed: 'Mixed',
+  unknown: 'Unknown',
+}[String(platform || '').toLowerCase()] || String(platform || '').replace(/_/g, ' ').trim() || 'Unknown');
+
 const detectIssueSeverity = (segment, totals) => {
   if (!segment.spend || segment.spend < totals.spend * 0.05) return null;
   if ((segment.conversions || 0) > 0) return null;
@@ -290,17 +309,16 @@ const buildPriorityItems = ({ overall, topSegments, platformSummaries }) => {
   const hasRevenue = overall.revenue !== null;
   const totalSpend = overall.spend || 0;
   const totalConversions = overall.conversions || 0;
-  const totalClicks = overall.clicks || 0;
+  const topSegment = topSegments[0] || null;
+  const topPlatform = [...platformSummaries].sort((a, b) => b.spend - a.spend)[0] || null;
 
-  const worstSegments = topSegments
-    .filter((segment) => segment.spend > 0)
-    .sort((a, b) => b.spend - a.spend)
-    .slice(0, 3);
+  const worstSegments = topSegments.filter((segment) => segment.spend > 0).sort((a, b) => b.spend - a.spend).slice(0, 3);
 
   for (const segment of worstSegments) {
     const severity = detectIssueSeverity(segment, overall);
     if (!severity) continue;
-    const label = segment.segment_label || 'Unknown segment';
+    const label = segmentDisplayName(segment);
+    const platformLabel = segment.platform && segment.platform !== 'unknown' ? ` on ${platformDisplayName(segment.platform)}` : '';
     const details = [];
     details.push(`Spend: ${formatCurrency(segment.spend)}`);
     if (segment.clicks !== null && segment.clicks !== undefined) details.push(`Clicks: ${formatNumber(segment.clicks)}`);
@@ -308,15 +326,17 @@ const buildPriorityItems = ({ overall, topSegments, platformSummaries }) => {
     if (segment.ctr !== null) details.push(`CTR: ${formatPercent(segment.ctr * 100)}`);
     if (segment.cpc !== null) details.push(`CPC: ${formatCurrency(segment.cpc)}`);
     items.push({
-      title: `${severity === 'wasted spend' ? 'Review' : 'Check'} ${label}`,
-      details: `${details.join(' · ')}. This appears to be the weakest signal in the file and is worth reviewing before scaling further.`,
+      title: severity === 'wasted spend'
+        ? `Reduce or cap ${label}${platformLabel}`
+        : `Review ${label}${platformLabel} first`,
+      details: `${details.join(' · ')}. The export shows weak signal here, so this is the safest place to tighten or compare before changing budgets elsewhere.`,
     });
   }
 
   if (!items.length && totalSpend > 0 && totalConversions === 0) {
     items.push({
-      title: 'Verify conversion tracking before scaling',
-      details: 'Spend is present, but the exports do not show any conversions. That suggests the account may be under-reporting outcomes or spending into weak signal.',
+      title: 'Hold budget increases until conversion signal improves',
+      details: 'Spend is present, but the exports do not show any conversions. The safest reading is that the account is either under-reporting outcomes or spending into weak signal.',
     });
   }
 
@@ -329,8 +349,8 @@ const buildPriorityItems = ({ overall, topSegments, platformSummaries }) => {
 
   if (!items.length) {
     items.push({
-      title: 'Keep reviewing the highest-spend segments first',
-      details: 'Nothing obviously broken stands out from the available fields, but the account should still be checked from the largest spend buckets downward.',
+      title: `Review ${segmentDisplayName(topSegment || {})} first`,
+      details: 'Nothing obviously broken stands out from the available fields, but the safest next move is to keep working from the largest spend segment downward.',
     });
   }
 
@@ -339,8 +359,20 @@ const buildPriorityItems = ({ overall, topSegments, platformSummaries }) => {
     .sort((a, b) => (a.cpa || Infinity) - (b.cpa || Infinity))[0];
   if (platformIssue && platformIssue.platform !== 'unknown' && platformIssue.conversions === 0 && totalSpend > 0) {
     items.push({
-      title: `Check ${platformIssue.platform === 'google_ads' ? 'Google Ads' : 'Meta Ads'} signal quality`,
+      title: `${platformIssue.platform === 'google_ads' ? 'Hold Google Ads increases' : 'Hold Meta Ads increases'} until signal improves`,
       details: 'The platform-level export shows spend but no recorded conversions. That often points to either weak traffic quality or incomplete conversion tracking.',
+    });
+  }
+
+  if (platformSummaries.length > 1) {
+    items.push({
+      title: 'Separate platform comparisons before changing budget',
+      details: 'Google Ads and Meta Ads do not mean the same thing in a review, so it is safer to compare them separately before making a budget move.',
+    });
+  } else if (topPlatform && topPlatform.platform !== 'unknown') {
+    items.push({
+      title: `Review ${topPlatform.platform === 'google_ads' ? 'Google Ads' : 'Meta Ads'} in isolation`,
+      details: 'There is only one clearly detected platform export, so the safer move is to judge that platform on its own signal rather than forcing a cross-platform comparison.',
     });
   }
 
@@ -409,7 +441,7 @@ const buildRecommendations = ({ overall, topSegments, platformSummaries }) => {
   if (highestSpend && highestSpend.spend > 0) {
     recommendations.push({
       title: `Audit ${highestSpend.segment_label}`,
-      details: `This is the largest spend bucket in the export set. Check targeting, search terms or creative, and whether it is producing enough conversion signal to justify the spend.`,
+      details: `This is the largest spend segment in the export set. Check targeting, search terms or creative, and whether it is producing enough conversion signal to justify the spend.`,
     });
   }
 
@@ -422,14 +454,14 @@ const buildRecommendations = ({ overall, topSegments, platformSummaries }) => {
 
   if (topPlatform && topPlatform.conversions === 0 && topPlatform.spend > 0) {
     recommendations.push({
-      title: `Pause or reduce the ${topPlatform.platform === 'google_ads' ? 'Google Ads' : topPlatform.platform === 'meta_ads' ? 'Meta Ads' : 'largest'} test bucket until signal improves`,
+      title: `Pause or reduce the ${topPlatform.platform === 'google_ads' ? 'Google Ads' : topPlatform.platform === 'meta_ads' ? 'Meta Ads' : 'largest'} test segment until signal improves`,
       details: 'The current export suggests spend is being spent into weak signal. Consider tightening budgets until conversion evidence improves.',
     });
   }
 
   if (!recommendations.length) {
     recommendations.push({
-      title: 'Review the largest spend buckets first',
+      title: 'Review the largest spend segments first',
       details: 'The data does not show a dramatic outlier, so the safest move is to keep working from the highest-spend rows downward and watch whether efficiency holds.',
     });
   }
@@ -449,7 +481,7 @@ const buildScalingCaution = ({ overall, platformSummaries, topSegments }) => {
   if (lowData) pieces.push('The dataset is still small, so any scaling call should stay cautious.');
   if (noConversions) pieces.push('No recorded conversions were visible, which makes scale-up risky.');
   if (noRevenue) pieces.push('Without revenue, scale decisions should rely on conversion signal rather than ROAS.');
-  if (hasWeakSignal || thinPlatform) pieces.push('At least one spend bucket appears to be running on weak signal, so it would be safer to tighten targeting before adding budget.');
+  if (hasWeakSignal || thinPlatform) pieces.push('At least one spend segment appears to be running on weak signal, so it would be safer to tighten targeting before adding budget.');
   if (!pieces.length) pieces.push('Nothing here proves the account is ready to scale aggressively; the safer direction is to expand only the best-signalled rows and keep watching efficiency closely.');
   return pieces;
 };
@@ -463,7 +495,7 @@ const buildExecutiveSummary = ({ overall, platformSummaries, topSegments }) => {
   const signalText = overall.conversions > 0 ? 'There is at least some conversion signal to work with.' : 'Conversion signal looks thin or absent.';
   const platformText = platformCount > 1 ? 'Both Google and Meta exports are present, so the comparison is useful.' : 'The comparison is limited by the number of detected platforms.';
   const wasteText = topSegments.some((segment) => segment.spend >= overall.spend * 0.1 && (segment.conversions || 0) === 0)
-    ? 'At least one high-spend bucket appears to be wasting budget or lacking measurable signal.'
+    ? 'At least one high-spend segment appears to be wasting budget or lacking measurable signal.'
     : 'No single row jumps out as an extreme outlier, but the safest reading is still conservative.';
   return `${spendText} of spend was analyzed across ${formatNumber(overall.rows)} rows, with ${clickText} clicks, ${impressionText} impressions and ${conversionText} conversions visible. ${signalText} ${platformText} ${wasteText}`;
 };
@@ -788,6 +820,9 @@ const generatePortalReport = ({ files = [], workspace = null } = {}) => {
     row_count: overall.rows,
     input_bytes: files.reduce((sum, file) => sum + Buffer.byteLength(String(file.text || ''), 'utf8'), 0),
     metrics: summary.metrics,
+    top_segments: topSegments,
+    platform_summaries: platformSummaries,
+    overall,
   };
 };
 
