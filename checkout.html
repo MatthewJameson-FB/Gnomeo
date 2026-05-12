@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Request Workspace Beta — Gnomeo</title>
-  <meta name="description" content="Request access to Gnomeo's manual workspace beta. No payment is taken here; approved users get a private portal link." />
+  <title>Request access — Gnomeo</title>
+  <meta name="description" content="Request access to Gnomeo's manual beta. No payment is taken here; approved users get a private portal link." />
   <link rel="canonical" href="https://www.gnomeo.nl/checkout.html" />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Request Workspace Beta — Gnomeo" />
-  <meta property="og:description" content="Request access to Gnomeo's manual workspace beta. No payment is taken here; approved users get a private portal link." />
+  <meta property="og:title" content="Request access — Gnomeo" />
+  <meta property="og:description" content="Request access to Gnomeo's manual beta. No payment is taken here; approved users get a private portal link." />
   <meta property="og:url" content="https://www.gnomeo.nl/checkout.html" />
   <meta property="og:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Request Workspace Beta — Gnomeo" />
-  <meta name="twitter:description" content="Request access to Gnomeo's manual workspace beta. No payment is taken here; approved users get a private portal link." />
+  <meta name="twitter:title" content="Request access — Gnomeo" />
+  <meta name="twitter:description" content="Request access to Gnomeo's manual beta. No payment is taken here; approved users get a private portal link." />
   <meta name="twitter:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
   <script type="application/ld+json">
   {
@@ -178,7 +178,7 @@
   <div class="wrap">
     <header class="site-nav">
       <a class="brand" href="/"><span class="brand-name">Gnomeo.nl</span></a>
-      <a class="nav-cta" href="/checkout.html">Request Workspace Beta</a>
+      <a class="nav-cta" href="/checkout.html">Request access</a>
     </header>
     <div class="nav-links" aria-label="Secondary navigation">
       <a href="/">Home</a>
@@ -193,8 +193,8 @@
     <main>
       <section class="hero">
         <div class="eyebrow">Manual beta</div>
-        <h1>Request Workspace Beta</h1>
-        <p class="subhead">Gnomeo is onboarding the first customers manually. Payment is not automated yet. If approved, you get a private portal link for exports and report history.</p>
+        <h1>Request access</h1>
+        <p class="subhead">Gnomeo is onboarding the first customers manually. No account setup or payment is needed for the beta. If approved, you get a private portal link for exports and report history.</p>
         <div class="cta-row">
           <a class="button" href="#request-form">Request access</a>
           <a class="button ghost" href="/workspace.html">See how the beta works</a>
@@ -274,7 +274,7 @@
             </div>
 
             <div class="actions-row">
-              <button id="submitBtn" class="button" type="submit">Submit request</button>
+              <button id="submitBtn" class="button" type="submit">Request access</button>
               <a class="button secondary" href="/portal.html">Portal invite state</a>
             </div>
 
@@ -290,12 +290,12 @@
               <li>We review fit manually.</li>
               <li>If accepted, we create a workspace and private portal link.</li>
               <li>You upload Google/Meta exports inside the portal.</li>
-              <li>Raw uploads are temporary and handled under the data policy.</li>
+              <li>Raw uploads stay temporary and private under the data policy.</li>
             </ul>
           </div>
           <div class="card">
             <h2>What comes later</h2>
-            <p>Full login/auth and automated billing come later. This is a conservative manual onboarding path, not a fake checkout.</p>
+            <p>Full login/auth and automated billing come later. This is a conservative manual onboarding path, not a public signup flow.</p>
           </div>
           <div class="card">
             <h2>Current promise</h2>
@@ -371,7 +371,7 @@
         }
 
         form.reset();
-        setStatus('Request received. If the fit looks right, we will create a private workspace and send the portal link.', 'success');
+        setStatus('Request received. If the fit looks right, we will create your private workspace and send the portal link.', 'success');
       } catch (error) {
         setStatus(error?.message || 'Request failed.', 'error');
       } finally {

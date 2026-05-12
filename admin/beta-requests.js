@@ -114,11 +114,11 @@ function render() {
 
   els.list.innerHTML = state.requests.map((request) => {
     const actionLabel = request.status === 'workspace_created' || request.workspace_id
-      ? 'Regenerate portal link'
+      ? 'Regenerate private portal link'
       : 'Create workspace + portal link';
     const isBusy = Boolean(state.busyById[request.id]);
     const createdWorkspaceNote = request.status === 'workspace_created'
-      ? '<div class="portal-note" style="margin-top:10px;">Workspace created. Use regenerate only if you need a fresh portal link, or check the workspace manually.</div>'
+      ? '<div class="portal-note" style="margin-top:10px;">Workspace created. Use regenerate only if you need a fresh private portal link, or check the workspace manually.</div>'
       : '';
     return `
       <article class="card beta-card">
@@ -189,7 +189,7 @@ function render() {
       if (!requestId) return;
       const request = state.requests.find((item) => item.id === requestId);
       const confirmed = request?.workspace_id
-        ? window.confirm('This will regenerate the portal link for this beta request. Continue?')
+        ? window.confirm('This will regenerate the private portal link for this beta request. Continue?')
         : window.confirm('Create a workspace and private portal link for this beta request?');
       if (!confirmed) return;
 

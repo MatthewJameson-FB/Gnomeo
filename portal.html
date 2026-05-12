@@ -143,9 +143,9 @@
         <div class="pill-row" id="workspacePills"></div>
         <div id="accessCallout" class="card" style="margin-top: 18px; display: none;">
           <h2>Request access</h2>
-          <p class="helper-note">Gnomeo workspaces are currently invite-only.</p>
+          <p class="helper-note">Gnomeo workspaces are currently invite-only. No account setup is needed for the beta.</p>
           <div style="margin-top: 14px;">
-            <a class="button" href="/checkout.html">Request Workspace Beta</a>
+            <a class="button" href="/checkout.html">Request access</a>
           </div>
         </div>
       </section>
@@ -541,7 +541,7 @@
       els.title.textContent = loading ? 'Loading workspace…' : (state.workspace?.workspace_name || 'Gnomeo Workspace');
       els.subtitle.textContent = loading
         ? 'Checking your private portal link.'
-        : (state.workspace ? 'Your private workspace for saved ad-spend reviews, memory, and history.' : 'Request workspace beta to get a private portal link.');
+        : (state.workspace ? 'Your private workspace for saved ad-spend reviews, memory, and history.' : 'Request access to get a private portal link.');
       if (els.accessCallout) {
         const shouldHide = Boolean(state.workspace || loading);
         els.accessCallout.style.display = shouldHide ? 'none' : 'block';
@@ -571,7 +571,7 @@
             ? 'Latest review ready'
             : queuedReview
               ? 'Review received'
-              : 'Upload your first ad export';
+              : 'Submit your first review';
       const stateCopy = !hasToken
         ? 'Gnomeo workspaces are currently invite-only.'
         : !hasWorkspace
@@ -680,7 +680,7 @@
         ? `
           <div>
             <h3>${escapeHtml(latest.report_title || 'Latest review ready')}</h3>
-            <p>${escapeHtml(latestSummaryText || 'Gnomeo found spend and conversion signal in this export, but comparison is limited until another matching export is uploaded.')}</p>
+            <p>${escapeHtml(latestSummaryText || 'Your private review file is ready. Submit your next review when you want to compare the next export.')}</p>
           </div>
           ${signalNote ? `<div class="row-item"><div><strong>Signal note</strong><p>${escapeHtml(signalNote)}</p></div></div>` : ''}
           ${state.comparisonNote ? `<div class="row-item"><div><strong>Comparison note</strong><p>${escapeHtml(state.comparisonNote)}</p></div></div>` : ''}
@@ -695,8 +695,8 @@
           `
           : `
             <div>
-              <h3>Upload your first ad export</h3>
-              <p>Upload Google Ads or Meta Ads CSV exports to generate the first workspace review.</p>
+              <h3>Submit your first review</h3>
+              <p>Upload Google Ads or Meta Ads CSV exports to create the first private review file.</p>
             </div>
           `;
 
@@ -779,7 +779,7 @@
         state.nextReviewFocus = [];
         state.uploadLimits = null;
         renderWorkspace();
-        if (!silent) setMessage('Request workspace beta to get a private portal link.', 'note');
+        if (!silent) setMessage('Request access to get a private portal link.', 'note');
         setLoading(false);
         return;
       }
