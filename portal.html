@@ -18,12 +18,15 @@
   <meta name="twitter:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
   <link rel="stylesheet" href="/content-pages.css" />
   <style>
-    .portal-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+    .portal-stack { display: grid; gap: 16px; }
+    .two-column, .memory-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
     .span-7 { grid-column: span 7; }
     .span-6 { grid-column: span 6; }
     .span-5 { grid-column: span 5; }
     .span-12 { grid-column: span 12; }
     .context-list, .report-list, .history-list, .focus-list { display: grid; gap: 10px; margin-top: 14px; }
+    .stacked-list { display: grid; gap: 10px; }
+    .comparison-section .report-list { margin-top: 12px; }
     .action-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
     .action-card {
       padding: 14px 16px; border: 1px solid var(--line); border-radius: 18px; background: #f8fafc;
@@ -93,8 +96,16 @@
     .muted-kicker { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; margin-bottom: 8px; }
     .upload-card .button { min-width: 180px; }
     .compact-note { color: var(--muted); font-size: 13px; line-height: 1.55; }
-    @media (max-width: 960px) { .span-7, .span-6, .span-5, .span-12 { grid-column: span 12; } }
-    @media (max-width: 960px) { .action-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 960px) {
+      .two-column, .memory-grid { grid-template-columns: 1fr; }
+      .span-7, .span-6, .span-5, .span-12 { grid-column: span 1; }
+      .action-grid { grid-template-columns: 1fr; }
+    }
+    @media (min-width: 961px) {
+      .two-column > .upload-card { grid-column: span 5; }
+      .two-column > .report-shell { grid-column: span 7; }
+      .memory-grid > .history-card, .memory-grid > .memory-card { grid-column: span 6; }
+    }
   </style>
 </head>
 <body>
@@ -125,7 +136,7 @@
         </div>
       </section>
 
-      <section class="portal-grid">
+      <section class="portal-stack">
         <article class="card span-12">
           <div class="muted-kicker">Latest review</div>
           <h2>Here is what Gnomeo found</h2>
@@ -135,66 +146,72 @@
           <div id="latestActionCards" class="action-grid"></div>
         </article>
 
-        <article class="card span-4">
+        <article id="changedReviewCard" class="card span-12 comparison-section">
           <div class="muted-kicker">What changed since last review</div>
           <h2>What changed since last review</h2>
           <div id="changedSinceLastReview" class="report-list"></div>
-          <div class="muted-kicker" style="margin-top: 14px;">What appears improved</div>
-          <div id="likelyActionedOrImproved" class="report-list"></div>
+          <div id="improvedBlock" class="comparison-section" style="margin-top: 14px;">
+            <div class="muted-kicker">What appears improved</div>
+            <div id="likelyActionedOrImproved" class="report-list"></div>
+          </div>
         </article>
 
-        <article class="card span-4">
+        <article id="stillNeedsAttentionCard" class="card span-12 comparison-section">
           <div class="muted-kicker">Still needs attention</div>
           <h2>Still needs attention</h2>
           <div id="stillUnresolved" class="report-list"></div>
         </article>
 
-        <article class="card span-4">
+        <article id="newThisTimeCard" class="card span-12 comparison-section">
           <div class="muted-kicker">New this time</div>
           <h2>New this time</h2>
           <div id="newThisTime" class="report-list"></div>
         </article>
 
-        <article class="card span-5 upload-card">
-          <div class="muted-kicker">Submit next review</div>
-          <h2>Upload next export</h2>
-          <form id="uploadForm" class="workspace-form">
-            <label>
-              Google Ads and/or Meta Ads CSVs
-              <input id="csvFiles" type="file" accept=".csv,text/csv" multiple disabled />
-            </label>
-            <div class="helper-note" id="uploadLimits">Open a valid portal link to see upload limits.</div>
-            <div id="queuedReviewState" class="empty-state" style="display:none;"></div>
-            <div class="form-actions">
-              <button id="runButton" class="button is-disabled" type="submit" disabled>Submit next review</button>
-              <button id="refreshButton" class="button secondary is-disabled" type="button" disabled>Refresh workspace</button>
-            </div>
-            <div id="formMessage" class="helper-note"></div>
-          </form>
-        </article>
+        <div class="two-column">
+          <article class="card upload-card">
+            <div class="muted-kicker">Submit next review</div>
+            <h2>Submit next review</h2>
+            <form id="uploadForm" class="workspace-form">
+              <label>
+                Google Ads and/or Meta Ads CSVs
+                <input id="csvFiles" type="file" accept=".csv,text/csv" multiple disabled />
+              </label>
+              <div class="helper-note" id="uploadLimits">Open a valid portal link to see upload limits.</div>
+              <div id="queuedReviewState" class="empty-state" style="display:none;"></div>
+              <div class="form-actions">
+                <button id="runButton" class="button is-disabled" type="submit" disabled>Submit next review</button>
+                <button id="refreshButton" class="button secondary is-disabled" type="button" disabled>Refresh workspace</button>
+              </div>
+              <div id="formMessage" class="helper-note"></div>
+            </form>
+          </article>
 
-        <article class="card span-7 report-shell">
-          <div class="muted-kicker">Full report</div>
-          <h2>Read the latest review</h2>
-          <details id="fullReportDetails">
-            <summary>Read full report</summary>
-            <div id="latestReport" class="report-body empty-state">No report yet.</div>
-          </details>
-        </article>
+          <article class="card report-shell">
+            <div class="muted-kicker">Read full report</div>
+            <h2>Read full report</h2>
+            <details id="fullReportDetails">
+              <summary>Read full report</summary>
+              <div id="latestReport" class="report-body empty-state">No report yet.</div>
+            </details>
+          </article>
+        </div>
 
-        <article class="card span-6">
-          <div class="muted-kicker">Review history</div>
-          <h2>Review history</h2>
-          <div id="reportHistory" class="history-list"></div>
-        </article>
+        <div class="memory-grid">
+          <article class="card history-card">
+            <div class="muted-kicker">Review history</div>
+            <h2>Review history</h2>
+            <div id="reportHistory" class="history-list"></div>
+          </article>
 
-        <article class="card span-6">
-          <div class="muted-kicker">What Gnomeo remembers</div>
-          <h2>What Gnomeo remembers</h2>
-          <div id="workspaceMemory" class="context-list"></div>
-          <div id="openRecommendations" class="report-list"></div>
-          <div id="recurringIssues" class="report-list"></div>
-        </article>
+          <article class="card memory-card">
+            <div class="muted-kicker">What Gnomeo remembers</div>
+            <h2>What Gnomeo remembers</h2>
+            <div id="workspaceMemory" class="context-list"></div>
+            <div id="openRecommendations" class="report-list"></div>
+            <div id="recurringIssues" class="report-list"></div>
+          </article>
+        </div>
 
         <article class="card span-12">
           <details id="workspaceDetails">
@@ -255,6 +272,7 @@
       latestSummary: document.getElementById('latestReviewSummary'),
       latestActions: document.getElementById('latestActionCards'),
       changedSinceLastReview: document.getElementById('changedSinceLastReview'),
+      improvedBlock: document.getElementById('improvedBlock'),
       likelyActionedOrImproved: document.getElementById('likelyActionedOrImproved'),
       stillUnresolved: document.getElementById('stillUnresolved'),
       newThisTime: document.getElementById('newThisTime'),
@@ -594,9 +612,11 @@
         ? renderLineItems((state.changedSinceLastReview || []).slice(0, 5).map((item) => ({ title: item })), 'Gnomeo will compare future reviews against this baseline.')
         : (queuedReview && !hasLatest ? '<div class="empty-state">Gnomeo is processing this review. Return here to see what changed.</div>' : '<div class="empty-state">Gnomeo will compare future reviews against this baseline.</div>');
 
-      els.likelyActionedOrImproved.innerHTML = hasLatest
-        ? renderLineItems((state.likelyActionedOrImproved || []).slice(0, 5).map((item) => ({ title: item })), 'Gnomeo will compare future reviews against this baseline.')
-        : '<div class="empty-state">Gnomeo will compare future reviews against this baseline.</div>';
+      const improvedItems = (state.likelyActionedOrImproved || []).slice(0, 5).map((item) => ({ title: item }));
+      if (els.improvedBlock) els.improvedBlock.style.display = hasLatest && improvedItems.length ? 'block' : 'none';
+      els.likelyActionedOrImproved.innerHTML = hasLatest && improvedItems.length
+        ? renderLineItems(improvedItems, 'Gnomeo will compare future reviews against this baseline.')
+        : '';
 
       els.stillUnresolved.innerHTML = hasLatest
         ? renderLineItems((state.stillUnresolved || []).slice(0, 5).map((item) => ({ title: item })), 'Gnomeo will build memory after repeated reviews.')
