@@ -146,16 +146,32 @@ const removeReviewFailure = ({ res, detail, error, workspaceId, reportRunId }) =
   });
 };
 
+const cleanDisplayLabel = (value) => {
+  let text = String(value ?? '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+  const prefixMatch = text.match(/^(campaign_name|campaign|platform|source|result_indicator|amount_spent|ad_group|ad_name|keyword|search_term|campaign_type)\s*:\s*(.*)$/i);
+  if (prefixMatch) text = String(prefixMatch[2] || '').trim();
+  if (!text) return '';
+  const lower = text.toLowerCase();
+  if (lower === 'google_ads') return 'Google Ads';
+  if (lower === 'meta_ads') return 'Meta Ads';
+  if (lower === 'mixed') return 'Mixed';
+  if (lower === 'unknown') return 'Unknown';
+  if (/^[a-z0-9_]+$/.test(text) && text.includes('_')) {
+    return text.split('_').filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+  }
+  return text;
+};
+
 const formatComparisonItem = (item) => {
   if (!item) return '';
-  if (typeof item === 'string') return String(item).trim();
+  if (typeof item === 'string') return cleanDisplayLabel(item);
   if (typeof item === 'object') {
-    return [item.title || item.label || item.name, item.details || item.notes]
+    return [cleanDisplayLabel(item.title || item.label || item.name), cleanDisplayLabel(item.details || item.notes)]
       .filter(Boolean)
-      .map((value) => String(value).trim())
       .join(' — ');
   }
-  return String(item).trim();
+  return cleanDisplayLabel(item);
 };
 
 const buildComparisonMarkdown = (comparison = {}) => {
@@ -164,6 +180,7 @@ const buildComparisonMarkdown = (comparison = {}) => {
   const unresolved = Array.isArray(comparison.still_unresolved) ? comparison.still_unresolved : [];
   const improved = Array.isArray(comparison.likely_actioned_or_improved) ? comparison.likely_actioned_or_improved : [];
   const fresh = Array.isArray(comparison.new_this_time) ? comparison.new_this_time : [];
+  const noLongerVisible = Array.isArray(comparison.no_longer_visible) ? comparison.no_longer_visible : [];
   const previousStatus = Array.isArray(comparison.previous_recommendations_status) ? comparison.previous_recommendations_status : [];
   const topActions = Array.isArray(comparison.top_actions_now) ? comparison.top_actions_now : [];
   const lines = [];
@@ -205,10 +222,17 @@ const buildComparisonMarkdown = (comparison = {}) => {
   lines.push('## New this time');
   if (fresh.length) {
     fresh.forEach((item) => lines.push(`- ${formatComparisonItem(item)}`));
-  } else if (improved.length) {
-    lines.push('No clearly new items stood out beyond the improved or resolved areas.');
   } else {
-    lines.push('No clearly new items were visible in the top results.');
+    lines.push('No major new campaigns detected in this export.');
+  }
+  if (noLongerVisible.length) {
+    lines.push('');
+    lines.push('## No longer visible');
+    noLongerVisible.forEach((item) => lines.push(`- ${formatComparisonItem(item)}`));
+  } else if (!baseline && improved.length) {
+    lines.push('');
+    lines.push('## No longer visible');
+    lines.push('No major campaign removals were detected in this export.');
   }
   return lines.join('\n');
 };

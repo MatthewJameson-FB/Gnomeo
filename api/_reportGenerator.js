@@ -247,8 +247,9 @@ const chooseSegmentKey = (record) => {
     'country',
     'campaign_type',
   ];
-  const parts = keys.filter((key) => record[key]).map((key) => `${key}:${record[key]}`);
-  return parts.length ? parts.join(' | ') : 'All rows';
+  const parts = keys.map((key) => cleanDisplayLabel(record[key])).filter(Boolean);
+  const uniqueParts = [...new Set(parts)];
+  return uniqueParts.length ? uniqueParts.join(' · ') : 'All rows';
 };
 
 const summarizePlatform = (platform, records) => {
@@ -284,9 +285,10 @@ const segmentDisplayName = (segment) => {
     segment.ad_name,
     segment.keyword,
     segment.search_term,
+    segment.segment_label,
   ];
-  const selected = candidates.find((value) => String(value || '').trim()) || segment.segment_label || 'All rows';
-  return String(selected).trim();
+  const selected = candidates.map(cleanDisplayLabel).find((value) => String(value || '').trim()) || 'All rows';
+  return String(selected).split('·')[0].trim();
 };
 
 const platformDisplayName = (platform) => ({
@@ -295,6 +297,23 @@ const platformDisplayName = (platform) => ({
   mixed: 'Mixed',
   unknown: 'Unknown',
 }[String(platform || '').toLowerCase()] || String(platform || '').replace(/_/g, ' ').trim() || 'Unknown');
+
+const cleanDisplayLabel = (value) => {
+  let text = String(value ?? '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+  const prefixMatch = text.match(/^(campaign_name|campaign|platform|source|result_indicator|amount_spent|ad_group|ad_name|keyword|search_term|campaign_type)\s*:\s*(.*)$/i);
+  if (prefixMatch) text = String(prefixMatch[2] || '').trim();
+  if (!text) return '';
+  const normalized = text.toLowerCase();
+  if (normalized === 'google_ads') return 'Google Ads';
+  if (normalized === 'meta_ads') return 'Meta Ads';
+  if (normalized === 'mixed') return 'Mixed';
+  if (normalized === 'unknown') return 'Unknown';
+  if (/^[a-z0-9_]+$/.test(text) && text.includes('_')) {
+    return text.split('_').filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+  }
+  return text;
+};
 
 const detectIssueSeverity = (segment, totals) => {
   if (!segment.spend || segment.spend < totals.spend * 0.05) return null;
@@ -350,7 +369,7 @@ const buildPriorityItems = ({ overall, topSegments, platformSummaries }) => {
   if (!items.length) {
     items.push({
       title: `Review ${segmentDisplayName(topSegment || {})} first`,
-      details: 'Nothing obviously broken stands out from the available fields, but the safest next move is to keep working from the largest spend segment downward.',
+      details: 'Nothing obviously broken stands out from the available fields, but the safest next move is to keep the highest-spend segment under review and compare it against the next export.',
     });
   }
 
@@ -461,8 +480,8 @@ const buildRecommendations = ({ overall, topSegments, platformSummaries }) => {
 
   if (!recommendations.length) {
     recommendations.push({
-      title: 'Review the largest spend segments first',
-      details: 'The data does not show a dramatic outlier, so the safest move is to keep working from the highest-spend rows downward and watch whether efficiency holds.',
+      title: `Review ${segmentDisplayName(highestSpend || {})} first`,
+      details: 'The data does not show a dramatic outlier, so the safest move is to keep the highest-spend segment under review and watch whether efficiency holds.',
     });
   }
 
@@ -706,6 +725,7 @@ const generatePortalReport = ({ files = [], workspace = null } = {}) => {
     overall.revenue !== null ? 'Value / revenue data is present, so ROAS can be reviewed cautiously.' : 'Revenue / value data is missing, so ROAS cannot be calculated.',
     ...tradeoffNotes.slice(0, 2),
   ];
+  const campaignNames = [...new Set(allRecords.map((record) => cleanDisplayLabel(record.campaign_name || record.ad_group || record.ad_name || record.keyword || record.search_term || record.segment_label)).filter(Boolean))];
 
   const confidenceNotes = [
     overall.rows < 25 ? 'The dataset is small, so the report should be treated as directional rather than definitive.' : 'The row count is enough for a directional review, but not enough to claim statistical certainty.',
@@ -741,6 +761,7 @@ const generatePortalReport = ({ files = [], workspace = null } = {}) => {
       cpa: safeRatio(overall.spend, overall.conversions),
       roas: overall.revenueSeen ? safeRatio(overall.revenue, overall.spend) : null,
       platforms: platformSummaries,
+      campaign_names: campaignNames,
       files: analyses.map((file) => ({
         filename: file.filename,
         platform: file.platform,

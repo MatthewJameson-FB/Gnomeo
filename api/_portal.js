@@ -128,8 +128,25 @@ const safePortalReview = (row) => ({
 
 const segmentDisplayName = (segment = {}) => {
   const candidates = [segment.campaign_name, segment.ad_group, segment.ad_name, segment.keyword, segment.search_term, segment.segment_label];
-  const selected = candidates.find((value) => String(value || '').trim()) || 'Unknown segment';
-  return String(selected).trim();
+  const selected = candidates.map(cleanDisplayLabel).find((value) => String(value || '').trim()) || 'Unknown segment';
+  return String(selected).split('·')[0].trim();
+};
+
+const cleanDisplayLabel = (value) => {
+  let text = String(value ?? '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+  const prefixMatch = text.match(/^(campaign_name|campaign|platform|source|result_indicator|amount_spent|ad_group|ad_name|keyword|search_term|campaign_type)\s*:\s*(.*)$/i);
+  if (prefixMatch) text = String(prefixMatch[2] || '').trim();
+  if (!text) return '';
+  const lower = text.toLowerCase();
+  if (lower === 'google_ads') return 'Google Ads';
+  if (lower === 'meta_ads') return 'Meta Ads';
+  if (lower === 'mixed') return 'Mixed';
+  if (lower === 'unknown') return 'Unknown';
+  if (/^[a-z0-9_]+$/.test(text) && text.includes('_')) {
+    return text.split('_').filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+  }
+  return text;
 };
 
 const normalizeComparisonText = (value) => String(value || '')
@@ -180,14 +197,14 @@ const classifyRecommendation = ({ recommendation, currentSegments = [], previous
   if (matchedCurrent && !matchedPrevious) {
     return {
       status: 'still_open',
-      notes: 'A similar segment is still present in the current export, so the recommendation remains relevant.',
+      notes: 'A similar campaign or segment is still present in the current export, so the recommendation remains relevant.',
     };
   }
 
   if (!matchedCurrent && matchedPrevious) {
     return {
       status: 'no_longer_visible',
-      notes: 'The previously referenced segment is not visible in the current export, so it may have been changed or removed.',
+      notes: 'The previously referenced campaign or segment is not visible in the current export, so it may have been changed or removed.',
     };
   }
 
@@ -212,7 +229,27 @@ const classifyRecommendation = ({ recommendation, currentSegments = [], previous
 
   return {
     status: 'still_open',
-    notes: 'The same area still looks relevant in the current export, so the recommendation remains open.',
+    notes: 'The same campaign or segment still looks relevant in the current export, so the recommendation remains open.',
+  };
+};
+
+const extractCampaignNamesFromReport = ({ summary = {}, topSegments = [] } = {}) => {
+  const names = [];
+  const metricsNames = Array.isArray(summary.metrics?.campaign_names) ? summary.metrics.campaign_names : [];
+  const hasExplicitCampaignNames = metricsNames.length > 0;
+  for (const name of metricsNames) {
+    const clean = cleanDisplayLabel(name);
+    if (clean) names.push(clean);
+  }
+  if (!hasExplicitCampaignNames) {
+    for (const segment of Array.isArray(topSegments) ? topSegments : []) {
+      const clean = cleanDisplayLabel(segment?.campaign_name || segment?.segment_label || segment?.title || '');
+      if (clean) names.push(clean);
+    }
+  }
+  return {
+    names: [...new Set(names.map((value) => String(value || '').trim()).filter(Boolean))],
+    complete: hasExplicitCampaignNames,
   };
 };
 
@@ -227,22 +264,35 @@ const buildComparisonSummary = ({ current = {}, previous = null, currentSummary 
     ? previousSummary.key_decisions
     : (Array.isArray(previousComparison.previous_recommendations) ? previousComparison.previous_recommendations : []);
   const currentRecommendations = Array.isArray(currentSummary.key_decisions) && currentSummary.key_decisions.length ? currentSummary.key_decisions : [];
+  const currentCampaignReport = extractCampaignNamesFromReport({ summary: currentSummary, topSegments: currentTopSegments });
+  const previousCampaignReport = extractCampaignNamesFromReport({ summary: previousSummary, topSegments: previousTopSegments });
+  const currentCampaignNames = currentCampaignReport.names;
+  const previousCampaignNames = previousCampaignReport.names;
+  const currentCampaignSet = new Set(currentCampaignNames.map((value) => value.toLowerCase()));
+  const previousCampaignSet = new Set(previousCampaignNames.map((value) => value.toLowerCase()));
 
   const changedSinceLastReview = [];
   const stillUnresolved = [];
   const likelyActionedOrImproved = [];
   const newThisTime = [];
   const previousRecommendationsStatus = [];
+  const noLongerVisible = [];
+
+  const cleanedCurrentRecommendations = currentRecommendations.slice(0, 3).map((item) => ({
+    title: cleanDisplayLabel(item.title || item.label || item.name || 'Review latest segment'),
+    details: cleanDisplayLabel(item.details || item.description || ''),
+  }));
 
   if (!previous) {
     const baselineNote = 'This is the baseline review. Future reviews will compare against this export.';
     return {
       is_baseline: true,
       changed_since_last_review: [baselineNote],
-      still_unresolved: currentRecommendations.slice(0, 3).map((item) => normalizeComparisonText([item.title, item.details].filter(Boolean).join(' — '))),
+      still_unresolved: cleanedCurrentRecommendations.map((item) => item.details ? `${item.title} — ${item.details}` : item.title),
       likely_actioned_or_improved: [],
       new_this_time: [],
-      top_actions_now: currentRecommendations.slice(0, 3),
+      no_longer_visible: [],
+      top_actions_now: cleanedCurrentRecommendations,
       previous_recommendations_status: [],
       comparison_note: baselineNote,
       previous_recommendations: [],
@@ -252,6 +302,8 @@ const buildComparisonSummary = ({ current = {}, previous = null, currentSummary 
       previous_top_segments: [],
       platform_mix_current: currentPlatformSummaries,
       platform_mix_previous: [],
+      current_campaign_names: currentCampaignNames,
+      previous_campaign_names: [],
     };
   }
 
@@ -274,50 +326,105 @@ const buildComparisonSummary = ({ current = {}, previous = null, currentSummary 
     if (spendDelta) changedSinceLastReview.push(spendDelta);
   }
 
-  const currentSegmentMap = new Map(currentTopSegments.map((segment) => [segmentDisplayName(segment).toLowerCase(), segment]));
-  const previousSegmentMap = new Map(previousTopSegments.map((segment) => [segmentDisplayName(segment).toLowerCase(), segment]));
-
-  for (const segment of currentTopSegments) {
-    const label = segmentDisplayName(segment).toLowerCase();
-    if (!previousSegmentMap.has(label)) {
-      newThisTime.push(`New this time: ${segmentDisplayName(segment)} is visible in the current export.`);
+  if (currentCampaignReport.complete && previousCampaignReport.complete && currentCampaignNames.length && previousCampaignNames.length) {
+    const addedCampaigns = currentCampaignNames.filter((name) => !previousCampaignSet.has(name.toLowerCase()));
+    const removedCampaigns = previousCampaignNames.filter((name) => !currentCampaignSet.has(name.toLowerCase()));
+    if (addedCampaigns.length) {
+      changedSinceLastReview.push(`Campaign mix added ${addedCampaigns.slice(0, 3).join(', ')}.`);
+      for (const name of addedCampaigns.slice(0, 3)) newThisTime.push(`${name} appears for the first time in this review.`);
+    }
+    if (removedCampaigns.length) {
+      changedSinceLastReview.push(`Campaign mix no longer shows ${removedCampaigns.slice(0, 3).join(', ')}.`);
+      for (const name of removedCampaigns.slice(0, 3)) noLongerVisible.push(`${name} no longer appears in the current export.`);
     }
   }
+
+  const currentSegmentMap = new Map(currentTopSegments.map((segment) => [segmentDisplayName(segment).toLowerCase(), segment]));
+
   for (const segment of previousTopSegments) {
     const label = segmentDisplayName(segment).toLowerCase();
     if (!currentSegmentMap.has(label)) {
-      likelyActionedOrImproved.push(`No longer visible: ${segmentDisplayName(segment)} no longer appears in the current top segments.`);
+      noLongerVisible.push(`${segmentDisplayName(segment)} no longer appears in the current top segments.`);
     }
   }
 
   for (const prevRec of previousRecommendations) {
     const classification = classifyRecommendation({ recommendation: prevRec, currentSegments: currentTopSegments, previousSegments: previousTopSegments, currentMetrics, previousMetrics });
+    const title = cleanDisplayLabel(prevRec.title || prevRec.label || 'Previous recommendation');
+    const details = cleanDisplayLabel(prevRec.details || prevRec.description || '');
     previousRecommendationsStatus.push({
-      title: prevRec.title || prevRec.label || 'Previous recommendation',
+      title,
       status: classification.status,
       notes: classification.notes,
     });
-    if (classification.status === 'still_open') stillUnresolved.push(`${prevRec.title || prevRec.label || 'Previous recommendation'} — ${classification.notes}`);
-    if (classification.status === 'appears_improved' || classification.status === 'no_longer_visible') likelyActionedOrImproved.push(`${prevRec.title || prevRec.label || 'Previous recommendation'} — ${classification.notes}`);
-    if (classification.status === 'not_enough_evidence') changedSinceLastReview.push(`${prevRec.title || prevRec.label || 'Previous recommendation'} — ${classification.notes}`);
+    if (classification.status === 'still_open') stillUnresolved.push(`${title} — ${classification.notes}`);
+    if (classification.status === 'appears_improved') likelyActionedOrImproved.push(`${title} — ${classification.notes}`);
+    if (classification.status === 'no_longer_visible') noLongerVisible.push(`${title} — ${classification.notes}`);
+    if (classification.status === 'not_enough_evidence') changedSinceLastReview.push(`${title} — ${classification.notes}`);
+    if (classification.status === 'still_open' && details && !stillUnresolved.some((item) => item.toLowerCase().includes(title.toLowerCase()))) {
+      stillUnresolved.push(`${title}${details ? ` — ${details}` : ''}`);
+    }
   }
 
-  if (!stillUnresolved.length && currentRecommendations.length) {
-    stillUnresolved.push(...currentRecommendations.slice(0, 3).map((item) => normalizeComparisonText([item.title, item.details].filter(Boolean).join(' — '))));
+  const weakCurrentSegments = currentTopSegments
+    .filter((segment) => segment.spend > 0 && ((segment.conversions || 0) === 0 || (segment.cpa !== null && segment.cpa !== undefined && Number(segment.cpa) > 0)))
+    .slice(0, 3);
+  for (const segment of weakCurrentSegments) {
+    const label = segmentDisplayName(segment);
+    const platformLabel = segment.platform && segment.platform !== 'unknown' ? ` on ${platformDisplayName(segment.platform)}` : '';
+    const riskLine = (segment.conversions || 0) === 0
+      ? `${label}${platformLabel} still needs attention because it carries spend without a clear conversion signal.`
+      : `${label}${platformLabel} still needs attention because it remains one of the higher-spend areas and should stay under review.`;
+    if (!stillUnresolved.some((item) => item.toLowerCase().includes(label.toLowerCase()))) stillUnresolved.push(riskLine);
+  }
+
+  if (currentPlatformSummaries.length > 1) {
+    stillUnresolved.push('Cross-platform comparison remains limited because Google Ads and Meta Ads can move on different attribution and audience signals.');
+  }
+
+  if (!stillUnresolved.length && cleanedCurrentRecommendations.length) {
+    stillUnresolved.push(...cleanedCurrentRecommendations.map((item) => item.details ? `${item.title} — ${item.details}` : item.title));
+  }
+
+  if (currentCampaignReport.complete && previousCampaignReport.complete && currentCampaignNames.length && previousCampaignNames.length) {
+    const addedCampaigns = currentCampaignNames.filter((name) => !previousCampaignSet.has(name.toLowerCase()));
+    const removedCampaigns = previousCampaignNames.filter((name) => !currentCampaignSet.has(name.toLowerCase()));
+    if (!addedCampaigns.length && !removedCampaigns.length) {
+      newThisTime.push('No major new campaigns detected in this export.');
+    }
+  } else {
+    newThisTime.push('Campaign-level new or removed comparison is limited for this export.');
   }
 
   if (!newThisTime.length) {
-    newThisTime.push('No clearly new segments were visible in the top results, so the current export looks like a continuation of the previous pattern.');
+    newThisTime.push('No major new campaigns detected in this export.');
   }
 
-  const topActionsNow = currentRecommendations.slice(0, 3).map((item) => ({
-    title: item.title || item.label || 'Review latest segment',
-    details: item.details || '',
-  }));
+  const topActionsNow = cleanedCurrentRecommendations.slice();
+  const seenTopActionTitles = new Set(topActionsNow.map((item) => String(item.title || '').toLowerCase()));
+  for (const segment of currentTopSegments) {
+    if (topActionsNow.length >= 3) break;
+    const title = `Monitor ${segmentDisplayName(segment)}`;
+    if (seenTopActionTitles.has(title.toLowerCase())) continue;
+    const platformLabel = segment.platform && segment.platform !== 'unknown' ? ` on ${platformDisplayName(segment.platform)}` : '';
+    const details = (segment.conversions || 0) === 0
+      ? `${segmentDisplayName(segment)}${platformLabel} carries spend without a clear conversion signal, so keep it capped until the next export.`
+      : `${segmentDisplayName(segment)}${platformLabel} remains a higher-spend area, so compare it against the next review before moving budget.`;
+    topActionsNow.push({ title, details });
+    seenTopActionTitles.add(title.toLowerCase());
+  }
+  if (!topActionsNow.length) {
+    topActionsNow.push({
+      title: 'Review the highest-spend campaign',
+      details: 'Use the next export to confirm whether the current mix is improving before making larger budget changes.',
+    });
+  }
 
   const comparisonNote = metricDeltas.length
     ? `The current export shows ${metricDeltas[0].toLowerCase()}.`
-    : 'The current export can be compared to the previous review, but the movement is limited by the available fields.';
+    : currentCampaignNames.length && previousCampaignNames.length
+      ? 'Campaign-level comparison is available, but the movement is limited by the available fields.'
+      : 'Campaign-level new/removed comparison is limited for this export.';
 
   return {
     is_baseline: false,
@@ -325,7 +432,8 @@ const buildComparisonSummary = ({ current = {}, previous = null, currentSummary 
     still_unresolved: stillUnresolved.slice(0, 8),
     likely_actioned_or_improved: likelyActionedOrImproved.slice(0, 8),
     new_this_time: newThisTime.slice(0, 8),
-    top_actions_now: topActionsNow,
+    no_longer_visible: noLongerVisible.slice(0, 8),
+    top_actions_now: topActionsNow.slice(0, 3),
     previous_recommendations_status: previousRecommendationsStatus.slice(0, 8),
     comparison_note: comparisonNote,
     previous_recommendations: previousRecommendations,
@@ -335,6 +443,8 @@ const buildComparisonSummary = ({ current = {}, previous = null, currentSummary 
     previous_top_segments: previousTopSegments,
     platform_mix_current: currentPlatformSummaries,
     platform_mix_previous: previousPlatformSummaries,
+    current_campaign_names: currentCampaignNames,
+    previous_campaign_names: previousCampaignNames,
   };
 };
 
