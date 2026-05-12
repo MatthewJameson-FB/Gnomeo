@@ -1,5 +1,5 @@
 const { parseMultipartForm } = require('./_multipart');
-const { generateId, restSelect, restInsert, updateWorkspaceById } = require('./_supabase');
+const { generateId, restSelect, restInsert, restUpdate, updateWorkspaceById } = require('./_supabase');
 const { validateCsvUploads } = require('./_limits');
 const {
   portalLimitsForPlan,
@@ -114,6 +114,37 @@ const emptyWorkspaceComparison = () => ({
   previous_recommendations_status: [],
   comparison_note: null,
 });
+
+const safeSupabaseError = (error) => ({
+  code: String(error?.code || error?.status || '').trim() || null,
+  message: String(error?.message || error || '').trim().slice(0, 200) || null,
+  details: String(error?.details || '').trim().slice(0, 200) || null,
+  hint: String(error?.hint || '').trim().slice(0, 200) || null,
+});
+
+const logRemoveReviewError = ({ detail, error, workspaceId, reportRunId }) => {
+  const supabase = safeSupabaseError(error);
+  console.error('[gnomeo portal] remove-review failed', {
+    operation: 'portal.remove_review',
+    detail,
+    report_run_id: reportRunId || null,
+    workspace_id: workspaceId || null,
+    supabase,
+  });
+  return supabase;
+};
+
+const removeReviewFailure = ({ res, detail, error, workspaceId, reportRunId }) => {
+  const supabase = logRemoveReviewError({ detail, error, workspaceId, reportRunId });
+  return respond(res, 500, {
+    success: false,
+    error: 'We could not remove this review right now. Please try again or contact support.',
+    code: 'remove_review_failed',
+    operation: 'portal.remove_review',
+    detail,
+    supabase,
+  });
+};
 
 const formatComparisonItem = (item) => {
   if (!item) return '';
@@ -273,48 +304,107 @@ module.exports = async (req, res) => {
   }
 
   const token = getPortalTokenFromRequest(req, body);
-  if (!token) return respond(res, 401, { success: false, error: 'Missing portal token' });
+  if (!token) {
+    if (endpoint === 'remove-review') {
+      return respond(res, 401, {
+        success: false,
+        error: 'We could not remove this review right now. Please try again or contact support.',
+        code: 'remove_review_failed',
+        operation: 'portal.remove_review',
+        detail: 'token_invalid',
+        supabase: null,
+      });
+    }
+    return respond(res, 401, { success: false, error: 'Missing portal token' });
+  }
   const workspace = await getWorkspaceByPortalToken(token);
   if (!workspace || workspace.status === 'inactive' || workspace.status === 'cancelled') {
+    if (endpoint === 'remove-review') {
+      return respond(res, 401, {
+        success: false,
+        error: 'We could not remove this review right now. Please try again or contact support.',
+        code: 'remove_review_failed',
+        operation: 'portal.remove_review',
+        detail: 'token_invalid',
+        supabase: null,
+      });
+    }
     return respond(res, 404, { success: false, error: 'Workspace not found' });
   }
 
   if (endpoint === 'remove-review') {
     const reportRunId = normalize(body.report_run_id || body.reportRunId || req.query?.report_run_id || req.query?.reportRunId || '');
-    if (!reportRunId) return respond(res, 400, { success: false, error: 'Missing report_run_id' });
+    if (!reportRunId) {
+      return respond(res, 400, {
+        success: false,
+        error: 'We could not remove this review right now. Please try again or contact support.',
+        code: 'remove_review_failed',
+        operation: 'portal.remove_review',
+        detail: 'missing_report_id',
+        supabase: null,
+      });
+    }
 
-    const targetRows = await restSelect('report_runs', {
-      select: '*',
-      workspace_id: `eq.${workspace.id}`,
-      id: `eq.${reportRunId}`,
-      deleted_at: 'is.null',
-      limit: 1,
-    });
-    const targetRun = Array.isArray(targetRows) ? targetRows[0] || null : null;
-    if (!targetRun) return respond(res, 404, { success: false, error: 'Review not found' });
+    let targetRun = null;
+    try {
+      const targetRows = await restSelect('report_runs', {
+        select: 'id,workspace_id,deleted_at,created_at',
+        id: `eq.${reportRunId}`,
+        workspace_id: `eq.${workspace.id}`,
+        deleted_at: 'is.null',
+        limit: 1,
+      });
+      targetRun = Array.isArray(targetRows) ? targetRows[0] || null : null;
+    } catch (error) {
+      return removeReviewFailure({ res, detail: 'report_not_found', error, workspaceId: workspace.id, reportRunId });
+    }
+
+    if (!targetRun) {
+      return respond(res, 404, {
+        success: false,
+        error: 'We could not remove this review right now. Please try again or contact support.',
+        code: 'remove_review_failed',
+        operation: 'portal.remove_review',
+        detail: 'report_not_found',
+        supabase: null,
+      });
+    }
+
+    if (String(targetRun.workspace_id || '') !== String(workspace.id || '')) {
+      return respond(res, 403, {
+        success: false,
+        error: 'We could not remove this review right now. Please try again or contact support.',
+        code: 'remove_review_failed',
+        operation: 'portal.remove_review',
+        detail: 'workspace_mismatch',
+        supabase: null,
+      });
+    }
 
     const deletedAt = new Date().toISOString();
     try {
       await restUpdate('report_runs', { id: `eq.${reportRunId}`, workspace_id: `eq.${workspace.id}` }, { deleted_at: deletedAt });
     } catch (error) {
-      console.warn('[gnomeo portal] report removal failed (non-blocking):', String(error?.message || error || '').slice(0, 200));
-      return respond(res, 500, { success: false, error: 'We could not remove this review right now. Please try again or contact support.' });
+      return removeReviewFailure({ res, detail: 'report_update_failed', error, workspaceId: workspace.id, reportRunId });
     }
 
+    let submissionUpdateError = null;
     try {
       await restUpdate('portal_review_submissions', { workspace_id: `eq.${workspace.id}`, report_run_id: `eq.${reportRunId}` }, { deleted_at: deletedAt });
     } catch (error) {
-      console.warn('[gnomeo portal] portal review removal sync failed (non-blocking):', String(error?.message || error || '').slice(0, 200));
+      submissionUpdateError = error;
+      logRemoveReviewError({ detail: 'submission_update_failed', error, workspaceId: workspace.id, reportRunId });
     }
 
     let updatedWorkspace = workspace;
-    const refreshedRuns = await listReportRuns(workspace.id, 20);
-    const refreshedLatest = refreshedRuns[0] || null;
-    if (refreshedLatest) {
-      const refreshedMarkdown = refreshedLatest.report_markdown || refreshedLatest.report_content || '';
-      const refreshedParsed = refreshedMarkdown ? parseReportMarkdown(refreshedMarkdown) : null;
-      const refreshedComparison = refreshedLatest.comparison_summary || {};
-      try {
+    let refreshDetail = null;
+    try {
+      const refreshedRuns = await listReportRuns(workspace.id, 20);
+      const refreshedLatest = refreshedRuns[0] || null;
+      if (refreshedLatest) {
+        const refreshedMarkdown = refreshedLatest.report_markdown || refreshedLatest.report_content || '';
+        const refreshedParsed = refreshedMarkdown ? parseReportMarkdown(refreshedMarkdown) : null;
+        const refreshedComparison = refreshedLatest.comparison_summary || {};
         const [savedWorkspace] = await updateWorkspaceById(workspace.id, {
           ...buildWorkspaceMemoryUpdate({
             workspace,
@@ -333,19 +423,27 @@ module.exports = async (req, res) => {
           comparison_note: refreshedComparison.comparison_note || null,
         });
         if (savedWorkspace) updatedWorkspace = savedWorkspace;
-      } catch (error) {
-        console.warn('[gnomeo portal] workspace refresh after removal failed (non-blocking):', String(error?.message || error || '').slice(0, 200));
-      }
-    } else {
-      try {
+      } else {
         const [savedWorkspace] = await updateWorkspaceById(workspace.id, emptyWorkspaceComparison());
         if (savedWorkspace) updatedWorkspace = savedWorkspace;
-      } catch (error) {
-        console.warn('[gnomeo portal] workspace reset after removal failed (non-blocking):', String(error?.message || error || '').slice(0, 200));
       }
+    } catch (error) {
+      refreshDetail = 'workspace_refresh_failed';
+      logRemoveReviewError({ detail: 'workspace_refresh_failed', error, workspaceId: workspace.id, reportRunId });
     }
 
-    const refreshedState = await buildVisiblePortalState(updatedWorkspace);
+    const refreshedState = await buildVisiblePortalState(updatedWorkspace).catch((error) => {
+      refreshDetail = refreshDetail || 'workspace_refresh_failed';
+      logRemoveReviewError({ detail: 'workspace_refresh_failed', error, workspaceId: workspace.id, reportRunId });
+      return {
+        publicWorkspace: safeWorkspace(updatedWorkspace),
+        workspace_memory: workspaceMemoryFromWorkspace(updatedWorkspace),
+        latestReport: null,
+        reportHistory: [],
+        portalReviews: [],
+        latestParsed: null,
+      };
+    });
     const removalLimits = portalLimitsForPlan(updatedWorkspace.plan);
     const reportsThisMonth = await countMonthlyReports(updatedWorkspace.id);
     const remainingReports = typeof removalLimits.maxReportsPerMonth === 'number' ? Math.max(0, removalLimits.maxReportsPerMonth - reportsThisMonth) : null;
@@ -377,6 +475,7 @@ module.exports = async (req, res) => {
       top_actions_now: refreshedState.publicWorkspace.top_actions_now || [],
       previous_recommendations_status: refreshedState.publicWorkspace.previous_recommendations_status || [],
       comparison_note: refreshedState.publicWorkspace.comparison_note || null,
+      detail: refreshDetail || (submissionUpdateError ? 'submission_update_failed' : null),
       upload_limits: {
         plan_label: removalLimits.planLabel,
         max_files: removalLimits.maxFiles,
