@@ -24,6 +24,12 @@
     .span-5 { grid-column: span 5; }
     .span-12 { grid-column: span 12; }
     .context-list, .report-list, .history-list, .focus-list { display: grid; gap: 10px; margin-top: 14px; }
+    .action-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+    .action-card {
+      padding: 14px 16px; border: 1px solid var(--line); border-radius: 18px; background: #f8fafc;
+    }
+    .action-card strong { display: block; margin-bottom: 6px; }
+    .action-card p { margin: 0; color: var(--muted); }
     .row-item {
       display: flex; justify-content: space-between; gap: 16px; align-items: flex-start;
       padding: 14px 16px; border: 1px solid var(--line); border-radius: 18px; background: #fff; box-shadow: none;
@@ -59,6 +65,20 @@
     .report-body p { margin: 0 0 12px; color: var(--text); }
     .report-body ul, .report-body ol { margin: 0 0 12px 20px; color: var(--text); }
     .report-body li + li { margin-top: 6px; }
+    .summary-panel {
+      display: grid; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 18px; background: #f8fafc;
+    }
+    .summary-panel h3, .summary-panel p { margin: 0; }
+    .summary-panel p { color: var(--muted); }
+    .report-shell details { margin-top: 14px; }
+    .report-shell summary {
+      cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: #fff; font-weight: 700;
+    }
+    .report-shell summary::-webkit-details-marker { display: none; }
+    .report-shell summary::after { content: '▾'; color: var(--muted); }
+    .report-shell details[open] summary::after { content: '▴'; }
+    .report-shell .report-body { margin-top: 12px; }
     .empty-state {
       margin-top: 14px; padding: 16px; border: 1px dashed var(--line); border-radius: 18px; color: var(--muted); background: #fff;
     }
@@ -71,7 +91,10 @@
       border: 1px solid rgba(21, 128, 61, 0.18); background: #f0fdf4; color: #166534;
     }
     .muted-kicker { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; margin-bottom: 8px; }
+    .upload-card .button { min-width: 180px; }
+    .compact-note { color: var(--muted); font-size: 13px; line-height: 1.55; }
     @media (max-width: 960px) { .span-7, .span-6, .span-5, .span-12 { grid-column: span 12; } }
+    @media (max-width: 960px) { .action-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -103,26 +126,16 @@
       </section>
 
       <section class="portal-grid">
-        <article class="card span-6">
-          <div class="muted-kicker">Workspace memory</div>
-          <h2>Analytical handover</h2>
-          <div id="workspaceMemory" class="context-list"></div>
+        <article class="card span-12">
+          <div class="muted-kicker">Latest review</div>
+          <h2>Here is what Gnomeo found</h2>
+          <div id="latestReviewMeta" class="pill-row"></div>
+          <div id="latestReviewSummary" class="summary-panel"></div>
+          <div id="latestActionCards" class="action-grid"></div>
         </article>
 
-        <article class="card span-6">
-          <div class="muted-kicker">Recurring issues</div>
-          <h2>Risks to keep watching</h2>
-          <div id="recurringIssues" class="report-list"></div>
-        </article>
-
-        <article class="card span-7">
-          <div class="muted-kicker">Workspace context</div>
-          <h2>Analyst workspace</h2>
-          <div id="workspaceContext" class="context-list"></div>
-        </article>
-
-        <article class="card span-5">
-          <div class="muted-kicker">Run a new review</div>
+        <article class="card span-5 upload-card">
+          <div class="muted-kicker">Submit next review</div>
           <h2>Upload CSV exports</h2>
           <form id="uploadForm" class="workspace-form">
             <label>
@@ -131,30 +144,38 @@
             </label>
             <div class="helper-note" id="uploadLimits">Open a valid portal link to see upload limits.</div>
             <div class="form-actions">
-              <button id="runButton" class="button is-disabled" type="submit" disabled>Run review</button>
+              <button id="runButton" class="button is-disabled" type="submit" disabled>Submit next review</button>
               <button id="refreshButton" class="button secondary is-disabled" type="button" disabled>Refresh workspace</button>
             </div>
             <div id="formMessage" class="helper-note"></div>
           </form>
         </article>
 
-        <article class="card span-7">
-          <div class="muted-kicker">Latest review</div>
-          <h2>Most recent report</h2>
-          <div id="latestReportMeta" class="pill-row"></div>
-          <div id="latestReport" class="report-body empty-state">No report yet.</div>
+        <article class="card span-7 report-shell">
+          <div class="muted-kicker">Full report</div>
+          <h2>Read the latest review</h2>
+          <details id="fullReportDetails">
+            <summary>Read full report</summary>
+            <div id="latestReport" class="report-body empty-state">No report yet.</div>
+          </details>
         </article>
 
-        <article class="card span-5">
+        <article class="card span-6">
+          <div class="muted-kicker">Workspace memory</div>
+          <h2>Workspace memory</h2>
+          <div id="workspaceMemory" class="context-list"></div>
+        </article>
+
+        <article class="card span-6">
           <div class="muted-kicker">Recommendations still open</div>
-          <h2>What still needs action</h2>
+          <h2>Open recommendations</h2>
           <div id="openRecommendations" class="report-list"></div>
         </article>
 
         <article class="card span-6">
-          <div class="muted-kicker">Trend snapshot</div>
-          <h2>Recurring patterns</h2>
-          <div id="trendSnapshot" class="report-list"></div>
+          <div class="muted-kicker">Recurring issues</div>
+          <h2>Recurring issues</h2>
+          <div id="recurringIssues" class="report-list"></div>
         </article>
 
         <article class="card span-6">
@@ -164,9 +185,15 @@
         </article>
 
         <article class="card span-6">
-          <div class="muted-kicker">Portal review queue</div>
+          <div class="muted-kicker">Recent uploads</div>
           <h2>Recent uploads</h2>
           <div id="portalReviewQueue" class="history-list"></div>
+        </article>
+
+        <article class="card span-6">
+          <div class="muted-kicker">Workspace context</div>
+          <h2>Workspace context</h2>
+          <div id="workspaceContext" class="context-list"></div>
         </article>
 
         <article class="card span-6">
@@ -175,10 +202,10 @@
           <div id="nextReviewFocus" class="focus-list"></div>
         </article>
 
-        <article class="card span-6">
-          <div class="muted-kicker">Privacy and retention</div>
+        <article class="card span-12">
+          <div class="muted-kicker">Privacy note</div>
           <h2>Quiet handling</h2>
-          <p class="helper-note">Raw uploads are handled temporarily for report generation. Reports and analytical summaries may be retained in your workspace.</p>
+          <p class="compact-note">Raw uploads are handled temporarily for report generation. Reports and analytical summaries may be retained in your workspace.</p>
           <div class="empty-state" style="margin-top: 12px;">Workspace tokens are workspace-scoped, revocable, and separate from admin access.</div>
         </article>
       </section>
@@ -214,10 +241,12 @@
       recurringIssues: document.getElementById('recurringIssues'),
       uploadLimits: document.getElementById('uploadLimits'),
       formMessage: document.getElementById('formMessage'),
-      latestMeta: document.getElementById('latestReportMeta'),
+      latestMeta: document.getElementById('latestReviewMeta'),
+      latestSummary: document.getElementById('latestReviewSummary'),
+      latestActions: document.getElementById('latestActionCards'),
       latestReport: document.getElementById('latestReport'),
+      fullReportDetails: document.getElementById('fullReportDetails'),
       openRecommendations: document.getElementById('openRecommendations'),
-      trendSnapshot: document.getElementById('trendSnapshot'),
       reportHistory: document.getElementById('reportHistory'),
       portalReviewQueue: document.getElementById('portalReviewQueue'),
       nextReviewFocus: document.getElementById('nextReviewFocus'),
@@ -291,6 +320,68 @@
       return items.map((item) => `<div class="row-item"><div><strong>${escapeHtml(item.title || item.label || item)}</strong>${item.details ? `<p>${escapeHtml(item.details)}</p>` : ''}</div>${item.badge ? `<span class="status">${escapeHtml(item.badge)}</span>` : ''}</div>`).join('');
     };
 
+    const normalizeActionItem = (item) => {
+      if (!item) return null;
+      if (typeof item === 'string') {
+        const title = item.trim();
+        return title ? { title, details: '' } : null;
+      }
+      if (typeof item === 'object') {
+        const title = String(item.title || item.label || item.name || item.text || '').trim();
+        const details = Array.isArray(item.details)
+          ? item.details.filter(Boolean).join(' · ')
+          : String(item.details || item.description || '').trim();
+        return title ? { title, details, badge: item.rank ? `#${item.rank}` : '' } : null;
+      }
+      return null;
+    };
+
+    const collectTopActions = (latest, memory, nextFocus) => {
+      const sources = [
+        latest?.top_priorities,
+        latest?.top_recommendations,
+        latest?.recommendations,
+        memory?.open_recommendations,
+        nextFocus,
+      ];
+      const cards = [];
+      for (const source of sources) {
+        for (const item of Array.isArray(source) ? source : []) {
+          const normalized = normalizeActionItem(item);
+          if (normalized) cards.push(normalized);
+          if (cards.length >= 3) break;
+        }
+        if (cards.length >= 3) break;
+      }
+      if (!cards.length) {
+        return [{
+          title: 'Read the latest review before changing budgets.',
+          details: 'No structured action was extracted yet, so keep this report as the source of truth.',
+        }];
+      }
+      const seen = new Set();
+      return cards.filter((card) => {
+        const key = card.title.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }).slice(0, 3);
+    };
+
+    const renderActionCards = (items) => items.map((item) => `
+      <div class="action-card">
+        <strong>${escapeHtml(item.title)}</strong>
+        <p>${escapeHtml(item.details || 'Use the report for more detail.')}</p>
+      </div>
+    `).join('');
+
+    const friendlyBusinessType = (value) => {
+      const text = String(value || '').trim();
+      if (!text) return 'Not set yet';
+      if (text === 'manual_beta') return 'Private beta';
+      return text.replace(/_/g, ' ');
+    };
+
     const applyWorkspacePayload = (payload) => {
       state.workspace = payload.workspace || state.workspace;
       state.workspaceMemory = payload.workspace_memory || state.workspaceMemory;
@@ -341,9 +432,9 @@
 
       els.pills.innerHTML = workspace
         ? [
-            `Plan: ${workspace.plan || 'manual_beta'}`,
+            'Private portal',
             `Status: ${workspace.status || 'active'}`,
-            workspace.business_type ? `Business: ${workspace.business_type}` : null,
+            workspace.business_type ? `Business: ${friendlyBusinessType(workspace.business_type)}` : null,
             workspace.primary_goal ? `Goal: ${workspace.primary_goal}` : null,
           ].filter(Boolean).map(badge).join('')
         : (state.token ? badge('Invalid or expired link') : badge('Request workspace beta'));
@@ -359,10 +450,10 @@
       } else {
         els.context.innerHTML = [
           { title: 'Workspace', details: workspace.workspace_name },
-          { title: 'Business type', details: workspace.business_type || 'Not set' },
-          { title: 'Primary goal', details: workspace.primary_goal || 'Not set' },
-          { title: 'Risk appetite', details: workspace.risk_appetite || 'Not set' },
-          { title: 'Budget constraint', details: workspace.budget_constraint || 'Not set' },
+          { title: 'Business type', details: friendlyBusinessType(workspace.business_type) },
+          { title: 'Primary goal', details: workspace.primary_goal || 'Not set yet' },
+          { title: 'Risk appetite', details: workspace.risk_appetite || 'Not set yet' },
+          { title: 'Budget constraint', details: workspace.budget_constraint || 'Not set yet' },
           { title: 'Created', details: formatDate(workspace.created_at) },
         ].map((item) => `<div class="row-item"><div><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.details)}</p></div></div>`).join('');
 
@@ -396,34 +487,69 @@
         els.runButton.classList.remove('is-disabled');
       }
 
-      if (latest) {
-        const summary = latest.summary || {};
-        const openRecommendations = Array.isArray(memory.open_recommendations) ? memory.open_recommendations : (Array.isArray(latest.top_recommendations) ? latest.top_recommendations : []);
-        const trendSnapshot = Array.isArray(memory.trend_snapshot) ? memory.trend_snapshot : (Array.isArray(latest.trend_snapshot) ? latest.trend_snapshot : []);
-        const nextFocus = state.nextReviewFocus.length ? state.nextReviewFocus : (memory.next_review_focus || latest.summary?.next_review_focus || latest.next_review_focus || []);
+      const queuedReview = portalReviews.find((review) => !review.report_run_id) || portalReviews[0] || null;
+      const latestSummaryText = latest?.summary?.executive_summary || latest?.summary?.expected_impact || latest?.summary?.how_to_read || '';
+      const signalNote = (latest?.summary?.signal_note || latest?.summary?.metrics?.signal_note || memorySummary.confidence_or_signal_notes?.[0] || '').trim();
+      const spendAnalysed = latest?.spend_analysed ?? latest?.summary?.spend_analysed ?? latest?.summary?.metrics?.spend_analysed ?? null;
+      const rowCount = latest?.row_count ?? latest?.summary?.metrics?.row_count ?? null;
+      const openRecommendations = Array.isArray(memory.open_recommendations) ? memory.open_recommendations : (Array.isArray(latest?.top_recommendations) ? latest.top_recommendations : []);
+      const nextFocus = state.nextReviewFocus.length ? state.nextReviewFocus : (memory.next_review_focus || latest?.summary?.next_review_focus || latest?.next_review_focus || []);
+      const topActions = collectTopActions(latest, memory, nextFocus);
+      const hasStructuredActions = Boolean(latest && (Array.isArray(latest.top_priorities) && latest.top_priorities.length || Array.isArray(latest.top_recommendations) && latest.top_recommendations.length || Array.isArray(latest.recommendations) && latest.recommendations.length));
 
-        els.latestMeta.innerHTML = [
-          latest.report_title ? badge(latest.report_title) : null,
-          badge(formatDate(latest.created_at)),
-          latest.source_platforms?.length ? badge(latest.source_platforms.join(' + ')) : null,
-          latest.source_count ? badge(`${latest.source_count} file(s)`) : null,
-        ].filter(Boolean).join('');
+      els.latestMeta.innerHTML = latest
+        ? [
+            badge(latest.report_title ? 'Latest review ready' : 'Latest review ready'),
+            badge(formatDate(latest.created_at)),
+            latest.source_platforms?.length ? badge(latest.source_platforms.join(' + ')) : null,
+            spendAnalysed ? badge(`Spend analysed: ${typeof spendAnalysed === 'number' ? formatCurrency(spendAnalysed) : spendAnalysed}`) : (rowCount ? badge(`Rows analysed: ${Number(rowCount).toLocaleString()}`) : null),
+          ].filter(Boolean).join('')
+        : (queuedReview ? [badge('Review received'), badge(formatDate(queuedReview.created_at)), badge((Array.isArray(queuedReview.filenames) ? queuedReview.filenames : []).join(', ') || 'Queued upload')].join('') : badge('Upload your first review'));
+
+      els.latestSummary.innerHTML = latest
+        ? `
+          <div>
+            <h3>${escapeHtml(latest.report_title || 'Latest review ready')}</h3>
+            <p>${escapeHtml(latestSummaryText || 'No summary text yet.')}</p>
+          </div>
+          ${signalNote ? `<div class="row-item"><div><strong>Signal note</strong><p>${escapeHtml(signalNote)}</p></div></div>` : ''}
+        `
+        : queuedReview
+          ? `
+            <div>
+              <h3>Review received</h3>
+              <p>${escapeHtml((Array.isArray(queuedReview.filenames) ? queuedReview.filenames : []).join(', ') || 'Your upload is in the queue.')}</p>
+            </div>
+            <div class="row-item"><div><strong>Status</strong><p>${escapeHtml((queuedReview.status || 'received').replace(/_/g, ' '))}</p></div></div>
+          `
+          : `
+            <div>
+              <h3>Submit your first review</h3>
+              <p>Upload Google Ads or Meta Ads CSV exports to generate the first workspace review.</p>
+            </div>
+          `;
+
+      els.latestActions.innerHTML = renderActionCards(topActions);
+
+      if (latest) {
         const reportMarkdown = latest.report_markdown || latest.report_content || '';
+        const summary = latest.summary || {};
+        const reportHasActions = hasStructuredActions;
+        if (els.fullReportDetails) els.fullReportDetails.open = !reportHasActions;
         els.latestReport.innerHTML = reportMarkdown ? renderMarkdown(reportMarkdown) : `<div class="empty-state">${escapeHtml(summary.executive_summary || 'No report content yet.')}</div>`;
-        els.openRecommendations.innerHTML = renderLineItems(openRecommendations.map((item, index) => ({
-          title: item.title || item.label || item,
-          details: Array.isArray(item.details) ? item.details.join(' · ') : item.details || '',
-          badge: item.rank ? `#${item.rank}` : '',
-        })), 'No open recommendations yet.');
-        els.trendSnapshot.innerHTML = renderLineItems(trendSnapshot.map((item) => ({ title: item })), 'No trend snapshot yet.');
-        els.nextReviewFocus.innerHTML = renderLineItems(nextFocus.map((item) => ({ title: item })), 'No next review focus yet.');
       } else {
-        els.latestMeta.innerHTML = '';
-        els.latestReport.innerHTML = '<div class="empty-state">No report yet. Upload CSV exports to generate the first workspace review.</div>';
-        els.openRecommendations.innerHTML = '<div class="empty-state">Recommendations will appear after the first report.</div>';
-        els.trendSnapshot.innerHTML = '<div class="empty-state">Trend snapshots will appear after multiple reviews.</div>';
-        els.nextReviewFocus.innerHTML = '<div class="empty-state">Next review focus will appear after the first analysis.</div>';
+        if (els.fullReportDetails) els.fullReportDetails.open = true;
+        els.latestReport.innerHTML = queuedReview
+          ? '<div class="empty-state">The review is queued. The full report will appear here once processing finishes.</div>'
+          : '<div class="empty-state">No report yet. Upload CSV exports to generate the first workspace review.</div>';
       }
+
+      els.openRecommendations.innerHTML = renderLineItems(openRecommendations.map((item) => ({
+        title: item.title || item.label || item,
+        details: Array.isArray(item.details) ? item.details.join(' · ') : item.details || '',
+        badge: item.rank ? `#${item.rank}` : '',
+      })), latest ? 'No open recommendations yet.' : 'Recommendations will appear after the first report.');
+      els.nextReviewFocus.innerHTML = renderLineItems(nextFocus.map((item) => ({ title: item })), latest ? 'No next review focus yet.' : 'Next review focus will appear after the first analysis.');
 
       if (state.history.length) {
         els.reportHistory.innerHTML = state.history.map((item) => {
@@ -563,7 +689,7 @@
         setMessage(error?.message || 'Report generation failed.', 'error');
       } finally {
         state.submitting = false;
-        els.runButton.textContent = 'Run review';
+        els.runButton.textContent = 'Submit next review';
         els.runButton.disabled = !state.workspace;
       }
     };
