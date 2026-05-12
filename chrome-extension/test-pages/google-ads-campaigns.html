@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Google Ads — Campaigns</title>
+    <style>
+      :root { color-scheme: light; --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#64748b; --line:rgba(15,23,42,.10); --accent:#1d4ed8; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+      .shell { padding: 18px; }
+      .banner, .table-wrap { background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 14px 30px rgba(15,23,42,.06); }
+      .banner { padding: 18px; margin-bottom: 14px; }
+      .eyebrow { margin:0 0 6px; font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+      h1 { margin:0; font-size:26px; letter-spacing:-.03em; }
+      .banner p { margin:8px 0 0; color:var(--muted); line-height:1.45; max-width: 72ch; }
+      .tag { display:inline-flex; margin-top:10px; padding:5px 10px; border-radius:999px; background:rgba(29,78,216,.08); color:var(--accent); font-size:12px; font-weight:600; }
+      .table-wrap { overflow:auto; }
+      table { width:100%; border-collapse:separate; border-spacing:0; min-width: 1180px; }
+      thead th { position: sticky; top: 0; background: #f8fafc; z-index: 1; text-align:left; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; border-bottom:1px solid var(--line); padding: 12px 14px; }
+      tbody td { border-bottom:1px solid var(--line); padding: 12px 14px; font-size:14px; }
+      tbody tr:hover { background: rgba(29,78,216,.03); }
+      .num { text-align:right; white-space:nowrap; font-variant-numeric: tabular-nums; }
+      .status { display:inline-flex; padding:5px 8px; border-radius:999px; font-size:12px; font-weight:600; background:#eef2ff; color:#3730a3; }
+      .paused { background:#f1f5f9; color:#475569; }
+      .note { margin-top: 12px; color:var(--muted); font-size:13px; }
+      .campaign { font-weight:600; }
+    </style>
+  </head>
+  <body data-gnomeo-platform="Google Ads">
+    <div class="shell">
+      <section class="banner">
+        <p class="eyebrow">Google Ads · Campaigns</p>
+        <h1>Campaign performance</h1>
+        <p>Fake local test data only. This page is meant to exercise Gnomeo’s visible table extraction on a semantic campaign table.</p>
+        <span class="tag">Local test fixture</span>
+      </section>
+
+      <section class="table-wrap" aria-label="Campaign performance table">
+        <table>
+          <thead>
+            <tr>
+              <th>Campaign</th>
+              <th>Status</th>
+              <th class="num">Cost</th>
+              <th class="num">Impr.</th>
+              <th class="num">Clicks</th>
+              <th class="num">CTR</th>
+              <th class="num">Avg. CPC</th>
+              <th class="num">Conversions</th>
+              <th class="num">Cost / conv.</th>
+              <th class="num">Conv. value</th>
+              <th class="num">Conv. value / cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="campaign">Brand Search</td>
+              <td><span class="status">Eligible</span></td>
+              <td class="num">€6,200.00</td>
+              <td class="num">41,280</td>
+              <td class="num">2,430</td>
+              <td class="num">5.89%</td>
+              <td class="num">€2.55</td>
+              <td class="num">286</td>
+              <td class="num">€21.68</td>
+              <td class="num">€22,880.00</td>
+              <td class="num">3.69x</td>
+            </tr>
+            <tr>
+              <td class="campaign">Shopping / PMax</td>
+              <td><span class="status">Eligible</span></td>
+              <td class="num">€11,850.00</td>
+              <td class="num">88,430</td>
+              <td class="num">3,120</td>
+              <td class="num">3.53%</td>
+              <td class="num">€3.80</td>
+              <td class="num">312</td>
+              <td class="num">€37.98</td>
+              <td class="num">€34,560.00</td>
+              <td class="num">2.92x</td>
+            </tr>
+            <tr>
+              <td class="campaign">Generic Search</td>
+              <td><span class="status">Eligible</span></td>
+              <td class="num">€9,420.00</td>
+              <td class="num">63,200</td>
+              <td class="num">1,970</td>
+              <td class="num">3.12%</td>
+              <td class="num">€4.78</td>
+              <td class="num">84</td>
+              <td class="num">€112.14</td>
+              <td class="num">€8,960.00</td>
+              <td class="num">0.95x</td>
+            </tr>
+            <tr>
+              <td class="campaign">Display / Discovery</td>
+              <td><span class="status paused">Paused</span></td>
+              <td class="num">€1,180.00</td>
+              <td class="num">154,900</td>
+              <td class="num">760</td>
+              <td class="num">0.49%</td>
+              <td class="num">€1.55</td>
+              <td class="num">11</td>
+              <td class="num">€107.27</td>
+              <td class="num">€540.00</td>
+              <td class="num">0.46x</td>
+            </tr>
+            <tr>
+              <td class="campaign">Competitor Conquest</td>
+              <td><span class="status">Limited</span></td>
+              <td class="num">€3,460.00</td>
+              <td class="num">28,140</td>
+              <td class="num">1,080</td>
+              <td class="num">3.84%</td>
+              <td class="num">€3.20</td>
+              <td class="num">38</td>
+              <td class="num">€91.05</td>
+              <td class="num">€3,820.00</td>
+              <td class="num">1.10x</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+      <p class="note">Visible campaign performance only. Use this page to test row ranking, spend vs. conversion balance, and preview limiting.</p>
+    </div>
+  </body>
+</html>

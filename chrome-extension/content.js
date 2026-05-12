@@ -100,11 +100,16 @@
   });
 
   const detectPlatform = () => {
+    const bodyPlatform = normalizeText(document.body?.dataset?.gnomeoPlatform || '');
+    const metaPlatform = normalizeText(document.querySelector('meta[name="gnomeo-platform"]')?.content || '');
+    if (bodyPlatform) return bodyPlatform;
+    if (metaPlatform) return metaPlatform;
     const hostName = location.hostname.toLowerCase();
     const path = location.pathname.toLowerCase();
     if (hostName.includes('google.com') && path.includes('/')) return 'Google Ads';
     if (hostName.includes('facebook.com') || hostName.includes('meta.com')) return 'Meta Ads';
     if (hostName.includes('linkedin.com') && path.includes('/campaignmanager')) return 'LinkedIn Campaign Manager';
+    if (hostName === 'localhost' || hostName === '127.0.0.1') return 'Local test page';
     return 'Unknown platform';
   };
 

@@ -21,13 +21,33 @@ A local-loadable prototype for a calm ad-spend review layer.
 - Meta Business / Ads Manager
 - LinkedIn Campaign Manager
 
+## Local test pages
+
+Use these fake pages to test the visible-table flow without live accounts:
+
+- `chrome-extension/test-pages/google-ads-campaigns.html`
+- `chrome-extension/test-pages/meta-ads-campaigns.html`
+- `chrome-extension/test-pages/linkedin-ads-campaigns.html`
+- `chrome-extension/test-pages/no-table.html`
+
+Optional index:
+
+- `chrome-extension/test-pages/index.html`
+
+Recommended test method:
+
+1. `cd /Users/matthewjameson/Gnomeo`
+2. `python3 -m http.server 8080`
+3. Open `http://localhost:8080/chrome-extension/test-pages/`
+4. Load the unpacked extension in Chrome and click **Review with Gnomeo**
+5. Click **Review visible table** on a campaign page
+
 ## How to load it in Chrome
 
 1. Open `chrome://extensions`
 2. Turn on **Developer mode**
 3. Click **Load unpacked**
 4. Select the `chrome-extension/` folder in this repo
-5. Open a supported ad platform and click **Review with Gnomeo**
 
 ## Current status
 
@@ -36,6 +56,7 @@ A local-loadable prototype for a calm ad-spend review layer.
 - No screenshots are used.
 - No background monitoring is used.
 - The extension reads **visible rows only** after you click **Review visible table**.
+- Campaign-level pages are the MVP default because they usually contain the clearest spend/result signals.
 - Extraction may be imperfect because ad-platform UIs change frequently.
 - Nothing is sent or stored yet.
 
