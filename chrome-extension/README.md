@@ -6,10 +6,11 @@ A local-loadable prototype for a calm ad-spend review layer.
 
 - Adds a small **Review with Gnomeo** button on supported ad-platform pages.
 - Opens a lightweight right-side review panel.
-- Lets you paste or upload a CSV export.
+- Lets you review the **visible table only**.
 - Shows a concise review summary:
   - Top finding
   - Key signals
+  - Safe preview
   - What deserves attention
   - What changed since last review
   - Privacy note
@@ -32,12 +33,16 @@ A local-loadable prototype for a calm ad-spend review layer.
 
 - This is a **local prototype**.
 - Ad-platform APIs are **not connected yet**.
-- The first version uses **mocked review data** until you paste or upload a CSV export.
-- Review comparisons are stored only as **compact local summaries** in the browser.
+- No screenshots are used.
+- No background monitoring is used.
+- The extension reads **visible rows only** after you click **Review visible table**.
+- Extraction may be imperfect because ad-platform UIs change frequently.
+- Nothing is sent or stored yet.
 
 ## Privacy
 
-- Raw CSV rows are not stored.
+- Raw page data is not transmitted.
+- Raw extracted rows are not persisted.
 - No admin endpoints are exposed.
 - No billing, auth, or automation flows are included.
 - The design stays intentionally small and calm.

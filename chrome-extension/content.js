@@ -53,7 +53,7 @@
         top: 16px;
         right: 16px;
         bottom: 16px;
-        width: min(420px, calc(100vw - 32px));
+        width: min(440px, calc(100vw - 32px));
         pointer-events: auto;
         transform: translateX(110%);
         transition: transform 180ms ease;
@@ -87,6 +87,8 @@
 
   const button = shadow.querySelector('.button');
   const panel = shadow.querySelector('.panel-shell');
+  const frame = shadow.querySelector('iframe');
+
   const setOpen = (open) => {
     panel.dataset.open = open ? 'true' : 'false';
     panel.setAttribute('aria-hidden', open ? 'false' : 'true');
@@ -97,9 +99,382 @@
     setOpen(panel.dataset.open !== 'true');
   });
 
+  const detectPlatform = () => {
+    const hostName = location.hostname.toLowerCase();
+    const path = location.pathname.toLowerCase();
+    if (hostName.includes('google.com') && path.includes('/')) return 'Google Ads';
+    if (hostName.includes('facebook.com') || hostName.includes('meta.com')) return 'Meta Ads';
+    if (hostName.includes('linkedin.com') && path.includes('/campaignmanager')) return 'LinkedIn Campaign Manager';
+    return 'Unknown platform';
+  };
+
+  const normalizeText = (value) => String(value ?? '').replace(/\s+/g, ' ').trim();
+
+  const isVisible = (el) => {
+    if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
+    const style = window.getComputedStyle(el);
+    if (!style) return false;
+    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+    return el.getClientRects().length > 0;
+  };
+
+  const getVisibleText = (el) => {
+    if (!isVisible(el)) return '';
+    const text = normalizeText(el.innerText || el.textContent || '');
+    return text;
+  };
+
+  const getRowElements = (container) => {
+    if (container.tagName === 'TABLE') {
+      return Array.from(container.querySelectorAll('tr')).filter(isVisible);
+    }
+    return Array.from(container.querySelectorAll('[role="row"], tr')).filter(isVisible);
+  };
+
+  const getCellElements = (row) => {
+    const selectors = [
+      ':scope > th',
+      ':scope > td',
+      ':scope > [role="columnheader"]',
+      ':scope > [role="cell"]',
+    ].join(', ');
+    let cells = Array.from(row.querySelectorAll(selectors)).filter(isVisible);
+    if (cells.length < 2) {
+      cells = Array.from(row.children || []).filter(isVisible);
+    }
+    return cells.filter((cell) => getVisibleText(cell));
+  };
+
+  const textIsNumeric = (text) => /^[£€$]?\s*-?[\d,.]+(?:\s*%|x)?$/i.test(normalizeText(text));
+
+  const detectMetricKind = (text) => {
+    const value = normalizeText(text).toLowerCase();
+    if (/\broas\b/.test(value)) return 'roas';
+    if (/\bcpa\b|cost per result|cost per action/.test(value)) return 'cpa';
+    if (/\bcpc\b|cost per click/.test(value)) return 'cpc';
+    if (/\bctr\b|click-through/.test(value)) return 'ctr';
+    if (/\bspend\b|\bcost\b|amount spent|media spend/.test(value)) return 'spend';
+    if (/\bclicks\b/.test(value)) return 'clicks';
+    if (/\bimpressions\b/.test(value)) return 'impressions';
+    if (/\bconversions?\b|\bresults?\b|all conversions?/.test(value)) return 'conversions';
+    if (/\brevenue\b|\bvalue\b|conversion value/.test(value)) return 'revenue';
+    return '';
+  };
+
+  const detectLabelKind = (text) => {
+    const value = normalizeText(text).toLowerCase();
+    if (/campaign/.test(value)) return 'campaign';
+    if (/ad set/.test(value)) return 'ad set';
+    if (/ad group/.test(value)) return 'ad group';
+    if (/ad name/.test(value)) return 'ad name';
+    if (/keyword|search term/.test(value)) return 'keyword';
+    if (/source|name|label/.test(value)) return 'name';
+    return '';
+  };
+
+  const parseCell = (text) => {
+    const raw = normalizeText(text);
+    if (!raw) return { raw: '', type: 'text', value: null, currency: '' };
+    const percent = raw.match(/^(-?\d[\d,.]*)\s*%$/);
+    if (percent) return { raw, type: 'percent', value: Number(percent[1].replace(/,/g, '')), currency: '' };
+    const ratio = raw.match(/^(-?\d[\d,.]*)x$/i);
+    if (ratio) return { raw, type: 'ratio', value: Number(ratio[1].replace(/,/g, '')), currency: '' };
+    const currency = raw.match(/^([£€$])\s*(-?[\d,.]+(?:\.\d+)?)$/) || raw.match(/^(-?[\d,.]+(?:\.\d+)?)\s*([£€$])$/);
+    if (currency) {
+      const symbol = currency[1] && /[£€$]/.test(currency[1]) ? currency[1] : currency[2];
+      const number = Number(String(currency[1] && /[£€$]/.test(currency[1]) ? currency[2] : currency[1]).replace(/,/g, ''));
+      return { raw, type: 'currency', value: Number.isFinite(number) ? number : null, currency: symbol || '' };
+    }
+    const number = Number(raw.replace(/,/g, ''));
+    if (Number.isFinite(number) && !textIsNumeric(raw) && !/\s/.test(raw)) return { raw, type: 'number', value: number, currency: '' };
+    if (Number.isFinite(number)) return { raw, type: 'number', value: number, currency: '' };
+    return { raw, type: 'text', value: null, currency: '' };
+  };
+
+  const looksLikeHeaderRow = (row, maybeNextRow) => {
+    if (!row) return false;
+    const cells = row.cells;
+    if (!cells || cells.length < 2) return false;
+    if (row.hasHeaderCells) return true;
+    const textCells = cells.filter((cell) => !textIsNumeric(cell));
+    if (textCells.length === cells.length && cells.some((cell) => detectMetricKind(cell) || detectLabelKind(cell))) return true;
+    if (maybeNextRow) {
+      const nextNumericCount = maybeNextRow.cells.filter((cell) => textIsNumeric(cell)).length;
+      const thisNumericCount = cells.filter((cell) => textIsNumeric(cell)).length;
+      if (thisNumericCount < nextNumericCount && cells.some((cell) => /campaign|ad set|ad group|spend|clicks|results?|value|roas|cpa/i.test(cell))) return true;
+    }
+    return false;
+  };
+
+  const extractCandidate = (container) => {
+    const rows = getRowElements(container).map((row) => {
+      const cells = getCellElements(row).map((cell) => getVisibleText(cell)).filter(Boolean);
+      return {
+        row,
+        cells,
+        hasHeaderCells: Boolean(row.querySelector('th,[role="columnheader"]')),
+      };
+    }).filter((entry) => entry.cells.length >= 2);
+
+    if (rows.length < 2) return null;
+
+    let headerIndex = rows.findIndex((entry) => entry.hasHeaderCells);
+    if (headerIndex < 0 && looksLikeHeaderRow(rows[0], rows[1])) headerIndex = 0;
+
+    let headers = [];
+    let dataRows = rows;
+    if (headerIndex >= 0) {
+      headers = rows[headerIndex].cells;
+      dataRows = rows.slice(headerIndex + 1);
+    } else {
+      headers = rows[0].cells.map((_, index) => `Column ${index + 1}`);
+    }
+
+    if (!dataRows.length) return null;
+
+    const maxColumns = Math.max(headers.length, ...dataRows.map((entry) => entry.cells.length));
+    while (headers.length < maxColumns) headers.push(`Column ${headers.length + 1}`);
+
+    const metricColumns = [];
+    const labelColumns = [];
+    headers.forEach((header, index) => {
+      const metricKind = detectMetricKind(header);
+      if (metricKind) metricColumns.push({ index, kind: metricKind, label: header });
+      const labelKind = detectLabelKind(header);
+      if (labelKind) labelColumns.push({ index, kind: labelKind, label: header });
+    });
+
+    const sampleCellsByColumn = headers.map((_, index) => dataRows.slice(0, 5).map((row) => row.cells[index]).filter(Boolean));
+    metricColumns.forEach((column) => {
+      if (!sampleCellsByColumn[column.index].length) return;
+      const rawValues = sampleCellsByColumn[column.index];
+      if (!rawValues.some((cell) => /[£€$%x]/i.test(cell)) && !/roas|cpa|cpc|ctr|spend|cost|clicks|impressions|conversion|result|value/i.test(column.label)) {
+        // Keep only likely metric columns.
+        column.kind = '';
+      }
+    });
+
+    const filteredMetricColumns = metricColumns.filter((column) => column.kind);
+    const inferredLabelIndex = labelColumns[0]?.index ?? headers.findIndex((header, index) => {
+      if (filteredMetricColumns.some((column) => column.index === index)) return false;
+      return sampleCellsByColumn[index].some((cell) => !textIsNumeric(cell));
+    });
+    const labelIndex = inferredLabelIndex >= 0 ? inferredLabelIndex : 0;
+
+    const parsedRows = dataRows.map((entry) => {
+      const cells = headers.map((_, index) => entry.cells[index] || '');
+      const label = normalizeText(cells[labelIndex] || cells.find((cell, index) => index !== labelIndex && !textIsNumeric(cell)) || cells[0] || 'Row');
+      const metrics = {};
+      filteredMetricColumns.forEach((column) => {
+        metrics[column.kind] = parseCell(cells[column.index]);
+      });
+      return { label, cells, metrics };
+    }).filter((row) => row.cells.some((cell) => normalizeText(cell)));
+
+    const numericScore = (row) => {
+      const spend = row.metrics.spend?.value ?? null;
+      const conversions = row.metrics.conversions?.value ?? row.metrics.results?.value ?? null;
+      const roas = row.metrics.roas?.value ?? null;
+      return {
+        spend: Number.isFinite(spend) ? spend : -1,
+        conversions: Number.isFinite(conversions) ? conversions : -1,
+        roas: Number.isFinite(roas) ? roas : -1,
+      };
+    };
+
+    const score = parsedRows.length * 10 + filteredMetricColumns.length * 5 + (headerIndex >= 0 ? 5 : 0) + (container.tagName === 'TABLE' ? 4 : 0);
+    return {
+      container,
+      kind: container.tagName === 'TABLE' ? 'table' : (container.getAttribute('role') || 'grid'),
+      headers,
+      dataRows: parsedRows,
+      metricColumns: filteredMetricColumns,
+      labelIndex,
+      score,
+      numericScore,
+    };
+  };
+
+  const collectCandidates = () => {
+    const roots = Array.from(document.querySelectorAll('table, [role="grid"], [role="table"]')).filter(isVisible);
+    const candidates = roots.map(extractCandidate).filter(Boolean);
+    const rowGroups = Array.from(document.querySelectorAll('[role="row"]'))
+      .filter(isVisible)
+      .map((row) => ({
+        container: row,
+        kind: 'row',
+        headers: Array.from(getCellElements(row)).map((cell, index) => normalizeText(cell) || `Column ${index + 1}`),
+        dataRows: [],
+        metricColumns: [],
+        labelIndex: 0,
+        score: 0,
+        numericScore: () => ({ spend: -1, conversions: -1, roas: -1 }),
+      }));
+    if (!candidates.length && rowGroups.length) {
+      // Not enough structure to use alone, but keep a minimal fallback candidate if rows are clearly visible.
+      const rowTexts = rowGroups.slice(0, 5).map((row) => normalizeText(row.container.innerText || row.container.textContent || '')).filter(Boolean);
+      if (rowTexts.length >= 2) {
+        const fallback = {
+          container: rowGroups[0].container,
+          kind: 'row-group',
+          headers: rowGroups[0].headers,
+          dataRows: rowTexts.map((text, index) => ({ label: text.split(' · ')[0] || `Row ${index + 1}`, cells: [text], metrics: {} })),
+          metricColumns: [],
+          labelIndex: 0,
+          score: rowTexts.length,
+          numericScore: () => ({ spend: -1, conversions: -1, roas: -1 }),
+        };
+        candidates.push(fallback);
+      }
+    }
+    return candidates.sort((a, b) => b.score - a.score);
+  };
+
+  const formatMoney = (value, currency = '') => {
+    if (!Number.isFinite(Number(value))) return '—';
+    const raw = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 2 }).format(Number(value));
+    return `${currency || ''}${raw}`;
+  };
+
+  const formatPlain = (value, digits = 0) => {
+    if (!Number.isFinite(Number(value))) return '—';
+    return new Intl.NumberFormat('en-GB', { maximumFractionDigits: digits, minimumFractionDigits: digits }).format(Number(value));
+  };
+
+  const buildReview = (candidate, platform) => {
+    const rows = candidate.dataRows || [];
+    const labelIndex = candidate.labelIndex ?? 0;
+    const spendRow = rows.filter((row) => Number.isFinite(row.metrics.spend?.value)).sort((a, b) => (b.metrics.spend.value - a.metrics.spend.value))[0] || null;
+    const conversionRow = rows.filter((row) => Number.isFinite(row.metrics.conversions?.value) || Number.isFinite(row.metrics.results?.value)).sort((a, b) => {
+      const aValue = a.metrics.conversions?.value ?? a.metrics.results?.value ?? -1;
+      const bValue = b.metrics.conversions?.value ?? b.metrics.results?.value ?? -1;
+      return bValue - aValue;
+    })[0] || null;
+    const roasRow = rows.filter((row) => Number.isFinite(row.metrics.roas?.value)).sort((a, b) => (b.metrics.roas.value - a.metrics.roas.value))[0] || null;
+    const watchRow = spendRow && ((spendRow.metrics.conversions?.value ?? spendRow.metrics.results?.value ?? 0) === 0 || !conversionRow) ? spendRow : (spendRow || conversionRow || rows[0] || null);
+
+    const spendValue = spendRow?.metrics.spend?.value;
+    const spendCurrency = spendRow?.metrics.spend?.currency || conversionRow?.metrics.spend?.currency || '';
+    const conversionValue = conversionRow?.metrics.conversions?.value ?? conversionRow?.metrics.results?.value;
+    const conversionLabel = conversionRow?.metrics.conversions ? 'conversions' : (conversionRow?.metrics.results ? 'results' : 'results');
+    const roasValue = roasRow?.metrics.roas?.value;
+
+    const keySignals = [];
+    if (spendRow) keySignals.push({ label: 'Highest visible spend', title: spendRow.label, details: `${formatMoney(spendValue, spendCurrency)} spend` });
+    if (conversionRow) keySignals.push({ label: 'Strongest visible conversion signal', title: conversionRow.label, details: `${formatPlain(conversionValue)} ${conversionLabel}` });
+    if (roasRow) keySignals.push({ label: 'Best visible ROAS signal', title: roasRow.label, details: `ROAS ${formatPlain(roasValue, 2)}x` });
+    if (watchRow) {
+      const watchConversions = watchRow.metrics.conversions?.value ?? watchRow.metrics.results?.value ?? null;
+      const watchSpend = watchRow.metrics.spend?.value ?? null;
+      keySignals.push({
+        label: 'Main visible watch item',
+        title: watchRow.label,
+        details: Number.isFinite(watchConversions) ? `${formatMoney(watchSpend, watchRow.metrics.spend?.currency || '')} spend · ${formatPlain(watchConversions)} results` : `${formatMoney(watchSpend, watchRow.metrics.spend?.currency || '')} spend · limited conversion signal`,
+      });
+    }
+    keySignals.push({ label: 'Review confidence', title: 'Limited — visible rows only', details: '' });
+
+    const topFinding = spendRow && conversionRow && spendRow.label !== conversionRow.label
+      ? `From the visible rows, ${spendRow.label} appears to carry the highest spend, while ${conversionRow.label} shows the clearest conversion signal. Treat this as a visible-page spot check, not a full review.`
+      : spendRow
+        ? `From the visible rows, ${spendRow.label} appears to carry the highest spend. Review this row first before changing budget.`
+        : `Gnomeo found visible table rows on this page, but the metric columns are still too limited for a confident read.`;
+
+    const attention = spendRow
+      ? [
+          `Review ${spendRow.label} first.`,
+          conversionRow && conversionRow.label !== spendRow.label ? `Protect ${conversionRow.label} from accidental cuts.` : 'Protect efficient rows from accidental cuts.',
+          'Treat this as a visible-page spot check, not a full account review.',
+        ]
+      : [
+          'Try opening a campaign table, changing the date range, or using paste/upload.',
+          'Try again after the page finishes loading.',
+          'Use this as a visible-page spot check, not a full account review.',
+        ];
+
+    const previewRows = rows.slice(0, 5).map((row) => {
+      const cellPreview = row.cells.slice(0, 4).filter(Boolean);
+      const metricPreview = [];
+      ['spend', 'conversions', 'results', 'roas', 'cpa'].forEach((kind) => {
+        const metric = row.metrics[kind];
+        if (metric && metric.raw) metricPreview.push(metric.raw);
+      });
+      return {
+        label: row.label,
+        metrics: metricPreview.length ? metricPreview : cellPreview.slice(1),
+        cells: cellPreview,
+      };
+    });
+
+    return {
+      success: true,
+      platform,
+      tableKind: candidate.kind,
+      rowsDetected: rows.length,
+      columnsDetected: candidate.headers.length,
+      metricColumns: candidate.metricColumns.map((column) => column.label),
+      reviewConfidence: 'Limited — visible rows only',
+      previewRows,
+      summary: {
+        executiveFinding: topFinding,
+        keySignals,
+        attention,
+        comparison: ['This is the first visible-page review in this panel session.'],
+        privacyNote: 'This prototype only reads the visible page after you click Review visible table. Nothing is sent or stored yet.',
+      },
+      snapshot: {
+        spendLabel: spendRow?.label || '',
+        spendValue: Number.isFinite(spendValue) ? spendValue : null,
+        conversionLabel: conversionRow?.label || '',
+        conversionValue: Number.isFinite(conversionValue) ? conversionValue : null,
+        roasLabel: roasRow?.label || '',
+        roasValue: Number.isFinite(roasValue) ? roasValue : null,
+        rowsDetected: rows.length,
+      },
+    };
+  };
+
+  const extractVisibleTableReview = () => {
+    const platform = detectPlatform();
+    const candidates = collectCandidates();
+    if (!candidates.length) {
+      return {
+        success: false,
+        platform,
+        tableKind: 'none',
+        rowsDetected: 0,
+        columnsDetected: 0,
+        metricColumns: [],
+        reviewConfidence: 'Limited — visible rows only',
+        previewRows: [],
+        summary: {
+          executiveFinding: 'Gnomeo could not find a visible campaign table on this page.',
+          keySignals: [],
+          attention: [
+            'Try opening a campaign table.',
+            'Change the date range if the table is collapsed or empty.',
+            'Use paste or upload if the page layout is still hiding the rows.',
+          ],
+          comparison: ['No visible table was captured yet in this panel session.'],
+          privacyNote: 'This prototype only reads the visible page after you click Review visible table. Nothing is sent or stored yet.',
+        },
+      };
+    }
+
+    return buildReview(candidates[0], platform);
+  };
+
+  const requestId = () => (window.crypto && typeof window.crypto.randomUUID === 'function' ? window.crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+
   window.addEventListener('message', (event) => {
-    if (event.source !== panel.querySelector('iframe')?.contentWindow) return;
-    if (!event.data || event.data.type !== 'gnomeo-close') return;
-    setOpen(false);
+    if (event.source !== frame.contentWindow) return;
+    const data = event.data || {};
+    if (data.type !== 'gnomeo-review-visible-table-request') return;
+    const response = extractVisibleTableReview();
+    frame.contentWindow?.postMessage({
+      type: 'gnomeo-visible-table-result',
+      requestId: data.requestId || '',
+      payload: response,
+    }, '*');
   });
 })();
