@@ -11,6 +11,73 @@ const REPORTS_BUCKET = 'reports';
 const ALLOWED_BETA_STATUSES = new Set(['new', 'contacted', 'workspace_created', 'declined']);
 const ALLOWED_WORKSPACE_STATUSES = new Set(['active', 'inactive', 'cancelled', 'pending']);
 const ALLOWED_WORKSPACE_PLANS = new Set(['manual_beta', 'pro', 'agency', 'free']);
+const SCHEMA_EXPECTATIONS = {
+  profiles: ['id', 'email', 'created_at'],
+  workspaces: [
+    'id',
+    'profile_id',
+    'owner_email',
+    'workspace_name',
+    'business_type',
+    'primary_goal',
+    'risk_appetite',
+    'budget_constraint',
+    'notes',
+    'plan',
+    'status',
+    'created_at',
+    'updated_at',
+    'portal_token_hash',
+    'portal_token_created_at',
+    'portal_token_last_used_at',
+    'portal_token_revoked_at',
+    'memory_summary',
+    'recurring_issues',
+    'open_recommendations',
+    'trend_snapshot',
+    'next_review_focus',
+    'last_handover_at',
+    'beta_request_id',
+    'website',
+    'platforms',
+    'review_goal',
+    'is_agency',
+  ],
+  report_runs: [
+    'id',
+    'workspace_id',
+    'status',
+    'source_count',
+    'platforms',
+    'spend_analysed',
+    'revenue_analysed',
+    'roas',
+    'wasted_spend',
+    'report_url',
+    'report_html_path',
+    'report_title',
+    'report_content',
+    'report_markdown',
+    'source_platforms',
+    'source_filenames',
+    'row_count',
+    'input_bytes',
+    'summary',
+    'top_recommendations',
+    'trend_snapshot',
+    'sources',
+    'top_priorities',
+    'recommendations',
+    'trend_notes',
+    'completed_at',
+    'error_message',
+    'metadata',
+    'created_at',
+  ],
+  usage_events: ['id', 'workspace_id', 'event_type', 'plan', 'metadata', 'created_at'],
+  beta_requests: ['id', 'created_at', 'name', 'email', 'company', 'website', 'platforms', 'monthly_spend_range', 'is_agency', 'review_goal', 'notes', 'status', 'source', 'consent_at', 'workspace_id', 'workspace_created_at', 'portal_link_created_at'],
+  portal_review_submissions: ['id', 'created_at', 'workspace_id', 'status', 'filenames', 'platforms', 'file_count', 'report_run_id', 'completed_at', 'notes'],
+};
 
 const getHeader = (req, name) => {
   const target = String(name).toLowerCase();
@@ -77,6 +144,44 @@ const mapSchemaError = (error) => {
   if (/relation .* does not exist|schema cache/i.test(message)) return 'Supabase tables are missing. Apply the migration files.';
   if (/bucket.*not found|storage/i.test(message) && /not found/i.test(message)) return 'Supabase storage buckets are missing. Create the private submissions and reports buckets.';
   return message;
+};
+
+const schemaProbe = async (table, column) => {
+  try {
+    await restSelect(table, { select: column, limit: 1 });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const checkSchemaHealth = async () => {
+  const env = {
+    supabase_url: Boolean(String(process.env.SUPABASE_URL || '').trim()),
+    service_role: Boolean(String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()),
+    admin_secret: Boolean(String(process.env.ADMIN_SECRET || '').trim()),
+    resend_api_key: Boolean(String(process.env.RESEND_API_KEY || '').trim()),
+    admin_email: Boolean(String(process.env.ADMIN_EMAIL || '').trim()),
+  };
+
+  const missing = [];
+  if (!env.supabase_url || !env.service_role) {
+    return { ok: false, missing, env, schema_checks_skipped: true };
+  }
+
+  for (const [table, columns] of Object.entries(SCHEMA_EXPECTATIONS)) {
+    const tableExists = await schemaProbe(table, 'id');
+    if (!tableExists) {
+      missing.push({ table, column: null, kind: 'table' });
+      continue;
+    }
+    for (const column of columns) {
+      const exists = await schemaProbe(table, column);
+      if (!exists) missing.push({ table, column, kind: 'column' });
+    }
+  }
+
+  return { ok: missing.length === 0, missing, env };
 };
 
 const listCRM = async () => {
@@ -216,10 +321,13 @@ const createWorkspaceFromBetaRequest = async (betaRequest, req) => {
 
   const issued = await issuePortalToken(req, workspace, 'portal_token_generated');
   const updatedWorkspace = issued.workspace || workspace;
+  const now = new Date().toISOString();
 
   const [updatedRequest] = await restUpdate('beta_requests', { id: `eq.${betaRequest.id}` }, {
     status: 'workspace_created',
     workspace_id: updatedWorkspace.id,
+    workspace_created_at: betaRequest.workspace_created_at || updatedWorkspace.created_at || now,
+    portal_link_created_at: now,
   });
 
   return {
@@ -270,6 +378,22 @@ module.exports = async (req, res) => {
     }
 
     if (!requireProtectedAdmin(req, res)) return;
+
+    if (endpoint === 'schema-health') {
+      if (method !== 'GET') {
+        res.setHeader('Allow', 'GET');
+        return respondError(res, 405, 'Method not allowed');
+      }
+      const health = await checkSchemaHealth();
+      return respond(res, 200, {
+        success: true,
+        ok: health.ok,
+        missing: health.missing,
+        env: health.env,
+        schema_checks_skipped: health.schema_checks_skipped || false,
+      });
+    }
+
     ensureConfig();
 
     if (endpoint === 'beta-requests') {

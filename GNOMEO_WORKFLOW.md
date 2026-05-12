@@ -65,6 +65,15 @@ Notes:
 - Raw uploads are not part of beta request intake.
 - Stripe/auth comes later.
 
+## Beta readiness / schema health
+- Before testing any beta portal flow, open the protected admin Beta Readiness page.
+- Confirm the schema health check is Ready.
+- If any tables or columns are missing, apply `supabase/migrations/007_schema_reconcile_portal_beta.sql` first.
+- Re-run the readiness check after applying migrations.
+- Then test: beta request → workspace creation → portal upload → report display.
+- After report generation, confirm the portal refreshes latest report, history, memory, and review queue without a manual reload.
+- Keep the queued fallback available for generation failures.
+
 ## Workspace memory / handover
 - After each report, retain a compact workspace memory summary.
 - Keep current state, recurring issues, open recommendations, trend snapshot, and next review focus.

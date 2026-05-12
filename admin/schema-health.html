@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gnomeo Beta Readiness</title>
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body>
+    <main id="app" class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Gnomeo Admin</p>
+          <p class="notice">Protected admin check. Schema health stays private.</p>
+          <h1>Beta Readiness</h1>
+          <p class="subtle">Check required tables, columns, and env vars before testing customer portals.</p>
+        </div>
+        <div class="actions">
+          <a class="pill-link" href="/admin/index.html">Admin home</a>
+          <button id="reloadBtn" type="button" class="secondary">Recheck</button>
+          <button type="button" class="secondary" data-admin-logout>Log out</button>
+        </div>
+      </header>
+
+      <section class="card" style="padding: 20px; margin-bottom: 16px;">
+        <h2 id="overallStatus" style="margin-top: 0;">Checking schema…</h2>
+        <p class="subtle" id="overallNote">Loading required table and column checks.</p>
+        <p class="subtle">If anything is missing, apply <code>supabase/migrations/007_schema_reconcile_portal_beta.sql</code> before customer testing.</p>
+      </section>
+
+      <section class="grid" style="grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+        <article class="card" style="padding: 20px;">
+          <h2 style="margin-top: 0;">Database</h2>
+          <div id="dbStatus" class="subtle">Loading…</div>
+          <div id="missingList" style="margin-top: 12px;"></div>
+        </article>
+
+        <article class="card" style="padding: 20px;">
+          <h2 style="margin-top: 0;">Environment</h2>
+          <div id="envList" class="subtle">Loading…</div>
+          <p class="subtle" style="margin-top: 12px;">Required server vars: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ADMIN_SECRET, RESEND_API_KEY, ADMIN_EMAIL.</p>
+        </article>
+      </section>
+
+      <section class="card" style="padding: 20px; margin-top: 16px;">
+        <h2 style="margin-top: 0;">Workflow reminder</h2>
+        <ol class="subtle" style="padding-left: 22px; line-height: 1.7;">
+          <li>Run Beta Readiness first.</li>
+          <li>Apply the latest schema migration if anything is missing.</li>
+          <li>Test beta request → workspace → portal upload → report display.</li>
+          <li>Confirm refresh works after report generation.</li>
+          <li>Keep the queued fallback available.</li>
+        </ol>
+      </section>
+    </main>
+
+    <script src="auth.js"></script>
+    <script src="schema-health.js"></script>
+  </body>
+</html>

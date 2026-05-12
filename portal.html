@@ -291,6 +291,17 @@
       return items.map((item) => `<div class="row-item"><div><strong>${escapeHtml(item.title || item.label || item)}</strong>${item.details ? `<p>${escapeHtml(item.details)}</p>` : ''}</div>${item.badge ? `<span class="status">${escapeHtml(item.badge)}</span>` : ''}</div>`).join('');
     };
 
+    const applyWorkspacePayload = (payload) => {
+      state.workspace = payload.workspace || state.workspace;
+      state.workspaceMemory = payload.workspace_memory || state.workspaceMemory;
+      state.latestReport = payload.latest_report || payload.report_run || state.latestReport;
+      state.history = Array.isArray(payload.report_history) ? payload.report_history : state.history;
+      state.portalReviews = Array.isArray(payload.portal_reviews) ? payload.portal_reviews : state.portalReviews;
+      state.nextReviewFocus = Array.isArray(payload.next_review_focus) ? payload.next_review_focus : state.nextReviewFocus;
+      state.uploadLimits = payload.upload_limits || state.uploadLimits;
+      renderWorkspace();
+    };
+
     const setMessage = (text, kind = 'note') => {
       els.formMessage.className = kind === 'error' ? 'error-box' : kind === 'success' ? 'success-box' : 'helper-note';
       const support = kind === 'error'
@@ -397,7 +408,8 @@
           latest.source_platforms?.length ? badge(latest.source_platforms.join(' + ')) : null,
           latest.source_count ? badge(`${latest.source_count} file(s)`) : null,
         ].filter(Boolean).join('');
-        els.latestReport.innerHTML = latest.report_content ? renderMarkdown(latest.report_content) : `<div class="empty-state">${escapeHtml(summary.executive_summary || 'No report content yet.')}</div>`;
+        const reportMarkdown = latest.report_markdown || latest.report_content || '';
+        els.latestReport.innerHTML = reportMarkdown ? renderMarkdown(reportMarkdown) : `<div class="empty-state">${escapeHtml(summary.executive_summary || 'No report content yet.')}</div>`;
         els.openRecommendations.innerHTML = renderLineItems(openRecommendations.map((item, index) => ({
           title: item.title || item.label || item,
           details: Array.isArray(item.details) ? item.details.join(' · ') : item.details || '',
@@ -453,7 +465,7 @@
       }
     };
 
-    const fetchWorkspace = async () => {
+    const fetchWorkspace = async ({ silent = false } = {}) => {
       if (!state.token) {
         state.workspace = null;
         state.workspaceMemory = null;
@@ -463,50 +475,49 @@
         state.nextReviewFocus = [];
         state.uploadLimits = null;
         renderWorkspace();
-        setMessage('Request workspace beta to get a private portal link.', 'note');
+        if (!silent) setMessage('Request workspace beta to get a private portal link.', 'note');
         setLoading(false);
         return;
       }
 
-      setLoading(true);
-      setMessage('Loading workspace…', 'note');
+      if (!silent) {
+        setLoading(true);
+        setMessage('Loading workspace…', 'note');
+      }
       try {
         const response = await fetch(`/api/portal/workspace?token=${encodeURIComponent(state.token)}`, { cache: 'no-store' });
         const payload = await response.json();
         if (!response.ok || !payload.success) {
+          if (!silent) {
+            state.workspace = null;
+            state.workspaceMemory = null;
+            state.latestReport = null;
+            state.history = [];
+            state.uploadLimits = null;
+            renderWorkspace();
+            setMessage(payload.error || 'This portal link is invalid or has been revoked.', 'error');
+          }
+          return;
+        }
+
+        applyWorkspacePayload(payload);
+        if (!silent) setMessage('Workspace loaded.', 'success');
+        els.refreshButton.disabled = false;
+        els.refreshButton.classList.remove('is-disabled');
+      } catch (error) {
+        if (!silent) {
           state.workspace = null;
           state.workspaceMemory = null;
           state.latestReport = null;
           state.history = [];
+          state.portalReviews = [];
+          state.nextReviewFocus = [];
           state.uploadLimits = null;
           renderWorkspace();
-          setMessage(payload.error || 'This portal link is invalid or has been revoked.', 'error');
-          return;
+          setMessage(error?.message || 'Unable to load the workspace.', 'error');
         }
-
-        state.workspace = payload.workspace;
-        state.workspaceMemory = payload.workspace_memory || null;
-        state.latestReport = payload.latest_report || null;
-        state.history = Array.isArray(payload.report_history) ? payload.report_history : [];
-        state.portalReviews = Array.isArray(payload.portal_reviews) ? payload.portal_reviews : [];
-        state.nextReviewFocus = Array.isArray(payload.next_review_focus) ? payload.next_review_focus : [];
-        state.uploadLimits = payload.upload_limits || null;
-        renderWorkspace();
-        setMessage('Workspace loaded.', 'success');
-        els.refreshButton.disabled = false;
-        els.refreshButton.classList.remove('is-disabled');
-      } catch (error) {
-        state.workspace = null;
-        state.workspaceMemory = null;
-        state.latestReport = null;
-        state.history = [];
-        state.portalReviews = [];
-        state.nextReviewFocus = [];
-        state.uploadLimits = null;
-        renderWorkspace();
-        setMessage(error?.message || 'Unable to load the workspace.', 'error');
       } finally {
-        setLoading(false);
+        if (!silent) setLoading(false);
       }
     };
 
@@ -546,7 +557,8 @@
         state.uploadLimits = payload.upload_limits || state.uploadLimits;
         els.csvFiles.value = '';
         renderWorkspace();
-        setMessage(payload.queued ? (payload.message || 'Review received. Gnomeo will process this shortly.') : 'Report generated and saved to this workspace.', payload.queued ? 'note' : 'success');
+        await fetchWorkspace({ silent: true }).catch(() => {});
+        setMessage(payload.queued ? (payload.message || 'We could not finish the review immediately, so it has been queued for processing.') : 'Report generated and saved to this workspace.', payload.queued ? 'note' : 'success');
       } catch (error) {
         setMessage(error?.message || 'Report generation failed.', 'error');
       } finally {

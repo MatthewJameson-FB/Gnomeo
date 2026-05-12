@@ -89,11 +89,19 @@ const safeHistoryRun = (run) => ({
   summary: run.summary || {},
   top_recommendations: run.top_recommendations || [],
   trend_snapshot: run.trend_snapshot || [],
+  sources: run.sources || [],
+  recommendations: run.recommendations || [],
+  top_priorities: run.top_priorities || [],
+  trend_notes: run.trend_notes || '',
+  completed_at: run.completed_at || null,
+  error_message: run.error_message || null,
+  metadata: run.metadata || {},
 });
 
 const safeLatestRun = (run) => run ? {
   ...safeHistoryRun(run),
   report_content: run.report_content || '',
+  report_markdown: run.report_markdown || run.report_content || '',
 } : null;
 
 const safePortalReview = (row) => ({

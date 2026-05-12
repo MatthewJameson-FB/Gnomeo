@@ -59,6 +59,7 @@ const listPortalReviews = async (workspaceId, limit = 20) => {
 const toSafeReportRun = (run, parsed) => ({
   ...safeHistoryRun(run),
   report_content: run.report_content || '',
+  report_markdown: run.report_markdown || run.report_content || '',
   summary: run.summary || parsed || {},
   top_recommendations: run.top_recommendations || parsed?.key_decisions || [],
   trend_snapshot: run.trend_snapshot || parsed?.key_insights || [],
@@ -88,7 +89,7 @@ module.exports = async (req, res) => {
     const runs = await listReportRuns(workspace.id, 20);
     const portalReviews = await listPortalReviews(workspace.id, 20);
     const latest = runs[0] || null;
-    const latestMarkdown = latest?.report_content || '';
+    const latestMarkdown = latest?.report_markdown || latest?.report_content || '';
     const latestParsed = latestMarkdown ? parseReportMarkdown(latestMarkdown) : null;
     const limits = portalLimitsForPlan(workspace.plan);
     const reportsThisMonth = await countMonthlyReports(workspace.id);
@@ -100,6 +101,7 @@ module.exports = async (req, res) => {
     const latestReport = latest ? {
       ...safeHistoryRun(latest),
       report_content: latestMarkdown,
+      report_markdown: latest.report_markdown || latestMarkdown,
       summary: latest.summary || latestParsed || {},
       top_recommendations: latest.top_recommendations || latestParsed?.key_decisions || [],
       trend_snapshot: latest.trend_snapshot || latestParsed?.key_insights || [],
@@ -229,16 +231,33 @@ module.exports = async (req, res) => {
       workspace_id: workspace.id,
       status: 'completed',
       report_title: parsedReport.title,
+      report_markdown: reportResult.markdown,
       report_content: reportResult.markdown,
       source_count: files.length,
       source_platforms: detectedPlatforms.length ? detectedPlatforms : reportResult.source_platforms || [],
       platforms: detectedPlatforms.length ? detectedPlatforms : reportResult.source_platforms || [],
       source_filenames: files.map((file) => file.filename),
+      sources: files.map((file, index) => ({
+        filename: file.filename,
+        content_type: file.contentType,
+        platform: detectedPlatforms[index] || reportResult.source_platforms?.[index] || null,
+      })),
       row_count: reportResult.row_count || validation.totalRows,
       input_bytes: reportResult.input_bytes || totalBytes,
       summary,
+      top_priorities: parsedReport.key_decisions || [],
       top_recommendations: parsedReport.key_decisions || [],
+      recommendations: parsedReport.key_decisions || [],
       trend_snapshot: parsedReport.key_insights || [],
+      trend_notes: parsedReport.key_insights?.join(' · ') || '',
+      completed_at: new Date().toISOString(),
+      error_message: null,
+      metadata: {
+        source_count: files.length,
+        row_count: reportResult.row_count || validation.totalRows,
+        input_bytes: reportResult.input_bytes || totalBytes,
+        generated_by: 'portal',
+      },
       created_at: new Date().toISOString(),
     });
 
@@ -284,6 +303,7 @@ module.exports = async (req, res) => {
 
     return respond(res, 200, {
       success: true,
+      status: 'generated',
       workspace: publicWorkspace,
       report_run: latestRun,
       latest_report: latestRun,
@@ -305,7 +325,7 @@ module.exports = async (req, res) => {
     if (createdReview) {
       try {
         await restUpdate('portal_review_submissions', { id: `eq.${createdReview.id}` }, {
-          notes: 'Review received. Gnomeo will process this shortly.',
+          notes: 'We could not finish the review immediately, so it has been queued for processing.',
         });
       } catch (queueError) {
         console.warn('[gnomeo portal] portal review queue update failed (non-blocking):', String(queueError?.message || queueError || '').slice(0, 200));
@@ -315,13 +335,14 @@ module.exports = async (req, res) => {
     const portalReviews = await listPortalReviews(workspace.id, 20);
     const existingRuns = await listReportRuns(workspace.id, 20);
     const existingHistory = Array.isArray(existingRuns) ? existingRuns.map((run) => ({ ...safeHistoryRun(run), summary: run.summary || {}, top_recommendations: run.top_recommendations || [], trend_snapshot: run.trend_snapshot || [] })) : [];
-    const existingLatest = latestExistingRun ? toSafeReportRun(latestExistingRun, parseReportMarkdown(latestExistingRun.report_content || '')) : null;
+    const existingLatest = latestExistingRun ? toSafeReportRun(latestExistingRun, parseReportMarkdown(latestExistingRun.report_markdown || latestExistingRun.report_content || '')) : null;
     const publicWorkspace = safeWorkspace(workspace);
     delete publicWorkspace.owner_email;
     return respond(res, 200, {
       success: true,
       queued: true,
-      message: 'Review received. Gnomeo will process this shortly.',
+      status: 'queued',
+      message: 'We could not finish the review immediately, so it has been queued for processing.',
       workspace: publicWorkspace,
       report_run: existingLatest,
       latest_report: existingLatest,
