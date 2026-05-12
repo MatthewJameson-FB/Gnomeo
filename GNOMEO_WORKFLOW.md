@@ -65,6 +65,12 @@ Notes:
 - Raw uploads are not part of beta request intake.
 - Stripe/auth comes later.
 
+## Portal MVP framing
+- Treat the customer portal as a private review file / ad-spend review history.
+- The primary job is: latest review, top actions, upload next export, review history, and what Gnomeo remembers.
+- Keep the portal calm and rigid; avoid dashboard-style density.
+- Collapse long report bodies and keep deeper memory/details lower on the page.
+
 ## Beta readiness / schema health
 - Before testing any beta portal flow, open the protected admin Beta Readiness page.
 - Confirm the schema health check is Ready.

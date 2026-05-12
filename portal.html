@@ -4,17 +4,17 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="referrer" content="no-referrer" />
-  <title>Gnomeo Workspace</title>
-  <meta name="description" content="Private Gnomeo workspace portal for uploaded CSV reviews, memory, and report history." />
+  <title>Private Gnomeo review file</title>
+  <meta name="description" content="Private Gnomeo review file for the latest review, top actions, report history, and workspace memory." />
   <link rel="canonical" href="https://www.gnomeo.nl/portal.html" />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Gnomeo Workspace" />
-  <meta property="og:description" content="Private workspace portal for saved ad-spend reviews, memory, and history." />
+  <meta property="og:title" content="Private Gnomeo review file" />
+  <meta property="og:description" content="Private review file for the latest review, top actions, history, and memory." />
   <meta property="og:url" content="https://www.gnomeo.nl/portal.html" />
   <meta property="og:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Gnomeo Workspace" />
-  <meta name="twitter:description" content="Private workspace portal for saved ad-spend reviews, memory, and history." />
+  <meta name="twitter:title" content="Private Gnomeo review file" />
+  <meta name="twitter:description" content="Private review file for the latest review, top actions, history, and memory." />
   <meta name="twitter:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
   <link rel="stylesheet" href="/content-pages.css" />
   <style>
@@ -114,11 +114,11 @@
       <section class="hero">
         <div class="eyebrow">Private workspace</div>
         <h1 id="workspaceTitle">Gnomeo Workspace</h1>
-        <p class="subhead" id="workspaceSubtitle">Invite-only manual beta. Open your private portal link to view workspace context, upload CSV exports, and review saved analysis.</p>
+        <p class="subhead" id="workspaceSubtitle">Private ad-spend review history. Open your private link to see the latest review, top actions, and memory.</p>
         <div class="pill-row" id="workspacePills"></div>
         <div id="accessCallout" class="card" style="margin-top: 18px; display: none;">
-          <h2>Need access?</h2>
-          <p class="helper-note">Request the manual workspace beta and we’ll review it before creating a private portal link.</p>
+          <h2>Request access</h2>
+          <p class="helper-note">Gnomeo workspaces are currently invite-only.</p>
           <div style="margin-top: 14px;">
             <a class="button" href="/checkout.html">Request Workspace Beta</a>
           </div>
@@ -136,13 +136,14 @@
 
         <article class="card span-5 upload-card">
           <div class="muted-kicker">Submit next review</div>
-          <h2>Upload CSV exports</h2>
+          <h2>Upload next export</h2>
           <form id="uploadForm" class="workspace-form">
             <label>
               Google Ads and/or Meta Ads CSVs
               <input id="csvFiles" type="file" accept=".csv,text/csv" multiple disabled />
             </label>
             <div class="helper-note" id="uploadLimits">Open a valid portal link to see upload limits.</div>
+            <div id="queuedReviewState" class="empty-state" style="display:none;"></div>
             <div class="form-actions">
               <button id="runButton" class="button is-disabled" type="submit" disabled>Submit next review</button>
               <button id="refreshButton" class="button secondary is-disabled" type="button" disabled>Refresh workspace</button>
@@ -161,45 +162,26 @@
         </article>
 
         <article class="card span-6">
-          <div class="muted-kicker">Workspace memory</div>
-          <h2>Workspace memory</h2>
-          <div id="workspaceMemory" class="context-list"></div>
-        </article>
-
-        <article class="card span-6">
-          <div class="muted-kicker">Recommendations still open</div>
-          <h2>Open recommendations</h2>
-          <div id="openRecommendations" class="report-list"></div>
-        </article>
-
-        <article class="card span-6">
-          <div class="muted-kicker">Recurring issues</div>
-          <h2>Recurring issues</h2>
-          <div id="recurringIssues" class="report-list"></div>
-        </article>
-
-        <article class="card span-6">
-          <div class="muted-kicker">Report history</div>
-          <h2>Saved reviews</h2>
+          <div class="muted-kicker">Review history</div>
+          <h2>Review history</h2>
           <div id="reportHistory" class="history-list"></div>
         </article>
 
         <article class="card span-6">
-          <div class="muted-kicker">Recent uploads</div>
-          <h2>Recent uploads</h2>
-          <div id="portalReviewQueue" class="history-list"></div>
+          <div class="muted-kicker">What Gnomeo remembers</div>
+          <h2>What Gnomeo remembers</h2>
+          <div id="workspaceMemory" class="context-list"></div>
+          <div id="openRecommendations" class="report-list"></div>
+          <div id="recurringIssues" class="report-list"></div>
         </article>
 
-        <article class="card span-6">
-          <div class="muted-kicker">Workspace context</div>
-          <h2>Workspace context</h2>
-          <div id="workspaceContext" class="context-list"></div>
-        </article>
-
-        <article class="card span-6">
-          <div class="muted-kicker">Next review focus</div>
-          <h2>What to check next</h2>
-          <div id="nextReviewFocus" class="focus-list"></div>
+        <article class="card span-12">
+          <details id="workspaceDetails">
+            <summary>Workspace details</summary>
+            <div style="padding-top: 12px;">
+              <div id="workspaceContext" class="context-list"></div>
+            </div>
+          </details>
         </article>
 
         <article class="card span-12">
@@ -246,6 +228,7 @@
       latestActions: document.getElementById('latestActionCards'),
       latestReport: document.getElementById('latestReport'),
       fullReportDetails: document.getElementById('fullReportDetails'),
+      queuedReviewState: document.getElementById('queuedReviewState'),
       openRecommendations: document.getElementById('openRecommendations'),
       reportHistory: document.getElementById('reportHistory'),
       portalReviewQueue: document.getElementById('portalReviewQueue'),
@@ -254,6 +237,7 @@
       uploadForm: document.getElementById('uploadForm'),
       runButton: document.getElementById('runButton'),
       refreshButton: document.getElementById('refreshButton'),
+      workspaceDetails: document.getElementById('workspaceDetails'),
     };
 
     const escapeHtml = (value) => String(value ?? '')
@@ -354,6 +338,12 @@
         if (cards.length >= 3) break;
       }
       if (!cards.length) {
+        if (!latest) {
+          return [{
+            title: 'Upload your first export.',
+            details: 'Gnomeo will review Google Ads or Meta Ads CSV exports and save the result here.',
+          }];
+        }
         return [{
           title: 'Read the latest review before changing budgets.',
           details: 'No structured action was extracted yet, so keep this report as the source of truth.',
@@ -374,13 +364,6 @@
         <p>${escapeHtml(item.details || 'Use the report for more detail.')}</p>
       </div>
     `).join('');
-
-    const friendlyBusinessType = (value) => {
-      const text = String(value || '').trim();
-      if (!text) return 'Not set yet';
-      if (text === 'manual_beta') return 'Private beta';
-      return text.replace(/_/g, ' ');
-    };
 
     const applyWorkspacePayload = (payload) => {
       state.workspace = payload.workspace || state.workspace;
@@ -424,36 +407,55 @@
       const limits = state.uploadLimits;
       const latest = state.latestReport;
       const portalReviews = Array.isArray(state.portalReviews) ? state.portalReviews : [];
+      const queuedReview = portalReviews.find((review) => !review.report_run_id) || portalReviews[0] || null;
+      const hasToken = Boolean(state.token);
+      const hasWorkspace = Boolean(workspace);
+      const hasLatest = Boolean(latest);
+      const stateLabel = !hasToken
+        ? 'Private review link required'
+        : !hasWorkspace
+          ? 'Workspace link not available'
+          : hasLatest
+            ? 'Latest review ready'
+            : queuedReview
+              ? 'Review received'
+              : 'Upload your first ad export';
+      const stateCopy = !hasToken
+        ? 'Gnomeo workspaces are currently invite-only.'
+        : !hasWorkspace
+          ? 'This private link may be expired or incorrect.'
+          : hasLatest
+            ? 'Here is your private review file.'
+            : queuedReview
+              ? 'Gnomeo is processing this review. Return to this private link to see the report when it is ready.'
+              : 'Upload Google Ads and/or Meta Ads CSV exports. Gnomeo will review the data and save the result here.';
 
-      els.title.textContent = workspace?.workspace_name || 'Gnomeo Workspace';
-      els.subtitle.textContent = workspace
-        ? 'Quiet analyst workspace for saved ad-spend reviews, memory, and trend comparisons.'
-        : (state.token ? 'This portal link is invalid or expired.' : 'Request workspace beta to get a private portal link.');
+      els.title.textContent = hasWorkspace ? (workspace?.workspace_name || 'Private review file') : stateLabel;
+      els.subtitle.textContent = stateCopy;
 
-      els.pills.innerHTML = workspace
+      els.pills.innerHTML = hasWorkspace
         ? [
-            'Private portal',
-            `Status: ${workspace.status || 'active'}`,
-            workspace.business_type ? `Business: ${friendlyBusinessType(workspace.business_type)}` : null,
-            workspace.primary_goal ? `Goal: ${workspace.primary_goal}` : null,
-          ].filter(Boolean).map(badge).join('')
-        : (state.token ? badge('Invalid or expired link') : badge('Request workspace beta'));
+            badge('Private review file'),
+            latest?.created_at ? badge(formatDate(latest.created_at)) : null,
+            latest?.source_platforms?.length ? badge(latest.source_platforms.join(' + ')) : null,
+          ].filter(Boolean).join('')
+        : (hasToken ? badge('Private link loaded') : badge('Invite only'));
 
       if (!workspace) {
-        els.context.innerHTML = `<div class="empty-state">${state.token ? 'This portal link could not be found or has been revoked.' : 'Paste the private portal link to load the workspace.'}</div>`;
-        els.memory.innerHTML = '<div class="empty-state">Workspace memory will appear after the first review.</div>';
-        els.recurringIssues.innerHTML = '<div class="empty-state">Recurring issues will appear after the first review.</div>';
-        els.uploadLimits.textContent = state.token ? 'Upload is disabled until a valid portal link is loaded.' : 'Request workspace beta to get a private portal link.';
+        els.context.innerHTML = `<div class="empty-state">${hasToken ? 'This private link may be expired or incorrect.' : 'Gnomeo workspaces are currently invite-only.'}</div>`;
+        els.memory.innerHTML = '<div class="empty-state">Gnomeo will build memory after repeated reviews.</div>';
+        els.openRecommendations.innerHTML = '<div class="empty-state">Gnomeo will build memory after repeated reviews.</div>';
+        els.recurringIssues.innerHTML = '<div class="empty-state">Gnomeo will build memory after repeated reviews.</div>';
+        els.reportHistory.innerHTML = '<div class="empty-state">Review history will appear after your first review.</div>';
+        els.uploadLimits.textContent = hasToken ? 'Upload is disabled until a valid portal link is loaded.' : 'Request access to open your private review file.';
         els.csvFiles.disabled = true;
         els.runButton.disabled = true;
         els.runButton.classList.add('is-disabled');
       } else {
+        if (els.workspaceDetails) els.workspaceDetails.open = false;
         els.context.innerHTML = [
           { title: 'Workspace', details: workspace.workspace_name },
-          { title: 'Business type', details: friendlyBusinessType(workspace.business_type) },
           { title: 'Primary goal', details: workspace.primary_goal || 'Not set yet' },
-          { title: 'Risk appetite', details: workspace.risk_appetite || 'Not set yet' },
-          { title: 'Budget constraint', details: workspace.budget_constraint || 'Not set yet' },
           { title: 'Created', details: formatDate(workspace.created_at) },
         ].map((item) => `<div class="row-item"><div><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.details)}</p></div></div>`).join('');
 
@@ -465,20 +467,17 @@
         if (memorySummary.last_report_date) memoryItems.push({ title: 'Last handover', details: formatDate(memorySummary.last_report_date) });
         els.memory.innerHTML = memoryItems.length
           ? memoryItems.map((item) => `<div class="row-item"><div><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.details)}</p></div></div>`).join('')
-          : '<div class="empty-state">Workspace memory will appear after the first review.</div>';
+          : '<div class="empty-state">Gnomeo will build memory after repeated reviews.</div>';
 
         const recurringIssues = Array.isArray(memory.recurring_issues) ? memory.recurring_issues : [];
         els.recurringIssues.innerHTML = recurringIssues.length
-          ? recurringIssues.map((issue) => `<div class="row-item"><div><strong>Issue</strong><p>${escapeHtml(issue)}</p></div></div>`).join('')
-          : '<div class="empty-state">Recurring issues will appear after the first review.</div>';
+          ? recurringIssues.map((issue) => `<div class="row-item"><div><strong>Recurring issue</strong><p>${escapeHtml(issue)}</p></div></div>`).join('')
+          : '<div class="empty-state">Gnomeo will build memory after repeated reviews.</div>';
 
         if (limits) {
           els.uploadLimits.textContent = [
-            `${limits.plan_label}`,
-            `${limits.max_files} CSVs / report`,
-            `${formatBytes(limits.max_file_bytes)} / file`,
-            `${limits.max_total_rows?.toLocaleString?.() || limits.max_total_rows} rows / report`,
-            `${limits.max_reports_per_month} reports / month`,
+            `Up to ${limits.max_files} CSVs`,
+            `${formatBytes(limits.max_file_bytes)} each`,
           ].join(' · ');
         }
 
@@ -486,27 +485,47 @@
         els.runButton.disabled = false;
         els.runButton.classList.remove('is-disabled');
       }
-
-      const queuedReview = portalReviews.find((review) => !review.report_run_id) || portalReviews[0] || null;
       const latestSummaryText = latest?.summary?.executive_summary || latest?.summary?.expected_impact || latest?.summary?.how_to_read || '';
       const signalNote = (latest?.summary?.signal_note || latest?.summary?.metrics?.signal_note || memorySummary.confidence_or_signal_notes?.[0] || '').trim();
       const spendAnalysed = latest?.spend_analysed ?? latest?.summary?.spend_analysed ?? latest?.summary?.metrics?.spend_analysed ?? null;
       const rowCount = latest?.row_count ?? latest?.summary?.metrics?.row_count ?? null;
       const openRecommendations = Array.isArray(memory.open_recommendations) ? memory.open_recommendations : (Array.isArray(latest?.top_recommendations) ? latest.top_recommendations : []);
       const nextFocus = state.nextReviewFocus.length ? state.nextReviewFocus : (memory.next_review_focus || latest?.summary?.next_review_focus || latest?.next_review_focus || []);
-      const topActions = collectTopActions(latest, memory, nextFocus);
+      const topActions = !hasWorkspace
+        ? [{
+            title: hasToken ? 'Request help.' : 'Request access.',
+            details: hasToken ? 'This private link may be expired or incorrect.' : 'Gnomeo workspaces are currently invite-only.',
+          }]
+        : collectTopActions(latest, memory, nextFocus);
       const hasStructuredActions = Boolean(latest && (Array.isArray(latest.top_priorities) && latest.top_priorities.length || Array.isArray(latest.top_recommendations) && latest.top_recommendations.length || Array.isArray(latest.recommendations) && latest.recommendations.length));
+      const memoryActionCards = [
+        ...openRecommendations.map((item) => ({
+          title: item.title || item.label || item,
+          details: Array.isArray(item.details) ? item.details.join(' · ') : item.details || '',
+          badge: item.rank ? `#${item.rank}` : '',
+        })),
+        ...nextFocus.slice(0, 3).map((item) => ({ title: item, details: 'Next review focus.' })),
+      ];
 
-      els.latestMeta.innerHTML = latest
+      els.latestMeta.innerHTML = hasLatest
         ? [
-            badge(latest.report_title ? 'Latest review ready' : 'Latest review ready'),
+            badge('Latest review ready'),
             badge(formatDate(latest.created_at)),
             latest.source_platforms?.length ? badge(latest.source_platforms.join(' + ')) : null,
             spendAnalysed ? badge(`Spend analysed: ${typeof spendAnalysed === 'number' ? formatCurrency(spendAnalysed) : spendAnalysed}`) : (rowCount ? badge(`Rows analysed: ${Number(rowCount).toLocaleString()}`) : null),
           ].filter(Boolean).join('')
-        : (queuedReview ? [badge('Review received'), badge(formatDate(queuedReview.created_at)), badge((Array.isArray(queuedReview.filenames) ? queuedReview.filenames : []).join(', ') || 'Queued upload')].join('') : badge('Upload your first review'));
+        : (!hasWorkspace
+          ? badge(stateLabel)
+          : (queuedReview ? [badge('Review received'), badge(formatDate(queuedReview.created_at)), badge((Array.isArray(queuedReview.filenames) ? queuedReview.filenames : []).join(', ') || 'Queued upload')].join('') : badge('Upload your first export')));
 
-      els.latestSummary.innerHTML = latest
+      els.latestSummary.innerHTML = !hasWorkspace
+        ? `
+          <div>
+            <h3>${escapeHtml(stateLabel)}</h3>
+            <p>${escapeHtml(stateCopy)}</p>
+          </div>
+        `
+        : hasLatest
         ? `
           <div>
             <h3>${escapeHtml(latest.report_title || 'Latest review ready')}</h3>
@@ -524,14 +543,14 @@
           `
           : `
             <div>
-              <h3>Submit your first review</h3>
+              <h3>Upload your first ad export</h3>
               <p>Upload Google Ads or Meta Ads CSV exports to generate the first workspace review.</p>
             </div>
           `;
 
       els.latestActions.innerHTML = renderActionCards(topActions);
 
-      if (latest) {
+      if (hasLatest) {
         const reportMarkdown = latest.report_markdown || latest.report_content || '';
         const summary = latest.summary || {};
         const reportHasActions = hasStructuredActions;
@@ -539,56 +558,49 @@
         els.latestReport.innerHTML = reportMarkdown ? renderMarkdown(reportMarkdown) : `<div class="empty-state">${escapeHtml(summary.executive_summary || 'No report content yet.')}</div>`;
       } else {
         if (els.fullReportDetails) els.fullReportDetails.open = true;
-        els.latestReport.innerHTML = queuedReview
-          ? '<div class="empty-state">The review is queued. The full report will appear here once processing finishes.</div>'
-          : '<div class="empty-state">No report yet. Upload CSV exports to generate the first workspace review.</div>';
+        els.latestReport.innerHTML = !hasWorkspace
+          ? `<div class="empty-state">${escapeHtml(stateCopy)}</div>`
+          : (queuedReview
+            ? '<div class="empty-state">Review received. Gnomeo will process this review shortly.</div>'
+            : '<div class="empty-state">No report yet. Upload CSV exports to generate the first workspace review.</div>');
       }
 
-      els.openRecommendations.innerHTML = renderLineItems(openRecommendations.map((item) => ({
-        title: item.title || item.label || item,
-        details: Array.isArray(item.details) ? item.details.join(' · ') : item.details || '',
-        badge: item.rank ? `#${item.rank}` : '',
-      })), latest ? 'No open recommendations yet.' : 'Recommendations will appear after the first report.');
-      els.nextReviewFocus.innerHTML = renderLineItems(nextFocus.map((item) => ({ title: item })), latest ? 'No next review focus yet.' : 'Next review focus will appear after the first analysis.');
+      els.openRecommendations.innerHTML = renderLineItems(memoryActionCards, hasLatest ? 'No open recommendations yet.' : 'Gnomeo will build memory after repeated reviews.');
+
+      if (els.queuedReviewState) {
+        if (queuedReview && !hasLatest) {
+          const filenames = Array.isArray(queuedReview.filenames) ? queuedReview.filenames : [];
+          els.queuedReviewState.style.display = 'block';
+          els.queuedReviewState.innerHTML = `
+            <strong>Review received</strong>
+            <div>${escapeHtml((filenames.length ? filenames.join(', ') : 'Queued upload'))}</div>
+            <div class="helper-note">Submitted ${escapeHtml(formatDate(queuedReview.created_at))} · ${escapeHtml((queuedReview.status || 'received').replace(/_/g, ' '))}</div>
+          `;
+        } else {
+          els.queuedReviewState.style.display = 'none';
+          els.queuedReviewState.innerHTML = '';
+        }
+      }
 
       if (state.history.length) {
         els.reportHistory.innerHTML = state.history.map((item) => {
           const recommendations = Array.isArray(item.top_recommendations) ? item.top_recommendations : [];
-          const preview = item.summary?.executive_summary || item.summary?.expected_impact || 'Saved review';
+          const source = Array.isArray(item.source_platforms) && item.source_platforms.length ? item.source_platforms.join(' + ') : (item.source_count ? `${item.source_count} file(s)` : 'Saved review');
           return `
             <div class="row-item">
               <div>
                 <strong>${escapeHtml(item.report_title || 'Gnomeo report')}</strong>
-                <p>${escapeHtml(formatDate(item.created_at))}</p>
-                <p>${escapeHtml(preview)}</p>
+                <p>${escapeHtml(formatDate(item.created_at))} · ${escapeHtml(source)}</p>
               </div>
-              <span class="status">${escapeHtml(item.status || 'completed')}${recommendations.length ? ` · ${recommendations.length}` : ''}</span>
+              <span class="status">${escapeHtml(item.id === latest?.id ? 'Latest' : (item.status || 'completed'))}</span>
             </div>
           `;
         }).join('');
       } else {
-        els.reportHistory.innerHTML = '<div class="empty-state">No report history yet.</div>';
+        els.reportHistory.innerHTML = '<div class="empty-state">Review history will appear after your first review.</div>';
       }
 
-      if (els.portalReviewQueue) {
-        els.portalReviewQueue.innerHTML = portalReviews.length
-          ? portalReviews.map((review) => {
-              const filenames = Array.isArray(review.filenames) ? review.filenames : [];
-              const platforms = Array.isArray(review.platforms) ? review.platforms : [];
-              const statusLabel = review.report_run_id ? 'ready' : (review.status || 'received');
-              return `
-                <div class="row-item">
-                  <div>
-                    <strong>${escapeHtml(filenames.join(', ') || 'Portal review')}</strong>
-                    <p>${escapeHtml(statusLabel.toUpperCase())} · ${escapeHtml(formatDate(review.created_at))}</p>
-                    <p>${escapeHtml(platforms.join(' · ') || 'Platform detection pending')}</p>
-                  </div>
-                  <span class="status">${escapeHtml(review.report_run_id ? 'ready' : 'queued')}</span>
-                </div>
-              `;
-            }).join('')
-          : '<div class="empty-state">No queued portal reviews yet.</div>';
-      }
+      if (els.nextReviewFocus) els.nextReviewFocus.innerHTML = '';
     };
 
     const fetchWorkspace = async ({ silent = false } = {}) => {
