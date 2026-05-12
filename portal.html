@@ -18,16 +18,28 @@
   <meta name="twitter:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
   <link rel="stylesheet" href="/content-pages.css" />
   <style>
-    .portal-stack { display: grid; gap: 16px; }
-    .two-column, .memory-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
-    .span-7 { grid-column: span 7; }
-    .span-6 { grid-column: span 6; }
-    .span-5 { grid-column: span 5; }
-    .span-12 { grid-column: span 12; }
+    .portal-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      max-width: 940px;
+      margin: 0 auto;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .portal-stack > .card,
+    .portal-stack > .comparison-section,
+    .portal-stack > .upload-card,
+    .portal-stack > .report-shell,
+    .portal-stack > .history-card,
+    .portal-stack > .memory-card {
+      width: 100%;
+      box-sizing: border-box;
+    }
     .context-list, .report-list, .history-list, .focus-list { display: grid; gap: 10px; margin-top: 14px; }
     .stacked-list { display: grid; gap: 10px; }
     .comparison-section .report-list { margin-top: 12px; }
-    .action-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+    .action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 14px; }
     .action-card {
       padding: 14px 16px; border: 1px solid var(--line); border-radius: 18px; background: #f8fafc;
     }
@@ -97,14 +109,11 @@
     .upload-card .button { min-width: 180px; }
     .compact-note { color: var(--muted); font-size: 13px; line-height: 1.55; }
     @media (max-width: 960px) {
-      .two-column, .memory-grid { grid-template-columns: 1fr; }
-      .span-7, .span-6, .span-5, .span-12 { grid-column: span 1; }
+      .portal-stack { gap: 16px; padding: 0 12px; }
       .action-grid { grid-template-columns: 1fr; }
     }
     @media (min-width: 961px) {
-      .two-column > .upload-card { grid-column: span 5; }
-      .two-column > .report-shell { grid-column: span 7; }
-      .memory-grid > .history-card, .memory-grid > .memory-card { grid-column: span 6; }
+      .portal-stack { padding: 0 20px; }
     }
   </style>
 </head>
@@ -137,7 +146,7 @@
       </section>
 
       <section class="portal-stack">
-        <article class="card span-12">
+        <article class="card">
           <div class="muted-kicker">Latest review</div>
           <h2>Here is what Gnomeo found</h2>
           <div id="latestReviewMeta" class="pill-row"></div>
@@ -146,7 +155,7 @@
           <div id="latestActionCards" class="action-grid"></div>
         </article>
 
-        <article id="changedReviewCard" class="card span-12 comparison-section">
+        <article id="changedReviewCard" class="card comparison-section">
           <div class="muted-kicker">What changed since last review</div>
           <h2>What changed since last review</h2>
           <div id="changedSinceLastReview" class="report-list"></div>
@@ -156,64 +165,60 @@
           </div>
         </article>
 
-        <article id="stillNeedsAttentionCard" class="card span-12 comparison-section">
+        <article id="stillNeedsAttentionCard" class="card comparison-section">
           <div class="muted-kicker">Still needs attention</div>
           <h2>Still needs attention</h2>
           <div id="stillUnresolved" class="report-list"></div>
         </article>
 
-        <article id="newThisTimeCard" class="card span-12 comparison-section">
+        <article id="newThisTimeCard" class="card comparison-section">
           <div class="muted-kicker">New this time</div>
           <h2>New this time</h2>
           <div id="newThisTime" class="report-list"></div>
         </article>
 
-        <div class="two-column">
-          <article class="card upload-card">
-            <div class="muted-kicker">Submit next review</div>
-            <h2>Submit next review</h2>
-            <form id="uploadForm" class="workspace-form">
-              <label>
-                Google Ads and/or Meta Ads CSVs
-                <input id="csvFiles" type="file" accept=".csv,text/csv" multiple disabled />
-              </label>
-              <div class="helper-note" id="uploadLimits">Open a valid portal link to see upload limits.</div>
-              <div id="queuedReviewState" class="empty-state" style="display:none;"></div>
-              <div class="form-actions">
-                <button id="runButton" class="button is-disabled" type="submit" disabled>Submit next review</button>
-                <button id="refreshButton" class="button secondary is-disabled" type="button" disabled>Refresh workspace</button>
-              </div>
-              <div id="formMessage" class="helper-note"></div>
-            </form>
-          </article>
+        <article class="card upload-card">
+          <div class="muted-kicker">Submit next review</div>
+          <h2>Submit next review</h2>
+          <form id="uploadForm" class="workspace-form">
+            <label>
+              Google Ads and/or Meta Ads CSVs
+              <input id="csvFiles" type="file" accept=".csv,text/csv" multiple disabled />
+            </label>
+            <div class="helper-note" id="uploadLimits">Open a valid portal link to see upload limits.</div>
+            <div id="queuedReviewState" class="empty-state" style="display:none;"></div>
+            <div class="form-actions">
+              <button id="runButton" class="button is-disabled" type="submit" disabled>Submit next review</button>
+              <button id="refreshButton" class="button secondary is-disabled" type="button" disabled>Refresh workspace</button>
+            </div>
+            <div id="formMessage" class="helper-note"></div>
+          </form>
+        </article>
 
-          <article class="card report-shell">
-            <div class="muted-kicker">Read full report</div>
-            <h2>Read full report</h2>
-            <details id="fullReportDetails">
-              <summary>Read full report</summary>
-              <div id="latestReport" class="report-body empty-state">No report yet.</div>
-            </details>
-          </article>
-        </div>
+        <article class="card report-shell">
+          <div class="muted-kicker">Read full report</div>
+          <h2>Read full report</h2>
+          <details id="fullReportDetails">
+            <summary>Read full report</summary>
+            <div id="latestReport" class="report-body empty-state">No report yet.</div>
+          </details>
+        </article>
 
-        <div class="memory-grid">
-          <article class="card history-card">
-            <div class="muted-kicker">Review history</div>
-            <h2>Review history</h2>
-            <div id="reportHistory" class="history-list"></div>
-          </article>
+        <article class="card history-card">
+          <div class="muted-kicker">Review history</div>
+          <h2>Review history</h2>
+          <div id="reportHistory" class="history-list"></div>
+        </article>
 
-          <article class="card memory-card">
-            <div class="muted-kicker">What Gnomeo remembers</div>
-            <h2>What Gnomeo remembers</h2>
-            <div id="workspaceMemory" class="context-list"></div>
-            <div id="openRecommendations" class="report-list"></div>
-            <div id="recurringIssues" class="report-list"></div>
-          </article>
-        </div>
+        <article class="card memory-card">
+          <div class="muted-kicker">What Gnomeo remembers</div>
+          <h2>What Gnomeo remembers</h2>
+          <div id="workspaceMemory" class="context-list"></div>
+          <div id="openRecommendations" class="report-list"></div>
+          <div id="recurringIssues" class="report-list"></div>
+        </article>
 
-        <article class="card span-12">
+        <article class="card">
           <details id="workspaceDetails">
             <summary>Workspace details</summary>
             <div style="padding-top: 12px;">
@@ -222,7 +227,7 @@
           </details>
         </article>
 
-        <article class="card span-12">
+        <article class="card">
           <div class="muted-kicker">Privacy note</div>
           <h2>Quiet handling</h2>
           <p class="compact-note">Raw uploads are handled temporarily for report generation. Reports and analytical summaries may be retained in your workspace.</p>
