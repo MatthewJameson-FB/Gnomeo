@@ -371,7 +371,13 @@
 
     const renderReviewHistory = (items, latestId) => {
       if (!items || !items.length) return '<div class="empty-state">Review history will appear after your first review.</div>';
-      return items.map((item) => {
+      const seen = new Set();
+      return items.filter((item) => {
+        const key = `${String(item?.report_title || '').toLowerCase()}|${String(item?.created_at || '').slice(0, 16)}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }).map((item) => {
         const source = Array.isArray(item.source_platforms) && item.source_platforms.length ? item.source_platforms.join(' + ') : (item.source_count ? `${item.source_count} file(s)` : 'Saved review');
         const isLatest = item.id === latestId;
         return `
@@ -451,6 +457,20 @@
     `).join('');
 
     const renderSignals = (items) => renderLineItems(items, 'No strong signals were surfaced yet.');
+
+    const buildFallbackFinding = (signals = [], topActions = [], comparisonNote = '') => {
+      const first = signals.find((item) => /highest spend/i.test(String(item?.label || ''))) || signals[0] || null;
+      const second = signals.find((item) => /strongest conversion/i.test(String(item?.label || ''))) || null;
+      const focus = topActions[0]?.title || 'the highest-spend area';
+      const parts = [];
+      if (first?.title) parts.push(`The main area to watch appears to be ${first.title}.`);
+      if (second?.title && second.title !== first?.title) parts.push(`The clearest signal looks to be ${second.title}.`);
+      if (comparisonNote && /baseline|first review/i.test(String(comparisonNote))) {
+        parts.push('This is still close to a baseline view, so the next export will be more informative.');
+      }
+      parts.push(`The safest next move is to keep reviewing ${focus} before moving more budget.`);
+      return parts.filter(Boolean).slice(0, 3).join(' ');
+    };
 
     const isGenericMemoryNote = (value) => {
       const text = String(value || '').toLowerCase();
@@ -646,10 +666,11 @@
       const latestSignals = Array.isArray(latest?.summary?.key_signals) ? latest.summary.key_signals : [];
       const comparisonSignals = [];
       if (latest?.comparison_summary) {
-        const comparisonConfidence = latest.comparison_summary.is_baseline
-          ? 'Low — first review only'
-          : 'Higher — compared with previous review';
-        comparisonSignals.push({ label: 'Comparison confidence', title: comparisonConfidence, details: '' });
+        comparisonSignals.push({
+          label: 'Comparison confidence',
+          title: latest.comparison_summary.is_baseline ? 'First review only' : 'Compared with previous review',
+          details: latest.comparison_summary.is_baseline ? 'Low confidence' : 'Higher confidence',
+        });
       }
       const newCampaignItems = (Array.isArray(state.newThisTime) ? state.newThisTime : []).filter((item) => !/no clear new campaign changes detected/i.test(String(item || ''))).slice(0, 2);
       if (newCampaignItems.length) {
@@ -670,6 +691,7 @@
             details: hasToken ? 'This private link may be expired or incorrect.' : 'Gnomeo workspaces are currently invite-only.',
           }]
         : (state.topActionsNow.length ? state.topActionsNow : collectTopActions(latest, memory, nextFocus));
+      const synthesizedFinding = buildFallbackFinding(latestSignals, topActions, latest?.comparison_summary?.comparison_note || state.comparisonNote || '');
       const hasStructuredActions = Boolean(latest && (Array.isArray(latest.top_priorities) && latest.top_priorities.length || Array.isArray(latest.top_recommendations) && latest.top_recommendations.length || Array.isArray(latest.recommendations) && latest.recommendations.length));
       const memoryActionCards = [
         ...openRecommendations.map((item) => ({
@@ -702,10 +724,10 @@
         ? `
           <div>
             <h3>${escapeHtml(latest.report_title || 'Latest finding')}</h3>
-            <p>${escapeHtml(latestSummaryText || 'Your private review file is ready. Submit your next review when you want to compare the next export.')}</p>
+            <p>${escapeHtml(latestSummaryText || synthesizedFinding || 'The latest review is ready, but the summary fields were sparse.')}</p>
           </div>
-          ${signalNote ? `<div class="row-item"><div><strong>Signal note</strong><p>${escapeHtml(signalNote)}</p></div></div>` : ''}
-          ${state.comparisonNote ? `<div class="row-item"><div><strong>Comparison note</strong><p>${escapeHtml(state.comparisonNote)}</p></div></div>` : ''}
+          ${(signalNote && latestSignals.length < 3) ? `<div class="row-item"><div><strong>Signal note</strong><p>${escapeHtml(signalNote)}</p></div></div>` : ''}
+          ${(state.comparisonNote && (!latestSignals.length || /baseline|first review/i.test(state.comparisonNote))) ? `<div class="row-item"><div><strong>Comparison note</strong><p>${escapeHtml(state.comparisonNote)}</p></div></div>` : ''}
         `
         : queuedReview
           ? `

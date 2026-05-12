@@ -202,6 +202,8 @@ const buildReviewConclusion = ({ summary = {}, comparison = {}, topActions = [] 
   const bestRoas = signalText('Best ROAS signal');
   const highestCpa = signalText('Highest CPA concern');
   const focus = stripActionVerb(topActions[0]?.title || summary.key_decisions?.[0]?.title || highestSpend || 'the highest-spend campaign') || 'the highest-spend campaign';
+  const focusTitle = String(focus).split(' — ')[0].trim() || focus;
+  const highestSpendTitle = String(highestSpend).split(' — ')[0].trim() || highestSpend;
 
   if (!Object.keys(previous).length) {
     const first = highestSpend ? `Spend appears concentrated in ${highestSpend}.` : 'No major issue stands out from the first export alone.';
@@ -211,7 +213,9 @@ const buildReviewConclusion = ({ summary = {}, comparison = {}, topActions = [] 
     if (bestRoas && bestRoas !== strongestConversion) secondPieces.push(`The best ROAS signal appears to be ${bestRoas}.`);
     if (!secondPieces.length && highestCpa) secondPieces.push(`${highestCpa} looks like the main CPA concern.`);
     const second = secondPieces.slice(0, 2).join(' ');
-    const third = 'This is the first review, so confidence is limited by the available fields. The safest next move is to keep comparing the highest-spend area in the next export.';
+    const third = highestSpendTitle
+      ? `The export is still a baseline, so the safest next move is to review whether ${highestSpendTitle} is producing enough conversions before increasing budget.`
+      : 'The export is still a baseline, so keep the next review cautious until a second export is available.';
     return [first, second, third].filter(Boolean).join(' ');
   }
 
@@ -224,7 +228,9 @@ const buildReviewConclusion = ({ summary = {}, comparison = {}, topActions = [] 
   const leadSignal = highestSpend || strongestConversion || weakestEfficiency || bestRoas || highestCpa;
   const first = `${metricSentence}.${efficiencySentence ? ` ${efficiencySentence}.` : ''}`.trim();
   const second = leadSignal ? `Key signal: ${leadSignal}.` : '';
-  const third = `Keep reviewing ${focus} before moving more budget.`;
+  const third = focusTitle
+    ? `Review ${focusTitle} first, and avoid cutting anything that still looks efficient.`
+    : 'Keep the next action cautious until the comparison is clearer.';
   return [first, second, third].filter(Boolean).join(' ');
 };
 
