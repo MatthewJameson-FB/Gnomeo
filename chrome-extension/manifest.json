@@ -6,9 +6,7 @@
   "permissions": [],
   "host_permissions": [
     "http://localhost/*",
-    "http://localhost:8080/*",
-    "http://127.0.0.1/*",
-    "http://127.0.0.1:8080/*"
+    "http://127.0.0.1/*"
   ],
   "content_scripts": [
     {
@@ -18,9 +16,7 @@
         "https://adsmanager.facebook.com/*",
         "https://www.linkedin.com/campaignmanager/*",
         "http://localhost/*",
-        "http://localhost:8080/*",
-        "http://127.0.0.1/*",
-        "http://127.0.0.1:8080/*"
+        "http://127.0.0.1/*"
       ],
       "js": ["content.js"],
       "run_at": "document_idle"
