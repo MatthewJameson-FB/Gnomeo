@@ -337,7 +337,6 @@ const buildPriorityItems = ({ overall, topSegments, platformSummaries }) => {
     const severity = detectIssueSeverity(segment, overall);
     if (!severity) continue;
     const label = segmentDisplayName(segment);
-    const platformLabel = segment.platform && segment.platform !== 'unknown' ? ` on ${platformDisplayName(segment.platform)}` : '';
     const details = [];
     details.push(`Spend: ${formatCurrency(segment.spend)}`);
     if (segment.clicks !== null && segment.clicks !== undefined) details.push(`Clicks: ${formatNumber(segment.clicks)}`);
@@ -346,9 +345,9 @@ const buildPriorityItems = ({ overall, topSegments, platformSummaries }) => {
     if (segment.cpc !== null) details.push(`CPC: ${formatCurrency(segment.cpc)}`);
     items.push({
       title: severity === 'wasted spend'
-        ? `Reduce or cap ${label}${platformLabel}`
-        : `Review ${label}${platformLabel} first`,
-      details: `${details.join(' · ')}. The export shows weak signal here, so this is the safest place to tighten or compare before changing budgets elsewhere.`,
+        ? `Reduce or cap ${label}`
+        : `Review ${label} first`,
+      details: `${details.join(' · ')}. The export shows weak signal here, so this is the safest place to tighten or compare before changing budgets elsewhere in this export.`,
     });
   }
 

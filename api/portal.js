@@ -174,6 +174,37 @@ const formatComparisonItem = (item) => {
   return cleanDisplayLabel(item);
 };
 
+const describeTrend = (current, previous, label) => {
+  if (!Number.isFinite(Number(current)) || !Number.isFinite(Number(previous))) return '';
+  const cur = Number(current);
+  const prev = Number(previous);
+  if (prev === 0 && cur === 0) return `${label} held flat`;
+  if (prev === 0) return `${label} increased`;
+  const pct = ((cur - prev) / Math.abs(prev)) * 100;
+  if (Math.abs(pct) < 2) return `${label} held roughly flat`;
+  return `${label} ${pct > 0 ? 'increased' : 'decreased'} ${Math.abs(pct).toFixed(Math.abs(pct) >= 10 ? 0 : 1)}%`;
+};
+
+const stripActionVerb = (value) => String(value || '').replace(/^(Review|Monitor|Reduce or cap|Hold|Cap|Keep reviewing|Compare)\s+/i, '').replace(/\s+first$/i, '').trim();
+
+const buildReviewConclusion = ({ summary = {}, comparison = {}, topActions = [] } = {}) => {
+  const current = comparison.current_metrics || summary.metrics || {};
+  const previous = comparison.previous_metrics || {};
+  if (!Object.keys(previous).length) {
+    return 'Gnomeo found spend and conversion signal in this export. Use this as a baseline for future reviews.';
+  }
+  const spend = describeTrend(current.spend, previous.spend, 'Spend');
+  const value = Number.isFinite(Number(current.revenue)) && Number.isFinite(Number(previous.revenue)) ? describeTrend(current.revenue, previous.revenue, 'Value') : '';
+  const roas = Number.isFinite(Number(current.roas)) && Number.isFinite(Number(previous.roas)) ? describeTrend(current.roas, previous.roas, 'ROAS') : '';
+  const cpa = Number.isFinite(Number(current.cpa)) && Number.isFinite(Number(previous.cpa)) ? describeTrend(current.cpa, previous.cpa, 'CPA') : '';
+  const metricSentence = [spend, value].filter(Boolean).join(', ') || 'The export moved, but the comparison is still limited';
+  const efficiencySentence = [roas, cpa].filter(Boolean).join(', ');
+  const focus = stripActionVerb(topActions[0]?.title || summary.key_decisions?.[0]?.title || 'the highest-spend campaign') || 'the highest-spend campaign';
+  const first = `${metricSentence}.${efficiencySentence ? ` ${efficiencySentence}.` : ''}`.trim();
+  const second = `Keep reviewing ${focus} before moving more budget.`;
+  return `${first} ${second}`.trim();
+};
+
 const buildComparisonMarkdown = (comparison = {}) => {
   const baseline = Boolean(comparison.is_baseline);
   const changed = Array.isArray(comparison.changed_since_last_review) ? comparison.changed_since_last_review : [];
@@ -223,7 +254,7 @@ const buildComparisonMarkdown = (comparison = {}) => {
   if (fresh.length) {
     fresh.forEach((item) => lines.push(`- ${formatComparisonItem(item)}`));
   } else {
-    lines.push('No major new campaigns detected in this export.');
+    lines.push('No clear new campaign changes detected in this review.');
   }
   if (noLongerVisible.length) {
     lines.push('');
@@ -571,6 +602,7 @@ module.exports = async (req, res) => {
       ...parsedReport,
       metrics: reportResult.metrics || parsedReport.metrics || {},
       report_title: parsedReport.title,
+      review_conclusion: buildReviewConclusion({ summary: parsedReport, comparison: comparisonSummary, topActions: comparisonSummary.top_actions_now || [] }),
     };
     const comparisonMarkdown = buildComparisonMarkdown(comparisonSummary);
     const reportMarkdown = [reportResult.markdown, '', comparisonMarkdown].join('\n');
@@ -735,3 +767,5 @@ module.exports = async (req, res) => {
     });
   }
 };
+
+module.exports.buildReviewConclusion = buildReviewConclusion;

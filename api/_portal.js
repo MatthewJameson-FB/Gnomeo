@@ -149,6 +149,41 @@ const cleanDisplayLabel = (value) => {
   return text;
 };
 
+const isGenericMemoryNote = (value) => {
+  const text = String(value || '').toLowerCase();
+  if (!text) return true;
+  return [
+    'dataset is small',
+    'revenue was supplied',
+    'revenue / value data is present',
+    'the exports exposed at least the core spend and conversion fields',
+    'the export includes at least the core spend and conversion fields',
+    'at least some conversion signal is present',
+    'conversion signal is thin or absent',
+    'comparison is limited',
+    'platform detection was inconclusive',
+    'rows analyzed',
+    'sources:',
+    'value / revenue data is present',
+  ].some((phrase) => text.includes(phrase));
+};
+
+const compactUniqueNotes = (values, { limit = 5, allowGenericFallback = true } = {}) => {
+  const seen = new Set();
+  const specific = [];
+  const generic = [];
+  for (const raw of Array.isArray(values) ? values : []) {
+    const text = String(raw || '').replace(/\s+/g, ' ').trim();
+    if (!text) continue;
+    const key = text.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    (isGenericMemoryNote(text) ? generic : specific).push(text);
+  }
+  const picked = specific.length ? specific : (allowGenericFallback ? generic : []);
+  return picked.slice(0, limit);
+};
+
 const normalizeComparisonText = (value) => String(value || '')
   .replace(/\s+/g, ' ')
   .trim();
@@ -371,15 +406,14 @@ const buildComparisonSummary = ({ current = {}, previous = null, currentSummary 
     .slice(0, 3);
   for (const segment of weakCurrentSegments) {
     const label = segmentDisplayName(segment);
-    const platformLabel = segment.platform && segment.platform !== 'unknown' ? ` on ${platformDisplayName(segment.platform)}` : '';
     const riskLine = (segment.conversions || 0) === 0
-      ? `${label}${platformLabel} still needs attention because it carries spend without a clear conversion signal.`
-      : `${label}${platformLabel} still needs attention because it remains one of the higher-spend areas and should stay under review.`;
+      ? `${label} still needs attention because it carries spend without a clear conversion signal.`
+      : `${label} still needs attention because it remains one of the higher-spend areas and should stay under review.`;
     if (!stillUnresolved.some((item) => item.toLowerCase().includes(label.toLowerCase()))) stillUnresolved.push(riskLine);
   }
 
   if (currentPlatformSummaries.length > 1) {
-    stillUnresolved.push('Cross-platform comparison remains limited because Google Ads and Meta Ads can move on different attribution and audience signals.');
+    stillUnresolved.push('Cross-platform comparison remains limited in this export because Google Ads and Meta Ads can move on different attribution and audience signals.');
   }
 
   if (!stillUnresolved.length && cleanedCurrentRecommendations.length) {
@@ -390,14 +424,14 @@ const buildComparisonSummary = ({ current = {}, previous = null, currentSummary 
     const addedCampaigns = currentCampaignNames.filter((name) => !previousCampaignSet.has(name.toLowerCase()));
     const removedCampaigns = previousCampaignNames.filter((name) => !currentCampaignSet.has(name.toLowerCase()));
     if (!addedCampaigns.length && !removedCampaigns.length) {
-      newThisTime.push('No major new campaigns detected in this export.');
+      newThisTime.push('No clear new campaign changes detected in this review.');
     }
   } else {
     newThisTime.push('Campaign-level new or removed comparison is limited for this export.');
   }
 
   if (!newThisTime.length) {
-    newThisTime.push('No major new campaigns detected in this export.');
+    newThisTime.push('No clear new campaign changes detected in this review.');
   }
 
   const topActionsNow = cleanedCurrentRecommendations.slice();
@@ -406,10 +440,9 @@ const buildComparisonSummary = ({ current = {}, previous = null, currentSummary 
     if (topActionsNow.length >= 3) break;
     const title = `Monitor ${segmentDisplayName(segment)}`;
     if (seenTopActionTitles.has(title.toLowerCase())) continue;
-    const platformLabel = segment.platform && segment.platform !== 'unknown' ? ` on ${platformDisplayName(segment.platform)}` : '';
     const details = (segment.conversions || 0) === 0
-      ? `${segmentDisplayName(segment)}${platformLabel} carries spend without a clear conversion signal, so keep it capped until the next export.`
-      : `${segmentDisplayName(segment)}${platformLabel} remains a higher-spend area, so compare it against the next review before moving budget.`;
+      ? `${segmentDisplayName(segment)} carries spend without a clear conversion signal, so keep it capped until the next export.`
+      : `${segmentDisplayName(segment)} remains a higher-spend area, so compare it against the next review before moving budget.`;
     topActionsNow.push({ title, details });
     seenTopActionTitles.add(title.toLowerCase());
   }
@@ -426,15 +459,43 @@ const buildComparisonSummary = ({ current = {}, previous = null, currentSummary 
       ? 'Campaign-level comparison is available, but the movement is limited by the available fields.'
       : 'Campaign-level new/removed comparison is limited for this export.';
 
+  const normalizedStillUnresolved = compactUniqueNotes(stillUnresolved, { limit: 3 });
+  const normalizedLikelyActionedOrImproved = compactUniqueNotes(likelyActionedOrImproved, { limit: 3 });
+  const normalizedNewThisTime = compactUniqueNotes(newThisTime, { limit: 3 });
+  const normalizedNoLongerVisible = compactUniqueNotes(noLongerVisible, { limit: 3 });
+  const normalizedPreviousStatus = [];
+  const seenPreviousStatus = new Set();
+  for (const item of previousRecommendationsStatus) {
+    const key = String(item.title || '').toLowerCase();
+    if (!key || seenPreviousStatus.has(key)) continue;
+    seenPreviousStatus.add(key);
+    normalizedPreviousStatus.push(item);
+    if (normalizedPreviousStatus.length >= 3) break;
+  }
+  const normalizedTopActions = [];
+  const seenTopActions = new Set();
+  for (const item of topActionsNow) {
+    const key = String(item.title || '').toLowerCase();
+    if (!key || seenTopActions.has(key)) continue;
+    seenTopActions.add(key);
+    normalizedTopActions.push(item);
+    if (normalizedTopActions.length >= 3) break;
+  }
+  const topActionTitles = new Set(normalizedTopActions.map((item) => String(item.title || '').toLowerCase()));
+  const filteredStillUnresolved = normalizedStillUnresolved.filter((item) => {
+    const title = String(item).split(' — ')[0].trim().toLowerCase();
+    return !topActionTitles.has(title);
+  }).slice(0, 3);
+
   return {
     is_baseline: false,
-    changed_since_last_review: changedSinceLastReview.slice(0, 8),
-    still_unresolved: stillUnresolved.slice(0, 8),
-    likely_actioned_or_improved: likelyActionedOrImproved.slice(0, 8),
-    new_this_time: newThisTime.slice(0, 8),
-    no_longer_visible: noLongerVisible.slice(0, 8),
-    top_actions_now: topActionsNow.slice(0, 3),
-    previous_recommendations_status: previousRecommendationsStatus.slice(0, 8),
+    changed_since_last_review: compactUniqueNotes(changedSinceLastReview, { limit: 5, allowGenericFallback: true }),
+    still_unresolved: filteredStillUnresolved,
+    likely_actioned_or_improved: normalizedLikelyActionedOrImproved,
+    new_this_time: normalizedNewThisTime,
+    no_longer_visible: normalizedNoLongerVisible,
+    top_actions_now: normalizedTopActions,
+    previous_recommendations_status: normalizedPreviousStatus,
     comparison_note: comparisonNote,
     previous_recommendations: previousRecommendations,
     current_metrics: currentMetrics,
@@ -558,30 +619,35 @@ const dedupeStrings = (values, limit = 10) => {
   return output;
 };
 
-const buildWorkspaceMemoryUpdate = ({ workspace, parsedReport, detectedPlatforms = [], sourceFilenames = [], reportRun = {}, currentMemory = {} }) => {
-  const currentState = parsedReport.executive_summary || parsedReport.title || 'Report completed.';
+const buildWorkspaceMemoryUpdate = ({ workspace, parsedReport, detectedPlatforms = [], sourceFilenames = [], reportRun = {}, currentMemory = {}, comparison = {} }) => {
+  const currentState = cleanDisplayLabel(comparison.comparison_note || parsedReport.expected_impact || parsedReport.executive_summary || parsedReport.title || 'Report completed.');
   const platformNotes = dedupeStrings([
     detectedPlatforms.length ? `Analyzed: ${detectedPlatforms.map(platformDisplayName).join(' + ')}` : 'Platform detection was inconclusive.',
     sourceFilenames.length ? `Sources: ${sourceFilenames.join(', ')}` : '',
     reportRun.row_count ? `Rows analyzed: ${Number(reportRun.row_count).toLocaleString()}` : '',
   ], 4);
-  const confidenceNotes = dedupeStrings(parsedReport.confidence_and_limitations, 5);
-  const recurringIssues = dedupeStrings([
-    ...confidenceNotes,
-    ...parsedReport.key_insights,
-  ], 8);
-  const openRecommendations = dedupeStrings(parsedReport.key_decisions.map((item) => {
+  const confidenceNotes = compactUniqueNotes(parsedReport.confidence_and_limitations, { limit: 3 });
+  const signalNotes = compactUniqueNotes(parsedReport.key_insights, { limit: 3 });
+  const openRecommendations = compactUniqueNotes(parsedReport.key_decisions.map((item) => {
     const details = Array.isArray(item.details) ? item.details.filter(Boolean).join(' · ') : String(item.details || '').trim();
     return details ? `${item.title}: ${details}` : item.title;
-  }), 8);
-  const trendSnapshot = dedupeStrings(parsedReport.key_insights, 8);
-  const nextReviewFocus = dedupeStrings(parsedReport.next_review_focus, 5);
+  }), { limit: 3 });
+  const stillWatching = compactUniqueNotes(comparison.still_unresolved || [], { limit: 3 });
+  const knownLimitations = compactUniqueNotes(confidenceNotes.filter((note) => /limited|missing|inconclusive|small|not supplied|not present|cannot|could not|not available/i.test(String(note || ''))), { limit: 2 });
+  const trendSnapshot = compactUniqueNotes(signalNotes, { limit: 3 });
+  const nextReviewFocus = compactUniqueNotes(parsedReport.next_review_focus, { limit: 3 });
+  const reviewMemory = {
+    still_watching: stillWatching,
+    open_actions: openRecommendations,
+    known_limitations: knownLimitations,
+  };
   const memorySummary = {
     current_state: currentState,
     report_title: parsedReport.title || reportRun.report_title || 'Gnomeo report',
     last_report_date: reportRun.created_at || new Date().toISOString(),
     platform_notes: platformNotes,
-    confidence_or_signal_notes: confidenceNotes,
+    confidence_or_signal_notes: knownLimitations.length ? knownLimitations : confidenceNotes,
+    review_memory: reviewMemory,
     workspace_context: {
       workspace_name: workspace.workspace_name || '',
       business_type: workspace.business_type || '',
@@ -594,10 +660,10 @@ const buildWorkspaceMemoryUpdate = ({ workspace, parsedReport, detectedPlatforms
 
   return {
     memory_summary: memorySummary,
-    recurring_issues: dedupeStrings([...(currentMemory.recurring_issues || []), ...recurringIssues], 10),
-    open_recommendations: dedupeStrings([...(currentMemory.open_recommendations || []), ...openRecommendations], 10),
-    trend_snapshot: dedupeStrings([...(currentMemory.trend_snapshot || []), ...trendSnapshot], 10),
-    next_review_focus: nextReviewFocus.length ? nextReviewFocus : dedupeStrings(currentMemory.next_review_focus || [], 5),
+    recurring_issues: compactUniqueNotes([...(currentMemory.recurring_issues || []), ...stillWatching, ...trendSnapshot], { limit: 5 }),
+    open_recommendations: compactUniqueNotes([...(currentMemory.open_recommendations || []), ...openRecommendations], { limit: 5 }),
+    trend_snapshot: compactUniqueNotes([...(currentMemory.trend_snapshot || []), ...trendSnapshot], { limit: 5 }),
+    next_review_focus: nextReviewFocus.length ? nextReviewFocus : compactUniqueNotes(currentMemory.next_review_focus || [], { limit: 3 }),
     last_handover_at: new Date().toISOString(),
   };
 };
@@ -608,6 +674,7 @@ const workspaceMemoryFromWorkspace = (workspace) => ({
   open_recommendations: workspace.open_recommendations || [],
   trend_snapshot: workspace.trend_snapshot || [],
   next_review_focus: workspace.next_review_focus || [],
+  review_memory: workspace.memory_summary?.review_memory || {},
   last_handover_at: workspace.last_handover_at || null,
 });
 

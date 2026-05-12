@@ -217,8 +217,8 @@
         </article>
 
         <article class="card memory-card">
-          <div class="muted-kicker">What Gnomeo remembers</div>
-          <h2>What Gnomeo remembers</h2>
+          <div class="muted-kicker">Review memory</div>
+          <h2>Review memory</h2>
           <div id="workspaceMemory" class="context-list"></div>
           <div id="openRecommendations" class="report-list"></div>
           <div id="recurringIssues" class="report-list"></div>
@@ -447,6 +447,49 @@
       </div>
     `).join('');
 
+    const isGenericMemoryNote = (value) => {
+      const text = String(value || '').toLowerCase();
+      if (!text) return true;
+      return [
+        'dataset is small',
+        'revenue was supplied',
+        'export includes the core spend and conversion fields',
+        'value / revenue data is present',
+        'at least some conversion signal is present',
+        'conversion signal is thin or absent',
+        'comparison is limited',
+        'platform detection was inconclusive',
+        'rows analyzed',
+      ].some((phrase) => text.includes(phrase));
+    };
+
+    const compactMemoryItems = (values, limit = 5) => {
+      const seen = new Set();
+      const specific = [];
+      const generic = [];
+      for (const raw of Array.isArray(values) ? values : []) {
+        const text = String(raw || '').replace(/\s+/g, ' ').trim();
+        if (!text) continue;
+        const key = text.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        (isGenericMemoryNote(text) ? generic : specific).push(text);
+      }
+      return (specific.length ? specific : generic).slice(0, limit);
+    };
+
+    const renderMemoryBlock = (title, items, emptyLabel, maxItems = 2) => {
+      const subset = compactMemoryItems(items, maxItems);
+      return `
+        <div class="row-item">
+          <div>
+            <strong>${escapeHtml(title)}</strong>
+            ${subset.length ? subset.map((item) => `<p>${escapeHtml(item)}</p>`).join('') : `<p>${escapeHtml(emptyLabel)}</p>`}
+          </div>
+        </div>
+      `;
+    };
+
     const requestReviewRemoval = async (reportRunId) => {
       if (!state.token || !state.workspace || !reportRunId) return;
       const confirmText = 'Remove this review?\n\nThis will remove the generated report from your workspace history and update the comparison view. Raw uploads are handled temporarily and are not kept as long-term workspace records.\n\nThis cannot be undone from the portal.';
@@ -568,20 +611,19 @@
           { title: 'Created', details: formatDate(workspace.created_at) },
         ].map((item) => `<div class="row-item"><div><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.details)}</p></div></div>`).join('');
 
-        const memoryItems = [];
-        if (memorySummary.current_state) memoryItems.push({ title: 'Current state', details: memorySummary.current_state });
-        if (memorySummary.report_title) memoryItems.push({ title: 'Last report', details: memorySummary.report_title });
-        if (memorySummary.platform_notes?.length) memoryItems.push({ title: 'Platform notes', details: memorySummary.platform_notes.join(' · ') });
-        if (memorySummary.confidence_or_signal_notes?.length) memoryItems.push({ title: 'Signal notes', details: memorySummary.confidence_or_signal_notes.join(' · ') });
-        if (memorySummary.last_report_date) memoryItems.push({ title: 'Last handover', details: formatDate(memorySummary.last_report_date) });
-        els.memory.innerHTML = memoryItems.length
-          ? memoryItems.map((item) => `<div class="row-item"><div><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.details)}</p></div></div>`).join('')
+        const reviewMemory = memorySummary.review_memory || {};
+        const memoryCards = [];
+        const stillWatching = compactMemoryItems(reviewMemory.still_watching || state.stillUnresolved || memory.recurring_issues || [], 2);
+        const openActions = compactMemoryItems(reviewMemory.open_actions || memory.open_recommendations || [], 2);
+        const knownLimitations = compactMemoryItems(reviewMemory.known_limitations || memorySummary.confidence_or_signal_notes || [], 1);
+        if (stillWatching.length) memoryCards.push(renderMemoryBlock('Still watching', stillWatching, 'No unresolved items are carrying forward right now.', 2));
+        if (openActions.length) memoryCards.push(renderMemoryBlock('Open actions', openActions, 'No open actions are carrying forward right now.', 2));
+        if (knownLimitations.length) memoryCards.push(renderMemoryBlock('Known limitations', knownLimitations, 'No major limitations need repeating here.', 1));
+        els.memory.innerHTML = memoryCards.length
+          ? memoryCards.slice(0, 5).join('')
           : '<div class="empty-state">Gnomeo will build memory after repeated reviews.</div>';
-
-        const recurringIssues = Array.isArray(memory.recurring_issues) ? memory.recurring_issues : [];
-        els.recurringIssues.innerHTML = recurringIssues.length
-          ? recurringIssues.map((issue) => `<div class="row-item"><div><strong>Recurring issue</strong><p>${escapeHtml(issue)}</p></div></div>`).join('')
-          : '<div class="empty-state">Gnomeo will build memory after repeated reviews.</div>';
+        els.openRecommendations.innerHTML = '';
+        els.recurringIssues.innerHTML = '';
 
         if (limits) {
           els.uploadLimits.textContent = [
@@ -594,7 +636,7 @@
         els.runButton.disabled = false;
         els.runButton.classList.remove('is-disabled');
       }
-      const latestSummaryText = latest?.summary?.executive_summary || latest?.summary?.expected_impact || latest?.summary?.how_to_read || '';
+      const latestSummaryText = latest?.summary?.review_conclusion || latest?.summary?.executive_summary || latest?.summary?.expected_impact || latest?.summary?.how_to_read || '';
       const signalNote = (latest?.summary?.signal_note || latest?.summary?.metrics?.signal_note || memorySummary.confidence_or_signal_notes?.[0] || '').trim();
       const spendAnalysed = latest?.spend_analysed ?? latest?.summary?.spend_analysed ?? latest?.summary?.metrics?.spend_analysed ?? null;
       const rowCount = latest?.row_count ?? latest?.summary?.metrics?.row_count ?? null;
