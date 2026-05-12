@@ -190,19 +190,42 @@ const stripActionVerb = (value) => String(value || '').replace(/^(Review|Monitor
 const buildReviewConclusion = ({ summary = {}, comparison = {}, topActions = [] } = {}) => {
   const current = comparison.current_metrics || summary.metrics || {};
   const previous = comparison.previous_metrics || {};
+  const keySignals = Array.isArray(summary.key_signals) ? summary.key_signals : [];
+  const signalText = (label) => {
+    const item = keySignals.find((signal) => String(signal?.label || '').toLowerCase() === String(label || '').toLowerCase());
+    if (!item) return '';
+    return [item.title, item.details].filter(Boolean).join(' — ');
+  };
+  const highestSpend = signalText('Highest spend');
+  const strongestConversion = signalText('Strongest conversion signal');
+  const weakestEfficiency = signalText('Weakest efficiency signal');
+  const bestRoas = signalText('Best ROAS signal');
+  const highestCpa = signalText('Highest CPA concern');
+  const focus = stripActionVerb(topActions[0]?.title || summary.key_decisions?.[0]?.title || highestSpend || 'the highest-spend campaign') || 'the highest-spend campaign';
+
   if (!Object.keys(previous).length) {
-    return 'Gnomeo found spend and conversion signal in this export. Use this as a baseline for future reviews.';
+    const first = highestSpend ? `Spend appears concentrated in ${highestSpend}.` : 'No major issue stands out from the first export alone.';
+    const secondPieces = [];
+    if (strongestConversion && strongestConversion !== highestSpend) secondPieces.push(`The strongest conversion signal appears to be ${strongestConversion}.`);
+    if (weakestEfficiency) secondPieces.push(`${weakestEfficiency} may need closer review because the efficiency signal looks weaker.`);
+    if (bestRoas && bestRoas !== strongestConversion) secondPieces.push(`The best ROAS signal appears to be ${bestRoas}.`);
+    if (!secondPieces.length && highestCpa) secondPieces.push(`${highestCpa} looks like the main CPA concern.`);
+    const second = secondPieces.slice(0, 2).join(' ');
+    const third = 'This is the first review, so confidence is limited by the available fields. The safest next move is to keep comparing the highest-spend area in the next export.';
+    return [first, second, third].filter(Boolean).join(' ');
   }
+
   const spend = describeTrend(current.spend, previous.spend, 'Spend');
   const value = Number.isFinite(Number(current.revenue)) && Number.isFinite(Number(previous.revenue)) ? describeTrend(current.revenue, previous.revenue, 'Value') : '';
   const roas = Number.isFinite(Number(current.roas)) && Number.isFinite(Number(previous.roas)) ? describeTrend(current.roas, previous.roas, 'ROAS') : '';
   const cpa = Number.isFinite(Number(current.cpa)) && Number.isFinite(Number(previous.cpa)) ? describeTrend(current.cpa, previous.cpa, 'CPA') : '';
   const metricSentence = [spend, value].filter(Boolean).join(', ') || 'The export moved, but the comparison is still limited';
   const efficiencySentence = [roas, cpa].filter(Boolean).join(', ');
-  const focus = stripActionVerb(topActions[0]?.title || summary.key_decisions?.[0]?.title || 'the highest-spend campaign') || 'the highest-spend campaign';
+  const leadSignal = highestSpend || strongestConversion || weakestEfficiency || bestRoas || highestCpa;
   const first = `${metricSentence}.${efficiencySentence ? ` ${efficiencySentence}.` : ''}`.trim();
-  const second = `Keep reviewing ${focus} before moving more budget.`;
-  return `${first} ${second}`.trim();
+  const second = leadSignal ? `Key signal: ${leadSignal}.` : '';
+  const third = `Keep reviewing ${focus} before moving more budget.`;
+  return [first, second, third].filter(Boolean).join(' ');
 };
 
 const buildComparisonMarkdown = (comparison = {}) => {

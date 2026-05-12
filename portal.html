@@ -156,6 +156,8 @@
           <h2>Here is what Gnomeo found</h2>
           <div id="latestReviewMeta" class="pill-row"></div>
           <div id="latestReviewSummary" class="summary-panel"></div>
+          <div class="muted-kicker" style="margin-top: 16px;">Key signals detected</div>
+          <div id="keySignalsDetected" class="report-list"></div>
           <div id="latestReviewToolbar" class="review-toolbar"></div>
           <div class="muted-kicker" style="margin-top: 18px;">What to change now</div>
           <div id="latestActionCards" class="action-grid"></div>
@@ -283,6 +285,7 @@
       latestSummary: document.getElementById('latestReviewSummary'),
       latestReviewToolbar: document.getElementById('latestReviewToolbar'),
       latestActions: document.getElementById('latestActionCards'),
+      keySignalsDetected: document.getElementById('keySignalsDetected'),
       changedSinceLastReview: document.getElementById('changedSinceLastReview'),
       improvedBlock: document.getElementById('improvedBlock'),
       likelyActionedOrImproved: document.getElementById('likelyActionedOrImproved'),
@@ -447,6 +450,8 @@
       </div>
     `).join('');
 
+    const renderSignals = (items) => renderLineItems(items, 'No strong signals were surfaced yet.');
+
     const isGenericMemoryNote = (value) => {
       const text = String(value || '').toLowerCase();
       if (!text) return true;
@@ -568,7 +573,7 @@
         : !hasWorkspace
           ? 'Workspace link not available'
           : hasLatest
-            ? 'Latest review ready'
+            ? 'Latest finding'
             : queuedReview
               ? 'Review received'
               : 'Submit your first review';
@@ -636,8 +641,25 @@
         els.runButton.disabled = false;
         els.runButton.classList.remove('is-disabled');
       }
-      const latestSummaryText = latest?.summary?.review_conclusion || latest?.summary?.executive_summary || latest?.summary?.expected_impact || latest?.summary?.how_to_read || '';
+      const latestSummaryText = latest?.summary?.review_conclusion || latest?.summary?.executive_finding || latest?.summary?.executive_summary || latest?.summary?.expected_impact || latest?.summary?.how_to_read || '';
       const signalNote = (latest?.summary?.signal_note || latest?.summary?.metrics?.signal_note || memorySummary.confidence_or_signal_notes?.[0] || '').trim();
+      const latestSignals = Array.isArray(latest?.summary?.key_signals) ? latest.summary.key_signals : [];
+      const comparisonSignals = [];
+      if (latest?.comparison_summary) {
+        const comparisonConfidence = latest.comparison_summary.is_baseline
+          ? 'Low — first review only'
+          : 'Higher — compared with previous review';
+        comparisonSignals.push({ label: 'Comparison confidence', title: comparisonConfidence, details: '' });
+      }
+      const newCampaignItems = (Array.isArray(state.newThisTime) ? state.newThisTime : []).filter((item) => !/no clear new campaign changes detected/i.test(String(item || ''))).slice(0, 2);
+      if (newCampaignItems.length) {
+        comparisonSignals.push({ label: 'New campaigns detected', title: newCampaignItems[0], details: newCampaignItems.length > 1 ? newCampaignItems[1] : '' });
+      }
+      const keySignalItems = [...latestSignals, ...comparisonSignals].slice(0, 6).map((item) => ({
+        title: item.title || item.name || item.label || '',
+        details: item.details || '',
+        badge: item.label || '',
+      })).filter((item) => item.title);
       const spendAnalysed = latest?.spend_analysed ?? latest?.summary?.spend_analysed ?? latest?.summary?.metrics?.spend_analysed ?? null;
       const rowCount = latest?.row_count ?? latest?.summary?.metrics?.row_count ?? null;
       const openRecommendations = Array.isArray(memory.open_recommendations) ? memory.open_recommendations : (Array.isArray(latest?.top_recommendations) ? latest.top_recommendations : []);
@@ -660,7 +682,7 @@
 
       els.latestMeta.innerHTML = hasLatest
         ? [
-            badge('Latest review ready'),
+            badge('Latest finding'),
             badge(formatDate(latest.created_at)),
             latest.source_platforms?.length ? badge(latest.source_platforms.join(' + ')) : null,
             spendAnalysed ? badge(`Spend analysed: ${typeof spendAnalysed === 'number' ? formatCurrency(spendAnalysed) : spendAnalysed}`) : (rowCount ? badge(`Rows analysed: ${Number(rowCount).toLocaleString()}`) : null),
@@ -679,7 +701,7 @@
         : hasLatest
         ? `
           <div>
-            <h3>${escapeHtml(latest.report_title || 'Latest review ready')}</h3>
+            <h3>${escapeHtml(latest.report_title || 'Latest finding')}</h3>
             <p>${escapeHtml(latestSummaryText || 'Your private review file is ready. Submit your next review when you want to compare the next export.')}</p>
           </div>
           ${signalNote ? `<div class="row-item"><div><strong>Signal note</strong><p>${escapeHtml(signalNote)}</p></div></div>` : ''}
@@ -700,6 +722,10 @@
             </div>
           `;
 
+      if (els.keySignalsDetected) {
+        els.keySignalsDetected.innerHTML = hasLatest && keySignalItems.length ? renderSignals(keySignalItems) : '';
+        els.keySignalsDetected.style.display = hasLatest && keySignalItems.length ? 'grid' : 'none';
+      }
       els.latestActions.innerHTML = renderActionCards(topActions);
       if (els.latestReviewToolbar) {
         els.latestReviewToolbar.innerHTML = hasLatest

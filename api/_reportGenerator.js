@@ -536,6 +536,66 @@ const buildExpectedImpact = ({ overall, topSegments }) => {
   return 'The likely impact is incremental: small targeting and budget changes should improve control without making the account more fragile.';
 };
 
+const buildExecutiveFinding = ({ overall, topSegments, platformSummaries }) => {
+  if (!overall.rows) return 'No usable input was processed, so there is no reliable finding yet.';
+  const highestSpend = topSegments[0] || null;
+  const strongestConversion = [...topSegments].filter((segment) => Number(segment.conversions || 0) > 0).sort((a, b) => Number(b.conversions || 0) - Number(a.conversions || 0) || Number(b.spend || 0) - Number(a.spend || 0))[0] || null;
+  const weakestEfficiency = [...topSegments].filter((segment) => Number(segment.spend || 0) > 0).sort((a, b) => {
+    const aScore = Number.isFinite(Number(a.roas)) ? Number(a.roas) : (Number(a.conversions || 0) > 0 ? safeRatio(a.conversions, a.spend) : 0);
+    const bScore = Number.isFinite(Number(b.roas)) ? Number(b.roas) : (Number(b.conversions || 0) > 0 ? safeRatio(b.conversions, b.spend) : 0);
+    return aScore - bScore;
+  })[0] || null;
+  const bestRoas = [...topSegments].filter((segment) => Number.isFinite(Number(segment.roas))).sort((a, b) => Number(b.roas) - Number(a.roas))[0] || null;
+  const highCpaConcern = [...topSegments].filter((segment) => Number.isFinite(Number(segment.cpa))).sort((a, b) => Number(b.cpa) - Number(a.cpa))[0] || null;
+  const pieces = [];
+  if (highestSpend) pieces.push(`Spend appears concentrated in ${segmentDisplayName(highestSpend)}.`);
+  if (strongestConversion && strongestConversion !== highestSpend) {
+    pieces.push(`${segmentDisplayName(strongestConversion)} looks like the strongest conversion signal in the export.`);
+  }
+  if (bestRoas && bestRoas !== strongestConversion && bestRoas !== highestSpend) {
+    pieces.push(`${segmentDisplayName(bestRoas)} appears to carry the strongest ROAS signal.`);
+  }
+  if (weakestEfficiency && weakestEfficiency !== highestSpend && weakestEfficiency !== strongestConversion && weakestEfficiency !== bestRoas) {
+    pieces.push(`${segmentDisplayName(weakestEfficiency)} may need closer review because the efficiency signal looks weaker.`);
+  } else if (highCpaConcern && highCpaConcern !== highestSpend && highCpaConcern !== strongestConversion) {
+    pieces.push(`${segmentDisplayName(highCpaConcern)} may need closer review because CPA looks elevated.`);
+  }
+  const accountWideNote = overall.conversions > 0
+    ? 'No obvious account-wide issue stands out yet, but confidence is limited to the available fields.'
+    : 'No major issue stands out from the first export alone, so the next review will be more useful once another submission is available.';
+  if (!pieces.length) pieces.push(accountWideNote);
+  pieces.push('The safest next move is to keep the highest-spend area under review and compare it against the next export.');
+  return pieces.slice(0, 3).join(' ');
+};
+
+const buildKeySignals = ({ overall, topSegments }) => {
+  const signals = [];
+  const pushSignal = (label, title, details) => {
+    if (!title || signals.length >= 5) return;
+    const key = `${label}:${title}`.toLowerCase();
+    if (signals.some((item) => `${item.label}:${item.title}`.toLowerCase() === key)) return;
+    signals.push({ label, title, details });
+  };
+
+  const highestSpend = topSegments[0] || null;
+  const strongestConversion = [...topSegments].filter((segment) => Number(segment.conversions || 0) > 0).sort((a, b) => Number(b.conversions || 0) - Number(a.conversions || 0) || Number(b.spend || 0) - Number(a.spend || 0))[0] || null;
+  const weakestEfficiency = [...topSegments].filter((segment) => Number(segment.spend || 0) > 0).sort((a, b) => {
+    const aScore = Number.isFinite(Number(a.roas)) ? Number(a.roas) : (Number(a.conversions || 0) > 0 ? safeRatio(a.conversions, a.spend) : 0);
+    const bScore = Number.isFinite(Number(b.roas)) ? Number(b.roas) : (Number(b.conversions || 0) > 0 ? safeRatio(b.conversions, b.spend) : 0);
+    return aScore - bScore;
+  })[0] || null;
+  const bestRoas = [...topSegments].filter((segment) => Number.isFinite(Number(segment.roas))).sort((a, b) => Number(b.roas) - Number(a.roas))[0] || null;
+  const highestCpa = [...topSegments].filter((segment) => Number.isFinite(Number(segment.cpa))).sort((a, b) => Number(b.cpa) - Number(a.cpa))[0] || null;
+
+  if (highestSpend) pushSignal('Highest spend', segmentDisplayName(highestSpend), `${formatCurrency(highestSpend.spend)} spend`);
+  if (strongestConversion) pushSignal('Strongest conversion signal', segmentDisplayName(strongestConversion), `${formatNumber(strongestConversion.conversions)} conversions`);
+  if (weakestEfficiency) pushSignal('Weakest efficiency signal', segmentDisplayName(weakestEfficiency), weakestEfficiency.conversions ? `ROAS ${formatNumber(weakestEfficiency.roas, 2)}x · CPA ${formatCurrency(weakestEfficiency.cpa)}` : `${formatCurrency(weakestEfficiency.spend)} spend · no recorded conversions`);
+  if (bestRoas) pushSignal('Best ROAS signal', segmentDisplayName(bestRoas), `ROAS ${formatNumber(bestRoas.roas, 2)}x`);
+  if (highestCpa) pushSignal('Highest CPA concern', segmentDisplayName(highestCpa), `CPA ${formatCurrency(highestCpa.cpa)}`);
+
+  return signals.slice(0, 5);
+};
+
 const buildSourceSummaries = (files) => files.map((file) => {
   const rows = file.records.length;
   const spend = file.totals.spend;
@@ -725,6 +785,8 @@ const generatePortalReport = ({ files = [], workspace = null } = {}) => {
     ...tradeoffNotes.slice(0, 2),
   ];
   const campaignNames = [...new Set(allRecords.map((record) => cleanDisplayLabel(record.campaign_name || record.ad_group || record.ad_name || record.keyword || record.search_term || record.segment_label)).filter(Boolean))];
+  const keySignals = buildKeySignals({ overall, topSegments });
+  const executiveFinding = buildExecutiveFinding({ overall, topSegments, platformSummaries });
 
   const confidenceNotes = [
     overall.rows < 25 ? 'The dataset is small, so the report should be treated as directional rather than definitive.' : 'The row count is enough for a directional review, but not enough to claim statistical certainty.',
@@ -744,6 +806,8 @@ const generatePortalReport = ({ files = [], workspace = null } = {}) => {
     how_to_read: howToRead,
     confidence_and_limitations: confidenceNotes,
     key_insights: keyInsights,
+    key_signals: keySignals,
+    executive_finding: executiveFinding,
     key_decisions: priorityItems,
     expected_impact: expectedImpact,
     source_file: sourceFile,
@@ -784,6 +848,12 @@ const generatePortalReport = ({ files = [], workspace = null } = {}) => {
     '',
     '## Executive Summary',
     executiveSummary,
+    '',
+    '## Executive Finding',
+    executiveFinding,
+    '',
+    '## Key Signals Detected',
+    ...keySignals.map((item) => `- ${item.label}: ${item.title}${item.details ? ` — ${item.details}` : ''}`),
     '',
     '## Account Snapshot',
     `- Rows analyzed: ${formatNumber(overall.rows)}`,
