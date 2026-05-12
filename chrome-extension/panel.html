@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gnomeo Review</title>
+    <link rel="stylesheet" href="panel.css" />
+    <script src="panel.js" defer></script>
+  </head>
+  <body>
+    <div class="panel">
+      <header class="panel-header">
+        <div>
+          <p class="eyebrow">Gnomeo</p>
+          <h1>Review layer</h1>
+          <p class="lede">A quiet read on what deserves attention.</p>
+        </div>
+        <button class="icon-button" id="closePanel" type="button" aria-label="Close panel">×</button>
+      </header>
+
+      <section class="composer">
+        <label class="field-label" for="csvInput">Upload export</label>
+        <textarea id="csvInput" rows="7" placeholder="Paste a CSV export here…"></textarea>
+        <div class="composer-row">
+          <label class="file-button">
+            <input id="csvFile" type="file" accept=".csv,text/csv" />
+            <span>Choose CSV</span>
+          </label>
+          <button id="reviewNow" class="primary-button" type="button">Review</button>
+        </div>
+        <p class="hint">Local prototype. CSV is processed in this browser only.</p>
+      </section>
+
+      <main class="content" id="reviewContent">
+        <section class="card">
+          <div class="card-head">
+            <span class="card-label">Top finding</span>
+            <span class="chip" id="sourceChip">Sample review</span>
+          </div>
+          <p class="finding" id="topFinding"></p>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><span class="card-label">Key signals</span></div>
+          <div class="signal-list" id="keySignals"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><span class="card-label">What deserves attention</span></div>
+          <div class="bullet-list" id="attentionList"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><span class="card-label">What changed since last review</span></div>
+          <div class="bullet-list" id="comparisonList"></div>
+        </section>
+
+        <section class="card privacy-card">
+          <div class="card-head"><span class="card-label">Privacy note</span></div>
+          <p id="privacyNote"></p>
+          <button id="clearHistory" class="text-button" type="button">Clear local review history</button>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
