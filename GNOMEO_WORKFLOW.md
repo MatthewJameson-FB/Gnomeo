@@ -76,6 +76,8 @@ Notes:
 - Track what changed, what still needs attention, what appears improved, and what is new this time.
 - The primary customer-facing action section is `What to change now`.
 - Keep recommendation tracking conservative; do not claim causality unless the export clearly supports it.
+- Users can remove an accidental/test review from their private portal history with soft delete during beta.
+- For full workspace deletion, keep the process manual/support-handled for now.
 
 ## Beta readiness / schema health
 - Before testing any beta portal flow, open the protected admin Beta Readiness page.

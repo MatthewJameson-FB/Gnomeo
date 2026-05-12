@@ -32,7 +32,7 @@ const monthStartIso = () => {
 };
 
 const listReportRuns = async (workspaceId, limit = 20) => {
-  const rows = await restSelect('report_runs', { select: '*', workspace_id: `eq.${workspaceId}`, order: 'created_at.desc', limit });
+  const rows = await restSelect('report_runs', { select: '*', workspace_id: `eq.${workspaceId}`, deleted_at: 'is.null', order: 'created_at.desc', limit });
   return Array.isArray(rows) ? rows : [];
 };
 
@@ -49,7 +49,7 @@ const countMonthlyReports = async (workspaceId) => {
 
 const listPortalReviews = async (workspaceId, limit = 20) => {
   try {
-    const rows = await restSelect('portal_review_submissions', { select: '*', workspace_id: `eq.${workspaceId}`, order: 'created_at.desc', limit });
+    const rows = await restSelect('portal_review_submissions', { select: '*', workspace_id: `eq.${workspaceId}`, deleted_at: 'is.null', order: 'created_at.desc', limit });
     return Array.isArray(rows) ? rows.map((row) => safePortalReview(row)) : [];
   } catch (error) {
     console.warn('[gnomeo portal] portal review history unavailable:', String(error?.message || error || '').slice(0, 200));
@@ -64,6 +64,55 @@ const toSafeReportRun = (run, parsed) => ({
   summary: run.summary || parsed || {},
   top_recommendations: run.top_recommendations || parsed?.key_decisions || [],
   trend_snapshot: run.trend_snapshot || parsed?.key_insights || [],
+});
+
+const toPublicWorkspace = (workspace) => {
+  const publicWorkspace = safeWorkspace(workspace);
+  delete publicWorkspace.owner_email;
+  return publicWorkspace;
+};
+
+const buildVisiblePortalState = async (workspace) => {
+  const runs = await listReportRuns(workspace.id, 20);
+  const portalReviews = await listPortalReviews(workspace.id, 20);
+  const latest = runs[0] || null;
+  const latestMarkdown = latest?.report_markdown || latest?.report_content || '';
+  const latestParsed = latestMarkdown ? parseReportMarkdown(latestMarkdown) : null;
+  const latestReport = latest ? {
+    ...safeHistoryRun(latest),
+    comparison_summary: latest.comparison_summary || {},
+    report_content: latestMarkdown,
+    report_markdown: latest.report_markdown || latestMarkdown,
+    summary: latest.summary || latestParsed || {},
+    top_recommendations: latest.top_recommendations || latestParsed?.key_decisions || [],
+    trend_snapshot: latest.trend_snapshot || latestParsed?.key_insights || [],
+    next_review_focus: latestParsed?.next_review_focus || [],
+  } : null;
+  const reportHistory = runs.map((run) => ({ ...safeHistoryRun(run), summary: run.summary || {}, top_recommendations: run.top_recommendations || [], trend_snapshot: run.trend_snapshot || [], comparison_summary: run.comparison_summary || {} }));
+  return {
+    publicWorkspace: toPublicWorkspace(workspace),
+    workspace_memory: workspaceMemoryFromWorkspace(workspace),
+    latestReport,
+    reportHistory,
+    portalReviews,
+    latestParsed,
+  };
+};
+
+const emptyWorkspaceComparison = () => ({
+  memory_summary: {},
+  recurring_issues: [],
+  open_recommendations: [],
+  trend_snapshot: [],
+  next_review_focus: [],
+  last_handover_at: null,
+  changed_since_last_review: [],
+  still_unresolved: [],
+  likely_actioned_or_improved: [],
+  new_this_time: [],
+  top_actions_now: [],
+  previous_recommendations_status: [],
+  comparison_note: null,
 });
 
 const formatComparisonItem = (item) => {
@@ -137,7 +186,7 @@ module.exports = async (req, res) => {
   const endpoint = normalize(req.query?.endpoint || req.query?.action || '');
   const method = String(req.method || '').toUpperCase();
 
-  if (endpoint !== 'workspace' && endpoint !== 'run-report') {
+  if (endpoint !== 'workspace' && endpoint !== 'run-report' && endpoint !== 'remove-review') {
     return respond(res, 404, { success: false, error: 'Unknown portal endpoint' });
   }
 
@@ -154,37 +203,18 @@ module.exports = async (req, res) => {
       return respond(res, 404, { success: false, error: 'Workspace not found' });
     }
 
-    const runs = await listReportRuns(workspace.id, 20);
-    const portalReviews = await listPortalReviews(workspace.id, 20);
-    const latest = runs[0] || null;
-    const latestMarkdown = latest?.report_markdown || latest?.report_content || '';
-    const latestParsed = latestMarkdown ? parseReportMarkdown(latestMarkdown) : null;
-    const limits = portalLimitsForPlan(workspace.plan);
     const reportsThisMonth = await countMonthlyReports(workspace.id);
+    const limits = portalLimitsForPlan(workspace.plan);
     const remainingReports = typeof limits.maxReportsPerMonth === 'number' ? Math.max(0, limits.maxReportsPerMonth - reportsThisMonth) : null;
+    const state = await buildVisiblePortalState(workspace);
 
     await updatePortalTokenUse(workspace.id);
-    await logUsageEvent({ workspace_id: workspace.id, event_type: 'portal_viewed', plan: workspace.plan, metadata: { workspace_name: workspace.workspace_name, report_count: runs.length } });
-
-    const latestReport = latest ? {
-      ...safeHistoryRun(latest),
-      comparison_summary: latest.comparison_summary || {},
-      report_content: latestMarkdown,
-      report_markdown: latest.report_markdown || latestMarkdown,
-      summary: latest.summary || latestParsed || {},
-      top_recommendations: latest.top_recommendations || latestParsed?.key_decisions || [],
-      trend_snapshot: latest.trend_snapshot || latestParsed?.key_insights || [],
-      next_review_focus: latestParsed?.next_review_focus || [],
-    } : null;
-
-    const reportHistory = runs.map((run) => ({ ...safeHistoryRun(run), summary: run.summary || {}, top_recommendations: run.top_recommendations || [], trend_snapshot: run.trend_snapshot || [] }));
-    const publicWorkspace = safeWorkspace(workspace);
-    delete publicWorkspace.owner_email;
+    await logUsageEvent({ workspace_id: workspace.id, event_type: 'portal_viewed', plan: workspace.plan, metadata: { workspace_name: workspace.workspace_name, report_count: state.reportHistory.length } });
 
     return respond(res, 200, {
       success: true,
-      workspace: publicWorkspace,
-      workspace_memory: workspaceMemoryFromWorkspace(workspace),
+      workspace: state.publicWorkspace,
+      workspace_memory: state.workspace_memory,
       changed_since_last_review: workspace.changed_since_last_review || [],
       still_unresolved: workspace.still_unresolved || [],
       likely_actioned_or_improved: workspace.likely_actioned_or_improved || [],
@@ -210,12 +240,12 @@ module.exports = async (req, res) => {
         remaining_reports_this_month: remainingReports,
         allowed_platforms: limits.allowedPlatforms,
       },
-      latest_report: latestReport,
-      report_history: reportHistory,
-      portal_reviews: portalReviews,
-      top_priorities: latestParsed?.key_decisions?.slice(0, 3) || [],
-      trend_snapshot: latestReport?.trend_snapshot || latestParsed?.key_insights || [],
-      next_review_focus: latestParsed?.next_review_focus || [
+      latest_report: state.latestReport,
+      report_history: state.reportHistory,
+      portal_reviews: state.portalReviews,
+      top_priorities: state.latestParsed?.key_decisions?.slice(0, 3) || [],
+      trend_snapshot: state.latestReport?.trend_snapshot || state.latestParsed?.key_insights || [],
+      next_review_focus: state.latestParsed?.next_review_focus || [
         'Upload the latest Google Ads and Meta Ads exports',
         'Check waste concentration and weak signal areas',
         'Review whether budget allocation should change',
@@ -247,6 +277,116 @@ module.exports = async (req, res) => {
   const workspace = await getWorkspaceByPortalToken(token);
   if (!workspace || workspace.status === 'inactive' || workspace.status === 'cancelled') {
     return respond(res, 404, { success: false, error: 'Workspace not found' });
+  }
+
+  if (endpoint === 'remove-review') {
+    const reportRunId = normalize(body.report_run_id || body.reportRunId || req.query?.report_run_id || req.query?.reportRunId || '');
+    if (!reportRunId) return respond(res, 400, { success: false, error: 'Missing report_run_id' });
+
+    const targetRows = await restSelect('report_runs', {
+      select: '*',
+      workspace_id: `eq.${workspace.id}`,
+      id: `eq.${reportRunId}`,
+      deleted_at: 'is.null',
+      limit: 1,
+    });
+    const targetRun = Array.isArray(targetRows) ? targetRows[0] || null : null;
+    if (!targetRun) return respond(res, 404, { success: false, error: 'Review not found' });
+
+    const deletedAt = new Date().toISOString();
+    try {
+      await restUpdate('report_runs', { id: `eq.${reportRunId}`, workspace_id: `eq.${workspace.id}` }, { deleted_at: deletedAt });
+    } catch (error) {
+      console.warn('[gnomeo portal] report removal failed (non-blocking):', String(error?.message || error || '').slice(0, 200));
+      return respond(res, 500, { success: false, error: 'We could not remove this review right now. Please try again or contact support.' });
+    }
+
+    try {
+      await restUpdate('portal_review_submissions', { workspace_id: `eq.${workspace.id}`, report_run_id: `eq.${reportRunId}` }, { deleted_at: deletedAt });
+    } catch (error) {
+      console.warn('[gnomeo portal] portal review removal sync failed (non-blocking):', String(error?.message || error || '').slice(0, 200));
+    }
+
+    let updatedWorkspace = workspace;
+    const refreshedRuns = await listReportRuns(workspace.id, 20);
+    const refreshedLatest = refreshedRuns[0] || null;
+    if (refreshedLatest) {
+      const refreshedMarkdown = refreshedLatest.report_markdown || refreshedLatest.report_content || '';
+      const refreshedParsed = refreshedMarkdown ? parseReportMarkdown(refreshedMarkdown) : null;
+      const refreshedComparison = refreshedLatest.comparison_summary || {};
+      try {
+        const [savedWorkspace] = await updateWorkspaceById(workspace.id, {
+          ...buildWorkspaceMemoryUpdate({
+            workspace,
+            parsedReport: refreshedParsed || {},
+            detectedPlatforms: refreshedLatest.source_platforms || refreshedLatest.platforms || [],
+            sourceFilenames: refreshedLatest.source_filenames || [],
+            reportRun: refreshedLatest,
+            currentMemory: workspace,
+          }),
+          changed_since_last_review: refreshedComparison.changed_since_last_review || [],
+          still_unresolved: refreshedComparison.still_unresolved || [],
+          likely_actioned_or_improved: refreshedComparison.likely_actioned_or_improved || [],
+          new_this_time: refreshedComparison.new_this_time || [],
+          top_actions_now: refreshedComparison.top_actions_now || [],
+          previous_recommendations_status: refreshedComparison.previous_recommendations_status || [],
+          comparison_note: refreshedComparison.comparison_note || null,
+        });
+        if (savedWorkspace) updatedWorkspace = savedWorkspace;
+      } catch (error) {
+        console.warn('[gnomeo portal] workspace refresh after removal failed (non-blocking):', String(error?.message || error || '').slice(0, 200));
+      }
+    } else {
+      try {
+        const [savedWorkspace] = await updateWorkspaceById(workspace.id, emptyWorkspaceComparison());
+        if (savedWorkspace) updatedWorkspace = savedWorkspace;
+      } catch (error) {
+        console.warn('[gnomeo portal] workspace reset after removal failed (non-blocking):', String(error?.message || error || '').slice(0, 200));
+      }
+    }
+
+    const refreshedState = await buildVisiblePortalState(updatedWorkspace);
+    const removalLimits = portalLimitsForPlan(updatedWorkspace.plan);
+    const reportsThisMonth = await countMonthlyReports(updatedWorkspace.id);
+    const remainingReports = typeof removalLimits.maxReportsPerMonth === 'number' ? Math.max(0, removalLimits.maxReportsPerMonth - reportsThisMonth) : null;
+
+    await updatePortalTokenUse(updatedWorkspace.id).catch(() => {});
+    await logUsageEvent({
+      workspace_id: updatedWorkspace.id,
+      event_type: 'portal_review_removed',
+      plan: updatedWorkspace.plan,
+      metadata: {
+        workspace_name: updatedWorkspace.workspace_name,
+        report_run_id: reportRunId,
+      },
+    });
+
+    return respond(res, 200, {
+      success: true,
+      message: 'Review removed. Your workspace has been updated.',
+      workspace: refreshedState.publicWorkspace,
+      workspace_memory: refreshedState.workspace_memory,
+      latest_report: refreshedState.latestReport,
+      report_history: refreshedState.reportHistory,
+      portal_reviews: refreshedState.portalReviews,
+      top_priorities: refreshedState.latestParsed?.key_decisions?.slice(0, 3) || [],
+      changed_since_last_review: refreshedState.publicWorkspace.changed_since_last_review || [],
+      still_unresolved: refreshedState.publicWorkspace.still_unresolved || [],
+      likely_actioned_or_improved: refreshedState.publicWorkspace.likely_actioned_or_improved || [],
+      new_this_time: refreshedState.publicWorkspace.new_this_time || [],
+      top_actions_now: refreshedState.publicWorkspace.top_actions_now || [],
+      previous_recommendations_status: refreshedState.publicWorkspace.previous_recommendations_status || [],
+      comparison_note: refreshedState.publicWorkspace.comparison_note || null,
+      upload_limits: {
+        plan_label: removalLimits.planLabel,
+        max_files: removalLimits.maxFiles,
+        max_file_bytes: removalLimits.maxFileBytes,
+        max_total_rows: removalLimits.maxTotalRows,
+        max_reports_per_month: removalLimits.maxReportsPerMonth,
+        remaining_reports_this_month: remainingReports,
+        allowed_platforms: removalLimits.allowedPlatforms,
+      },
+    });
   }
 
   const limits = portalLimitsForPlan(workspace.plan);

@@ -5,9 +5,11 @@
 - Raw upload retention should be minimized.
 - Paid-tier raw upload target: up to 7 days unless deleted earlier.
 - Temporary parsed artifacts should be deleted within 24 hours where possible.
-- Generated reports, workspace memory, and trend history persist until deletion or account closure.
+- Generated reports, workspace memory, and trend history persist until deletion or account closure, subject to portal review removal.
 - Raw CSV uploads for portal reviews should be temporary and deleted after processing where possible.
 - Portal review queue records may retain filenames, detected platforms, file counts, status, and linked report ids, but not raw CSV contents.
+- Users may remove generated portal reviews from their own workspace history via soft delete during beta.
+- Soft-deleted review rows may be retained temporarily for audit/debug during beta, then can be hard-deleted later if needed.
 - Beta request records are onboarding data and may be retained for manual review, but should stay separate from raw CSV uploads.
 - Handle deletion requests promptly.
 - A cleanup job should exist for temporary files and stale uploads.

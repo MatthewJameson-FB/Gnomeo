@@ -31,10 +31,11 @@ Internal developer note for the manual beta flow.
 - `beta_request_id`, `website`, `platforms`, `review_goal`, `is_agency`
 
 ### report_runs
-- `id`, `workspace_id`, `status`, `source_count`, `platforms`, `spend_analysed`, `revenue_analysed`, `roas`, `wasted_spend`, `report_url`, `report_html_path`, `created_at`
+- `id`, `workspace_id`, `status`, `source_count`, `platforms`, `spend_analysed`, `revenue_analysed`, `roas`, `wasted_spend`, `report_url`, `report_html_path`, `created_at`, `deleted_at`
 - `report_title`, `report_content`, `report_markdown`, `source_platforms`, `source_filenames`, `row_count`, `input_bytes`, `summary`
 - `top_recommendations`, `trend_snapshot`, `sources`, `top_priorities`, `recommendations`, `trend_notes`, `completed_at`, `error_message`, `metadata`
 - `comparison_summary`
+- Portal queries exclude soft-deleted report runs.
 
 ### usage_events
 - `id`, `workspace_id`, `event_type`, `plan`, `metadata`, `created_at`
@@ -44,7 +45,8 @@ Internal developer note for the manual beta flow.
 - `workspace_id`, `workspace_created_at`, `portal_link_created_at`
 
 ### portal_review_submissions
-- `id`, `created_at`, `workspace_id`, `status`, `filenames`, `platforms`, `file_count`, `report_run_id`, `completed_at`, `notes`
+- `id`, `created_at`, `workspace_id`, `status`, `filenames`, `platforms`, `file_count`, `report_run_id`, `completed_at`, `notes`, `deleted_at`
+- Portal queries exclude soft-deleted review submissions.
 
 ## Feature mapping
 

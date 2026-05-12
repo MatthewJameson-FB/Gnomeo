@@ -70,6 +70,7 @@ const SCHEMA_EXPECTATIONS = {
     'row_count',
     'input_bytes',
     'summary',
+    'deleted_at',
     'top_recommendations',
     'trend_snapshot',
     'sources',
@@ -84,7 +85,7 @@ const SCHEMA_EXPECTATIONS = {
   ],
   usage_events: ['id', 'workspace_id', 'event_type', 'plan', 'metadata', 'created_at'],
   beta_requests: ['id', 'created_at', 'name', 'email', 'company', 'website', 'platforms', 'monthly_spend_range', 'is_agency', 'review_goal', 'notes', 'status', 'source', 'consent_at', 'workspace_id', 'workspace_created_at', 'portal_link_created_at'],
-  portal_review_submissions: ['id', 'created_at', 'workspace_id', 'status', 'filenames', 'platforms', 'file_count', 'report_run_id', 'completed_at', 'notes'],
+  portal_review_submissions: ['id', 'created_at', 'workspace_id', 'status', 'filenames', 'platforms', 'file_count', 'report_run_id', 'completed_at', 'notes', 'deleted_at'],
 };
 
 const getHeader = (req, name) => {

@@ -40,6 +40,10 @@
     .stacked-list { display: grid; gap: 10px; }
     .comparison-section .report-list { margin-top: 12px; }
     .action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 14px; }
+    .review-toolbar { display: flex; justify-content: flex-end; margin-top: 12px; }
+    .button.destructive { background: #fff; color: #b91c1c; border: 1px solid rgba(185, 28, 28, 0.2); box-shadow: none; }
+    .button.destructive:hover { background: #fef2f2; }
+    .button.tight { min-width: 0; padding-left: 12px; padding-right: 12px; }
     .action-card {
       padding: 14px 16px; border: 1px solid var(--line); border-radius: 18px; background: #f8fafc;
     }
@@ -49,6 +53,7 @@
       display: flex; justify-content: space-between; gap: 16px; align-items: flex-start;
       padding: 14px 16px; border: 1px solid var(--line); border-radius: 18px; background: #fff; box-shadow: none;
     }
+    .row-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
     .row-item strong { display: block; margin-bottom: 4px; }
     .row-item p { margin: 0; color: var(--muted); }
     .pill-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
@@ -151,6 +156,7 @@
           <h2>Here is what Gnomeo found</h2>
           <div id="latestReviewMeta" class="pill-row"></div>
           <div id="latestReviewSummary" class="summary-panel"></div>
+          <div id="latestReviewToolbar" class="review-toolbar"></div>
           <div class="muted-kicker" style="margin-top: 18px;">What to change now</div>
           <div id="latestActionCards" class="action-grid"></div>
         </article>
@@ -231,7 +237,7 @@
           <div class="muted-kicker">Privacy note</div>
           <h2>Quiet handling</h2>
           <p class="compact-note">Raw uploads are handled temporarily for report generation. Reports and analytical summaries may be retained in your workspace.</p>
-          <div class="empty-state" style="margin-top: 12px;">Workspace tokens are workspace-scoped, revocable, and separate from admin access.</div>
+          <div class="empty-state" style="margin-top: 12px;">Workspace tokens are workspace-scoped, revocable, and separate from admin access. For full workspace deletion, contact support.</div>
         </article>
       </section>
     </main>
@@ -275,6 +281,7 @@
       formMessage: document.getElementById('formMessage'),
       latestMeta: document.getElementById('latestReviewMeta'),
       latestSummary: document.getElementById('latestReviewSummary'),
+      latestReviewToolbar: document.getElementById('latestReviewToolbar'),
       latestActions: document.getElementById('latestActionCards'),
       changedSinceLastReview: document.getElementById('changedSinceLastReview'),
       improvedBlock: document.getElementById('improvedBlock'),
@@ -359,6 +366,26 @@
       return items.map((item) => `<div class="row-item"><div><strong>${escapeHtml(item.title || item.label || item)}</strong>${item.details ? `<p>${escapeHtml(item.details)}</p>` : ''}</div>${item.badge ? `<span class="status">${escapeHtml(item.badge)}</span>` : ''}</div>`).join('');
     };
 
+    const renderReviewHistory = (items, latestId) => {
+      if (!items || !items.length) return '<div class="empty-state">Review history will appear after your first review.</div>';
+      return items.map((item) => {
+        const source = Array.isArray(item.source_platforms) && item.source_platforms.length ? item.source_platforms.join(' + ') : (item.source_count ? `${item.source_count} file(s)` : 'Saved review');
+        const isLatest = item.id === latestId;
+        return `
+          <div class="row-item">
+            <div>
+              <strong>${escapeHtml(item.report_title || 'Gnomeo report')}</strong>
+              <p>${escapeHtml(formatDate(item.created_at))} · ${escapeHtml(source)}</p>
+            </div>
+            <div class="row-actions">
+              <span class="status">${escapeHtml(isLatest ? 'Latest' : (item.status || 'completed'))}</span>
+              <button class="button secondary destructive tight" type="button" data-remove-review="${escapeHtml(item.id)}">Remove review</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    };
+
     const normalizeActionItem = (item) => {
       if (!item) return null;
       if (typeof item === 'string') {
@@ -419,6 +446,26 @@
         <p>${escapeHtml(item.details || 'Use the report for more detail.')}</p>
       </div>
     `).join('');
+
+    const requestReviewRemoval = async (reportRunId) => {
+      if (!state.token || !state.workspace || !reportRunId) return;
+      const confirmText = 'Remove this review?\n\nThis will remove the generated report from your workspace history and update the comparison view. Raw uploads are handled temporarily and are not kept as long-term workspace records.\n\nThis cannot be undone from the portal.';
+      if (!window.confirm(confirmText)) return;
+      setMessage('Removing review…', 'note');
+      try {
+        const formData = new FormData();
+        formData.append('token', state.token);
+        formData.append('report_run_id', reportRunId);
+        const response = await fetch('/api/portal/remove-review', { method: 'POST', body: formData });
+        const payload = await response.json();
+        if (!response.ok || !payload.success) throw new Error(payload.error || 'We could not remove this review right now. Please try again or contact support.');
+        applyWorkspacePayload(payload);
+        await fetchWorkspace({ silent: true }).catch(() => {});
+        setMessage(payload.message || 'Review removed. Your workspace has been updated.', 'success');
+      } catch (error) {
+        setMessage(error?.message || 'We could not remove this review right now. Please try again or contact support.', 'error');
+      }
+    };
 
     const applyWorkspacePayload = (payload) => {
       state.workspace = payload.workspace || state.workspace;
@@ -612,6 +659,11 @@
           `;
 
       els.latestActions.innerHTML = renderActionCards(topActions);
+      if (els.latestReviewToolbar) {
+        els.latestReviewToolbar.innerHTML = hasLatest
+          ? `<button class="button secondary destructive tight" type="button" data-remove-review="${escapeHtml(latest.id)}">Remove review</button>`
+          : '';
+      }
 
       els.changedSinceLastReview.innerHTML = hasLatest
         ? renderLineItems((state.changedSinceLastReview || []).slice(0, 5).map((item) => ({ title: item })), 'Gnomeo will compare future reviews against this baseline.')
@@ -663,23 +715,7 @@
         }
       }
 
-      if (state.history.length) {
-        els.reportHistory.innerHTML = state.history.map((item) => {
-          const recommendations = Array.isArray(item.top_recommendations) ? item.top_recommendations : [];
-          const source = Array.isArray(item.source_platforms) && item.source_platforms.length ? item.source_platforms.join(' + ') : (item.source_count ? `${item.source_count} file(s)` : 'Saved review');
-          return `
-            <div class="row-item">
-              <div>
-                <strong>${escapeHtml(item.report_title || 'Gnomeo report')}</strong>
-                <p>${escapeHtml(formatDate(item.created_at))} · ${escapeHtml(source)}</p>
-              </div>
-              <span class="status">${escapeHtml(item.id === latest?.id ? 'Latest' : (item.status || 'completed'))}</span>
-            </div>
-          `;
-        }).join('');
-      } else {
-        els.reportHistory.innerHTML = '<div class="empty-state">Review history will appear after your first review.</div>';
-      }
+      els.reportHistory.innerHTML = renderReviewHistory(state.history, latest?.id);
 
       if (els.nextReviewFocus) els.nextReviewFocus.innerHTML = '';
     };
@@ -817,6 +853,11 @@
 
     els.uploadForm.addEventListener('submit', submitReport);
     els.refreshButton.addEventListener('click', fetchWorkspace);
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest?.('[data-remove-review]');
+      if (!button) return;
+      requestReviewRemoval(button.getAttribute('data-remove-review'));
+    });
 
     renderWorkspace();
     fetchWorkspace();
