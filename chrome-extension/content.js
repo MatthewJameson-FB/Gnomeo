@@ -508,65 +508,99 @@
     return buildReview(candidates[0], platform);
   };
 
-  const requestId = () => (window.crypto && typeof window.crypto.randomUUID === 'function' ? window.crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+  const buildDebugState = () => {
+    const response = extractVisibleTableReview();
+    return {
+      host: location.host,
+      path: `${location.pathname}${location.search || ''}`,
+      url: location.href,
+      platform: response.platform || detectPlatform(),
+      contentScriptLoaded: true,
+      storageAvailable: Boolean(chrome?.storage?.session),
+      lastExtractionStatus: response.success
+        ? `Ready to review ${response.platform || 'this page'}`
+        : (response.summary?.executiveFinding || 'Couldn’t find a visible campaign table on this page.'),
+      lastError: response.error || '',
+      rowsDetected: Number.isFinite(response.rowsDetected) ? response.rowsDetected : 0,
+      columnsDetected: Number.isFinite(response.columnsDetected) ? response.columnsDetected : 0,
+      metricColumns: Array.isArray(response.metricColumns) ? response.metricColumns : [],
+      bundleCount: 0,
+      bundleKeys: [],
+    };
+  };
 
-  window.addEventListener('message', (event) => {
-    if (event.source !== frame.contentWindow) return;
-    const data = event.data || {};
-    if (data.type === 'gnomeo-debug-request') {
-      postDebugState();
-      return;
-    }
-    if (data.type !== 'gnomeo-review-visible-table-request') return;
-    debug('review requested');
-    let response;
+  const safeExtractReview = () => {
     try {
-      response = extractVisibleTableReview();
-      lastExtractionStatus = response.success
-        ? `Captured ${response.platform || 'visible table'}`
-        : (response.summary?.executiveFinding || 'No visible table found');
-      lastError = response.error || '';
-      lastRowsDetected = Number.isFinite(response.rowsDetected) ? response.rowsDetected : 0;
-      lastColumnsDetected = Number.isFinite(response.columnsDetected) ? response.columnsDetected : 0;
-      lastMetricColumns = Array.isArray(response.metricColumns) ? response.metricColumns : [];
+      return { ok: true, payload: extractVisibleTableReview() };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error || 'Unknown extraction error');
-      lastExtractionStatus = 'Gnomeo could not read this table yet.';
-      lastError = message;
-      response = {
-        success: false,
-        platform: detectPlatform(),
-        tableKind: 'error',
-        rowsDetected: 0,
-        columnsDetected: 0,
-        metricColumns: [],
-        reviewConfidence: 'Limited — visible rows only',
-        previewRows: [],
-        error: message,
-        summary: {
-          executiveFinding: 'Gnomeo could not read this table yet. Try refreshing the page or opening a campaign table.',
-          keySignals: [],
-          attention: ['Try refreshing the page or opening a campaign table.'],
-          comparison: ['Extraction failed before a table could be reviewed.'],
-          privacyNote: 'This prototype only reads the visible page after you click Add table. Nothing is sent or stored yet.',
+      return {
+        ok: false,
+        error: {
+          stage: 'extractor',
+          message,
+          userMessage: `Extractor crashed: ${message}`,
         },
       };
     }
-    debug('review response', {
-      success: response.success,
-      platform: response.platform,
-      rowsDetected: response.rowsDetected,
-      columnsDetected: response.columnsDetected,
-      tableKind: response.tableKind,
-      lastExtractionStatus,
-      lastError,
-    });
-    frame.contentWindow?.postMessage({
-      type: 'gnomeo-visible-table-result',
-      requestId: data.requestId || '',
-      payload: response,
-    }, '*');
-    postDebugState();
+  };
+
+  const safeDebugState = () => {
+    try {
+      return { ok: true, state: buildDebugState() };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || 'Unknown debug error');
+      return {
+        ok: false,
+        error: {
+          stage: 'debug-state',
+          message,
+          userMessage: `Debug state failed: ${message}`,
+        },
+      };
+    }
+  };
+
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (!message || typeof message !== 'object') return;
+    if (message.type === 'gnomeo-review-visible-table-request') {
+      debug('review requested');
+      const response = safeExtractReview();
+      if (response.ok) {
+        const payload = response.payload;
+        lastExtractionStatus = payload.success
+          ? `Captured ${payload.platform || 'visible table'}`
+          : (payload.summary?.executiveFinding || 'Couldn’t find a visible campaign table on this page.');
+        lastError = payload.error || '';
+        lastRowsDetected = Number.isFinite(payload.rowsDetected) ? payload.rowsDetected : 0;
+        lastColumnsDetected = Number.isFinite(payload.columnsDetected) ? payload.columnsDetected : 0;
+        lastMetricColumns = Array.isArray(payload.metricColumns) ? payload.metricColumns : [];
+        sendResponse({ ok: true, payload });
+      } else {
+        lastExtractionStatus = response.error?.userMessage || 'Extractor crashed.';
+        lastError = response.error?.message || response.error?.userMessage || 'Unknown extraction error';
+        sendResponse({ ok: false, error: response.error });
+      }
+      debug('review response', { lastExtractionStatus, lastError, rowsDetected: lastRowsDetected, columnsDetected: lastColumnsDetected, metricColumns: lastMetricColumns });
+      return true;
+    }
+    if (message.type === 'gnomeo-debug-request') {
+      const response = safeDebugState();
+      if (response.ok) {
+        const state = response.state;
+        lastExtractionStatus = state.lastExtractionStatus;
+        lastError = state.lastError;
+        lastRowsDetected = state.rowsDetected;
+        lastColumnsDetected = state.columnsDetected;
+        lastMetricColumns = state.metricColumns;
+        sendResponse({ ok: true, state });
+      } else {
+        lastError = response.error?.message || response.error?.userMessage || 'Unknown debug error';
+        sendResponse({ ok: false, error: response.error });
+      }
+      return true;
+    }
+    return undefined;
   });
 
   debug('injected', location.href);

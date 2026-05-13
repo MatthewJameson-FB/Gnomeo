@@ -29,11 +29,14 @@
   let currentAnalysis = EMPTY_ANALYSIS;
   const STORAGE_KEY = 'gnomeo-captured-tables';
   const sessionStorageApi = globalThis.chrome?.storage?.session || null;
+  const tabsApi = globalThis.chrome?.tabs || null;
+  const runtimeApi = globalThis.chrome?.runtime || null;
   const isLocalFixtureHost = () => ['localhost', '127.0.0.1'].includes((currentPageDebug.host || '').toLowerCase());
 
   const currentPageDebug = {
     host: '',
     path: '',
+    url: '',
     platform: '',
     contentScriptLoaded: false,
     storageAvailable: Boolean(sessionStorageApi),
@@ -46,6 +49,16 @@
     lastError: '',
   };
   let debugRequestTimer = null;
+
+  const setActionError = (message = '') => {
+    const el = $('actionError');
+    if (!el) return;
+    const text = String(message || '').trim();
+    el.hidden = !text;
+    el.textContent = text;
+  };
+
+  const clearActionError = () => setActionError('');
 
   try {
     if (document.referrer) {
@@ -67,15 +80,83 @@
   const storageSet = async (key, value) => {
     if (!sessionStorageApi) return;
     await new Promise((resolve) => {
-      sessionStorageApi.set({ [key]: value }, () => resolve());
+      sessionStorageApi.set({ [key]: value }, () => {
+        if (runtimeApi?.lastError?.message) {
+          resolve({ ok: false, error: runtimeApi.lastError.message });
+          return;
+        }
+        resolve({ ok: true });
+      });
     });
   };
 
   const storageRemove = async (key) => {
     if (!sessionStorageApi) return;
     await new Promise((resolve) => {
-      sessionStorageApi.remove(key, () => resolve());
+      sessionStorageApi.remove(key, () => {
+        if (runtimeApi?.lastError?.message) {
+          resolve({ ok: false, error: runtimeApi.lastError.message });
+          return;
+        }
+        resolve({ ok: true });
+      });
     });
+  };
+
+  const queryActiveTab = async () => {
+    if (!tabsApi?.query) {
+      return { ok: false, error: { stage: 'active-tab', message: 'chrome.tabs.query is unavailable', userMessage: 'No active tab found' } };
+    }
+    return await new Promise((resolve) => {
+      tabsApi.query({ active: true, currentWindow: true }, (tabs) => {
+        const message = runtimeApi?.lastError?.message || '';
+        if (message) {
+          resolve({ ok: false, error: { stage: 'active-tab', message, userMessage: 'No active tab found' } });
+          return;
+        }
+        if (!Array.isArray(tabs) || !tabs.length || !tabs[0]?.id) {
+          resolve({ ok: false, error: { stage: 'active-tab', message: 'No active tab found', userMessage: 'No active tab found' } });
+          return;
+        }
+        resolve({ ok: true, tab: tabs[0] });
+      });
+    });
+  };
+
+  const sendMessageToTab = async (tabId, message) => {
+    if (!tabsApi?.sendMessage) {
+      return { ok: false, error: { stage: 'message-send', message: 'chrome.tabs.sendMessage is unavailable', userMessage: 'Content script did not respond' } };
+    }
+    return await new Promise((resolve) => {
+      tabsApi.sendMessage(tabId, message, (response) => {
+        const messageText = runtimeApi?.lastError?.message || '';
+        if (messageText) {
+          resolve({ ok: false, error: { stage: 'message-send', message: messageText, userMessage: messageText.includes('Receiving end does not exist') ? 'Content script did not respond' : `Message send failed: ${messageText}` } });
+          return;
+        }
+        resolve({ ok: true, response });
+      });
+    });
+  };
+
+  const requestDebugSnapshot = async () => {
+    const activeTab = await queryActiveTab();
+    if (!activeTab.ok) return activeTab;
+    const response = await sendMessageToTab(activeTab.tab.id, { type: 'gnomeo-debug-request' });
+    if (!response.ok) return { ok: false, error: response.error, tab: activeTab.tab, contentScriptLoaded: false };
+    return response.response?.ok
+      ? { ok: true, state: response.response.state, tab: activeTab.tab, contentScriptLoaded: true }
+      : { ok: false, error: response.response?.error || { stage: 'debug-state', message: 'Debug state failed', userMessage: 'Debug state failed' }, tab: activeTab.tab, contentScriptLoaded: true };
+  };
+
+  const requestTableReview = async () => {
+    const activeTab = await queryActiveTab();
+    if (!activeTab.ok) return activeTab;
+    const response = await sendMessageToTab(activeTab.tab.id, { type: 'gnomeo-review-visible-table-request' });
+    if (!response.ok) return { ok: false, error: response.error, tab: activeTab.tab, contentScriptLoaded: false };
+    return response.response?.ok
+      ? { ok: true, payload: response.response.payload, tab: activeTab.tab, contentScriptLoaded: true }
+      : { ok: false, error: response.response?.error || { stage: 'extractor', message: 'Extraction failed', userMessage: 'Gnomeo could not read this table yet.' }, tab: activeTab.tab, contentScriptLoaded: true };
   };
 
   const loadCapturedTables = async () => {
@@ -86,7 +167,8 @@
   };
 
   const persistCapturedTables = async () => {
-    await storageSet(STORAGE_KEY, capturedTables);
+    const result = await storageSet(STORAGE_KEY, capturedTables);
+    if (result?.ok === false) throw new Error(result.error || 'Storage write failed');
   };
 
   const upsertCapturedTable = (capture) => {
@@ -199,10 +281,10 @@
     debugCard.hidden = !isLocalFixtureHost();
     if (debugCard.hidden) return;
 
-    $('debugPage').textContent = currentPageDebug.host ? `${currentPageDebug.host}${currentPageDebug.path || '/'}` : 'Waiting…';
+    $('debugPage').textContent = currentPageDebug.url || (currentPageDebug.host ? `${currentPageDebug.host}${currentPageDebug.path || '/'}` : 'Waiting…');
     $('debugPlatform').textContent = currentPageDebug.platform || 'Waiting…';
-    $('debugContentScript').textContent = currentPageDebug.contentScriptLoaded ? 'Loaded' : 'Not confirmed yet';
-    $('debugStorage').textContent = currentPageDebug.storageAvailable ? 'Available' : 'Unavailable';
+    $('debugContentScript').textContent = currentPageDebug.contentScriptLoaded ? 'Yes' : 'No';
+    $('debugStorage').textContent = currentPageDebug.storageAvailable ? 'Yes' : 'No';
     $('debugBundleCount').textContent = String(currentPageDebug.bundleCount ?? capturedTables.length ?? 0);
     $('debugBundleKeys').textContent = currentPageDebug.bundleKeys.length ? currentPageDebug.bundleKeys.join(' · ') : '—';
     $('debugLastExtraction').textContent = currentPageDebug.lastExtractionStatus || '—';
@@ -215,6 +297,7 @@
   const applyDebugState = (state = {}) => {
     currentPageDebug.host = state.host || currentPageDebug.host || '';
     currentPageDebug.path = state.path || currentPageDebug.path || '';
+    currentPageDebug.url = state.url || currentPageDebug.url || '';
     currentPageDebug.platform = state.platform || currentPageDebug.platform || '';
     currentPageDebug.contentScriptLoaded = Boolean(state.contentScriptLoaded || currentPageDebug.contentScriptLoaded);
     currentPageDebug.storageAvailable = Boolean(state.storageAvailable ?? currentPageDebug.storageAvailable);
@@ -229,15 +312,20 @@
   const requestDebugState = () => {
     if (debugRequestTimer) window.clearTimeout(debugRequestTimer);
     currentPageDebug.lastError = '';
-    window.parent.postMessage({ type: 'gnomeo-debug-request' }, '*');
-    debugRequestTimer = window.setTimeout(() => {
-      if (!currentPageDebug.contentScriptLoaded) {
-        currentPageDebug.lastExtractionStatus = 'Gnomeo is not available on this page.';
-        currentPageDebug.lastError = 'No content script response on this page.';
-        setStatus('Gnomeo is not available on this page. Open a supported campaign table or local fixture page.');
-        renderDebugState();
+    debugRequestTimer = window.setTimeout(async () => {
+      const response = await requestDebugSnapshot();
+      if (response.ok) {
+        applyDebugState(response.state);
+        return;
       }
-    }, 600);
+      const error = response.error || {};
+      currentPageDebug.contentScriptLoaded = Boolean(response.contentScriptLoaded);
+      currentPageDebug.lastExtractionStatus = error.userMessage || 'Gnomeo is not available on this page.';
+      currentPageDebug.lastError = error.message || error.userMessage || 'No content script response on this page.';
+      setStatus(error.userMessage || 'Gnomeo is not available on this page. Open a supported campaign table or local fixture page.');
+      setActionError(error.userMessage || error.message || '');
+      renderDebugState();
+    }, 0);
   };
 
   const setStatus = (text) => {
@@ -489,14 +577,81 @@
     };
   };
 
-  const addVisibleTable = () => {
+  const addVisibleTable = async () => {
     if (pendingRequestId) return;
     pendingRequestId = (window.crypto && typeof window.crypto.randomUUID === 'function') ? window.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     $('addVisibleTable').textContent = 'Adding…';
     $('addVisibleTable').disabled = true;
     $('focusText').textContent = 'Reading the visible table…';
-    setStatus('Gnomeo is reading the visible table you chose to add.');
-    window.parent.postMessage({ type: 'gnomeo-review-visible-table-request', requestId: pendingRequestId }, '*');
+    clearActionError();
+    setStatus('Reading the visible table you chose to add.');
+
+    const result = await requestTableReview();
+    pendingRequestId = null;
+    $('addVisibleTable').textContent = 'Add table';
+    $('addVisibleTable').disabled = false;
+
+    if (!result.ok) {
+      const error = result.error || {};
+      const message = error.userMessage || error.message || 'Couldn’t read this table yet.';
+      currentPageDebug.contentScriptLoaded = Boolean(result.contentScriptLoaded);
+      currentPageDebug.lastExtractionStatus = message;
+      currentPageDebug.lastError = error.message || message;
+      setStatus(message);
+      setActionError(message);
+      renderDebugState();
+      return;
+    }
+
+    const payload = result.payload || EMPTY_ANALYSIS;
+    applyDebugState({
+      host: currentPageDebug.host,
+      path: currentPageDebug.path,
+      url: currentPageDebug.url,
+      platform: payload.platform || currentPageDebug.platform,
+      contentScriptLoaded: true,
+      storageAvailable: currentPageDebug.storageAvailable,
+      lastExtractionStatus: payload.success
+        ? `Captured ${payload.platform || 'table'}`
+        : (payload.summary?.executiveFinding || 'Couldn’t find a visible campaign table on this page.'),
+      rowsDetected: Number.isFinite(payload.rowsDetected) ? payload.rowsDetected : currentPageDebug.rowsDetected,
+      columnsDetected: Number.isFinite(payload.columnsDetected) ? payload.columnsDetected : currentPageDebug.columnsDetected,
+      metricColumns: Array.isArray(payload.metricColumns) ? payload.metricColumns : currentPageDebug.metricColumns,
+      lastError: payload.error || '',
+    });
+
+    if (!payload.success) {
+      const message = payload.summary?.executiveFinding || 'Couldn’t find a visible campaign table on this page.';
+      setStatus(message);
+      setActionError(message);
+      if (!capturedTables.length) {
+        setAnalysis({
+          ...EMPTY_ANALYSIS,
+          summary: {
+            ...EMPTY_ANALYSIS.summary,
+            executiveFinding: message,
+            attention: payload.summary?.attention || EMPTY_ANALYSIS.summary.attention,
+            privacyNote: payload.summary?.privacyNote || EMPTY_ANALYSIS.summary.privacyNote,
+          },
+        });
+      }
+      return;
+    }
+
+    const capture = normaliseCapture(payload);
+    upsertCapturedTable(capture);
+    renderCapturedTables();
+    setAnalysis(capturedTables.length === 1 ? buildSingleReview(capture) : buildBundleReview(capturedTables));
+    setStatus(`${capturedTables.length} table${capturedTables.length === 1 ? '' : 's'} · ${uniquePlatforms(capturedTables.map((item) => item.platform)).join(', ')}`);
+    try {
+      const storageResult = await persistCapturedTables();
+      if (storageResult?.ok === false) throw new Error(storageResult.error || 'Storage write failed');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || 'Storage write failed');
+      currentPageDebug.lastError = message;
+      setActionError(`Storage write failed: ${message}`);
+      setStatus(`Storage write failed: ${message}`);
+    }
   };
 
   const analyseNow = () => {
@@ -551,72 +706,6 @@
 
     renderDebugState();
     requestDebugState();
-
-    window.addEventListener('message', (event) => {
-      const data = event.data || {};
-      if (data.type === 'gnomeo-debug-state') {
-        if (debugRequestTimer) {
-          window.clearTimeout(debugRequestTimer);
-          debugRequestTimer = null;
-        }
-        applyDebugState({
-          host: data.host,
-          path: data.path,
-          platform: data.platform,
-          contentScriptLoaded: true,
-          storageAvailable: data.storageAvailable,
-          lastExtractionStatus: data.lastExtractionStatus,
-          rowsDetected: data.rowsDetected,
-          columnsDetected: data.columnsDetected,
-          metricColumns: data.metricColumns,
-          lastError: data.lastError,
-        });
-        return;
-      }
-      if (data.type !== 'gnomeo-visible-table-result') return;
-      if (pendingRequestId && data.requestId && data.requestId !== pendingRequestId) return;
-      pendingRequestId = null;
-      addButton.textContent = 'Add table';
-      addButton.disabled = false;
-
-      const payload = data.payload || EMPTY_ANALYSIS;
-      applyDebugState({
-        host: currentPageDebug.host,
-        path: currentPageDebug.path,
-        platform: payload.platform || currentPageDebug.platform,
-        contentScriptLoaded: true,
-        storageAvailable: currentPageDebug.storageAvailable,
-        lastExtractionStatus: payload.success
-          ? `Captured ${payload.platform || 'table'}`
-          : (payload.summary?.executiveFinding || 'Gnomeo could not find a visible campaign table on this page.'),
-        rowsDetected: Number.isFinite(payload.rowsDetected) ? payload.rowsDetected : currentPageDebug.rowsDetected,
-        columnsDetected: Number.isFinite(payload.columnsDetected) ? payload.columnsDetected : currentPageDebug.columnsDetected,
-        metricColumns: Array.isArray(payload.metricColumns) ? payload.metricColumns : currentPageDebug.metricColumns,
-        lastError: payload.error || '',
-      });
-      if (!payload.success) {
-        setStatus(payload.summary?.executiveFinding || 'Couldn’t find a visible campaign table on this page.');
-        if (!capturedTables.length) {
-          setAnalysis({
-            ...EMPTY_ANALYSIS,
-            summary: {
-              ...EMPTY_ANALYSIS.summary,
-              executiveFinding: payload.summary?.executiveFinding || EMPTY_ANALYSIS.summary.executiveFinding,
-              attention: payload.summary?.attention || EMPTY_ANALYSIS.summary.attention,
-              privacyNote: payload.summary?.privacyNote || EMPTY_ANALYSIS.summary.privacyNote,
-            },
-          });
-        }
-        return;
-      }
-
-      const capture = normaliseCapture(payload);
-      upsertCapturedTable(capture);
-      renderCapturedTables();
-      setAnalysis(capturedTables.length === 1 ? buildSingleReview(capture) : buildBundleReview(capturedTables));
-      setStatus(`${capturedTables.length} table${capturedTables.length === 1 ? '' : 's'} · ${uniquePlatforms(capturedTables.map((item) => item.platform)).join(', ')}`);
-      persistCapturedTables().catch(() => {});
-    });
   };
 
   if (document.readyState === 'loading') {
