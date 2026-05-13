@@ -327,12 +327,11 @@
   };
 
   const renderWorkspaceSection = () => {
-    const hasSources = capturedTables.length > 0;
+    const flags = getVisibilityFlags();
     const connected = Boolean(workspaceConnection?.token);
-    const analysisReady = Boolean(hasSources && currentAnalysis.success && !currentAnalysis.stale);
-    const promptOpen = Boolean(workspacePromptOpen && analysisReady && !connected);
+    const promptOpen = Boolean(workspacePromptOpen && flags.hasFreshAnalysis && !connected);
     const visible = promptOpen;
-    const miniVisible = analysisReady && connected;
+    const miniVisible = flags.canShowWorkspace && connected;
     const workspaceCard = $('workspaceCard');
     const workspaceMiniRow = $('workspaceMiniRow');
     const workspaceAction = $('workspaceAction');
@@ -349,11 +348,11 @@
     const input = $('workspaceLinkInput');
     const statusLine = $('workspaceStatusLine');
 
-    if (!analysisReady && workspacePromptOpen) workspacePromptOpen = false;
+    if (!flags.hasFreshAnalysis && workspacePromptOpen) workspacePromptOpen = false;
 
     if (workspaceCard) workspaceCard.hidden = !visible;
     if (workspaceMiniRow) workspaceMiniRow.hidden = !miniVisible;
-    if (!hasSources || !analysisReady) {
+    if (!flags.hasSources || !flags.hasFreshAnalysis) {
       if (workspaceCard) workspaceCard.hidden = true;
       if (workspaceMiniRow) workspaceMiniRow.hidden = true;
       if (workspaceAction) workspaceAction.hidden = true;
@@ -381,22 +380,22 @@
       statusLine.hidden = !promptOpen;
     }
     if (workspaceAction) {
-      workspaceAction.hidden = !analysisReady || promptOpen || connected;
+      workspaceAction.hidden = !flags.canShowWorkspace || promptOpen || connected;
       workspaceAction.textContent = 'Save to workspace';
       workspaceAction.disabled = workspaceSaving;
     }
     if (workspaceMiniStatus) {
-      workspaceMiniStatus.hidden = !(analysisReady && connected);
+      workspaceMiniStatus.hidden = !(flags.canShowWorkspace && connected);
       workspaceMiniStatus.textContent = workspaceConnection.saved ? 'Saved.' : 'Connected.';
     }
     if (workspaceMiniOpen) {
       const href = workspaceConnection.portalUrl || workspaceConnection.rawInput || '';
-      const canOpen = Boolean(href) && connected;
+      const canOpen = Boolean(href) && connected && flags.canShowWorkspace;
       workspaceMiniOpen.hidden = !canOpen;
       if (canOpen) workspaceMiniOpen.href = href;
     }
     if (workspaceChangeMini) {
-      workspaceChangeMini.hidden = !(analysisReady && connected);
+      workspaceChangeMini.hidden = !(flags.canShowWorkspace && connected);
     }
     if (disconnected) disconnected.hidden = !promptOpen;
     if (inlineLinks) inlineLinks.hidden = true;
@@ -1185,6 +1184,11 @@
     $('debugCurrentBundleSignature').textContent = currentPageDebug.currentBundleSignature || '—';
     $('debugLastAnalysedSignature').textContent = currentPageDebug.lastAnalysedSignature || '—';
     $('debugAnalysisFresh').textContent = currentPageDebug.analysisFresh ? 'Yes' : 'No';
+    const hasSources = capturedTables.length > 0;
+    const hasFreshAnalysis = Boolean(currentAnalysis.success && !currentAnalysis.stale && currentPageDebug.analysisFresh);
+    const hasNextBest = Boolean(hasFreshAnalysis && currentAnalysis.nextBest);
+    const canShowWorkspace = Boolean(hasFreshAnalysis);
+    $('debugStateFlags').textContent = `hasSources=${hasSources ? 'true' : 'false'} · hasFreshAnalysis=${hasFreshAnalysis ? 'true' : 'false'} · hasNextBest=${hasNextBest ? 'true' : 'false'} · canShowWorkspace=${canShowWorkspace ? 'true' : 'false'} · capturedTables=${capturedTables.length} · analysisFresh=${currentPageDebug.analysisFresh ? 'true' : 'false'}`;
     $('debugLastExtraction').textContent = currentPageDebug.lastExtractionStatus || '—';
     $('debugRows').textContent = Number.isFinite(currentPageDebug.rowsDetected) ? formatNumber(currentPageDebug.rowsDetected) : '—';
     $('debugColumns').textContent = Number.isFinite(currentPageDebug.columnsDetected) ? formatNumber(currentPageDebug.columnsDetected) : '—';
@@ -1231,6 +1235,14 @@
     $('captureStatus').textContent = text;
   };
 
+  const getVisibilityFlags = () => {
+    const hasSources = capturedTables.length > 0;
+    const hasFreshAnalysis = Boolean(hasSources && currentAnalysis.success && !currentAnalysis.stale && captureAnalysisFreshness());
+    const hasNextBest = Boolean(hasFreshAnalysis && currentAnalysis.nextBest);
+    const canShowWorkspace = Boolean(hasFreshAnalysis);
+    return { hasSources, hasFreshAnalysis, hasNextBest, canShowWorkspace };
+  };
+
   const setAnalysis = (analysis) => {
     currentAnalysis = analysis || EMPTY_ANALYSIS;
     const summary = currentAnalysis.summary || EMPTY_ANALYSIS.summary;
@@ -1248,7 +1260,8 @@
     const analyseNowButton = $('analyseNow');
     const decision = deriveDecisionCard(currentAnalysis);
     const confidenceVariant = currentAnalysis.stale ? 'warn' : (currentAnalysis.success ? 'info' : 'neutral');
-    const ready = currentAnalysis.success && !currentAnalysis.stale;
+    const flags = getVisibilityFlags();
+    const ready = flags.hasFreshAnalysis;
 
     if (analyseNowButton) {
       analyseNowButton.textContent = currentAnalysis.success && !currentAnalysis.stale ? 'Analyse again' : 'Analyse';
@@ -1288,7 +1301,7 @@
     focusCard.classList.toggle('is-stale', currentAnalysis.stale);
     focusCard.classList.toggle('is-empty', !ready && !currentAnalysis.stale);
     focusCard.hidden = false;
-    nextStepsCard.hidden = !ready || !decision.nextBest;
+    nextStepsCard.hidden = !flags.hasNextBest;
     reviewContent.hidden = !currentAnalysis.success && !currentAnalysis.stale;
     if (downloadButton) downloadButton.disabled = !currentAnalysis.success;
     if (reportSummary) {
