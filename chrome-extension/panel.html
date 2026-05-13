@@ -38,10 +38,10 @@
 
       <section class="card captured-card" id="capturedSummaryCard" hidden>
         <div class="card-head">
-          <span class="card-label">Status</span>
-          <span class="chip" id="bundleCount">0 tables</span>
+          <span class="card-label">Current page</span>
+          <span class="chip" id="bundleCount">0 tables added</span>
         </div>
-        <p class="card-note" id="bundleHint">Add another table, then analyse everything together.</p>
+        <p class="card-note" id="bundleHint">Add the visible campaign table to start.</p>
       </section>
 
       <section class="composer">
@@ -101,11 +101,17 @@
         <div class="detail-body debug-body">
           <div class="debug-grid">
             <div><span>Page</span><strong id="debugPage">Waiting…</strong></div>
+            <div><span>Active tab</span><strong id="debugActiveTab">Waiting…</strong></div>
+            <div><span>Active URL</span><strong id="debugActiveUrl">Waiting…</strong></div>
             <div><span>Platform</span><strong id="debugPlatform">Waiting…</strong></div>
+            <div><span>Current capture</span><strong id="debugCurrentCapture">Waiting…</strong></div>
             <div><span>Content script</span><strong id="debugContentScript">Waiting…</strong></div>
             <div><span>chrome.storage.session</span><strong id="debugStorage">Waiting…</strong></div>
             <div><span>Session bundle count</span><strong id="debugBundleCount">0</strong></div>
             <div><span>Captured platforms</span><strong id="debugBundleKeys">—</strong></div>
+            <div><span>Current bundle signature</span><strong id="debugCurrentBundleSignature">—</strong></div>
+            <div><span>Last analysed signature</span><strong id="debugLastAnalysedSignature">—</strong></div>
+            <div><span>Analysis fresh</span><strong id="debugAnalysisFresh">No</strong></div>
             <div><span>Last extraction status</span><strong id="debugLastExtraction">Waiting…</strong></div>
             <div><span>Rows detected</span><strong id="debugRows">—</strong></div>
             <div><span>Columns detected</span><strong id="debugColumns">—</strong></div>

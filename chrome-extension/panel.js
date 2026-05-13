@@ -28,16 +28,30 @@
   let capturedTables = [];
   let currentAnalysis = EMPTY_ANALYSIS;
   const STORAGE_KEY = 'gnomeo-captured-tables';
+  const ANALYSIS_META_KEY = 'gnomeo-analysis-meta';
   const sessionStorageApi = globalThis.chrome?.storage?.session || null;
   const tabsApi = globalThis.chrome?.tabs || null;
   const sidePanelApi = globalThis.chrome?.sidePanel || null;
   const runtimeApi = globalThis.chrome?.runtime || null;
   const isLocalFixtureHost = () => ['localhost', '127.0.0.1'].includes((currentPageDebug.host || '').toLowerCase());
 
+  let analysisMeta = {
+    lastAnalysedSignature: '',
+    analysedAt: 0,
+  };
+  let activeRefreshTimer = null;
+
   const currentPageDebug = {
     host: '',
     path: '',
     url: '',
+    activeTabId: null,
+    activeUrl: '',
+    currentPlatform: '',
+    currentCaptureKey: '',
+    currentBundleSignature: '',
+    lastAnalysedSignature: '',
+    analysisFresh: false,
     platform: '',
     contentScriptLoaded: false,
     storageAvailable: Boolean(sessionStorageApi),
@@ -102,6 +116,22 @@
         resolve({ ok: true });
       });
     });
+  };
+
+  const loadAnalysisMeta = async () => {
+    const stored = await storageGet(ANALYSIS_META_KEY);
+    if (stored && typeof stored === 'object') {
+      analysisMeta = {
+        ...analysisMeta,
+        lastAnalysedSignature: String(stored.lastAnalysedSignature || ''),
+        analysedAt: Number.isFinite(stored.analysedAt) ? stored.analysedAt : 0,
+      };
+    }
+  };
+
+  const persistAnalysisMeta = async () => {
+    const result = await storageSet(ANALYSIS_META_KEY, analysisMeta);
+    if (result?.ok === false) throw new Error(result.error || 'Analysis metadata write failed');
   };
 
   const queryActiveTab = async () => {
@@ -176,11 +206,68 @@
       : { ok: false, error: response.response?.error || { stage: 'extractor', message: 'Extraction failed', userMessage: 'Gnomeo could not read this table yet.' }, tab: activeTab.tab, contentScriptLoaded: true };
   };
 
+  const inferPlatformFromUrl = (url = '') => {
+    try {
+      const parsed = new URL(url);
+      const hostName = parsed.hostname.toLowerCase();
+      const path = parsed.pathname.toLowerCase();
+      if (hostName.includes('google.com') && path.includes('/')) return 'Google Ads';
+      if (hostName.includes('facebook.com') || hostName.includes('meta.com')) return 'Meta Ads';
+      if (hostName.includes('linkedin.com') && path.includes('/campaignmanager')) return 'LinkedIn Campaign Manager';
+      if (hostName === 'localhost' || hostName === '127.0.0.1') return 'Local test page';
+    } catch {
+      // Ignore malformed URLs.
+    }
+    return 'Unknown platform';
+  };
+
+  const refreshActiveContext = async () => {
+    const response = await requestDebugSnapshot();
+    const tab = response.tab || null;
+    currentPageDebug.activeTabId = tab?.id ?? null;
+    currentPageDebug.activeUrl = tab?.url || currentPageDebug.activeUrl || '';
+
+    if (response.ok) {
+      applyDebugState(response.state);
+      currentPageDebug.host = response.state.host || currentPageDebug.host || '';
+      currentPageDebug.path = response.state.path || currentPageDebug.path || '';
+      currentPageDebug.url = response.state.url || tab?.url || currentPageDebug.url || '';
+      currentPageDebug.platform = response.state.platform || inferPlatformFromUrl(tab?.url || currentPageDebug.url);
+      currentPageDebug.currentPlatform = currentPageDebug.platform;
+      currentPageDebug.currentCaptureKey = captureKeyFromPlatform(currentPageDebug.currentPlatform);
+      currentPageDebug.contentScriptLoaded = true;
+      currentPageDebug.lastExtractionStatus = response.state.lastExtractionStatus || currentPageDebug.lastExtractionStatus;
+      currentPageDebug.lastError = response.state.lastError || '';
+      currentPageDebug.rowsDetected = Number.isFinite(response.state.rowsDetected) ? response.state.rowsDetected : currentPageDebug.rowsDetected;
+      currentPageDebug.columnsDetected = Number.isFinite(response.state.columnsDetected) ? response.state.columnsDetected : currentPageDebug.columnsDetected;
+      currentPageDebug.metricColumns = Array.isArray(response.state.metricColumns) ? response.state.metricColumns : currentPageDebug.metricColumns;
+    } else {
+      currentPageDebug.url = tab?.url || currentPageDebug.url || '';
+      currentPageDebug.platform = inferPlatformFromUrl(tab?.url || currentPageDebug.url);
+      currentPageDebug.currentPlatform = currentPageDebug.platform;
+      currentPageDebug.currentCaptureKey = captureKeyFromPlatform(currentPageDebug.currentPlatform);
+      currentPageDebug.contentScriptLoaded = Boolean(response.contentScriptLoaded);
+      currentPageDebug.lastExtractionStatus = response.error?.userMessage || 'Open a supported campaign table, then click Add table.';
+      currentPageDebug.lastError = response.error?.message || response.error?.userMessage || 'No content script response on this page.';
+    }
+
+    renderCapturedTables();
+    renderDebugState();
+  };
+
+  let contextRefreshScheduled = null;
+  const scheduleContextRefresh = () => {
+    if (contextRefreshScheduled) window.clearTimeout(contextRefreshScheduled);
+    contextRefreshScheduled = window.setTimeout(() => {
+      contextRefreshScheduled = null;
+      refreshActiveContext().catch(() => {});
+    }, 100);
+  };
+
   const loadCapturedTables = async () => {
     const stored = await storageGet(STORAGE_KEY);
     capturedTables = Array.isArray(stored) ? stored.filter(Boolean) : [];
-    currentPageDebug.bundleCount = capturedTables.length;
-    currentPageDebug.bundleKeys = sortPlatformNames(capturedTables.map((capture) => capture.platform));
+    refreshBundleDebugState();
   };
 
   const persistCapturedTables = async () => {
@@ -197,8 +284,7 @@
     } else {
       capturedTables.push(capture);
     }
-    currentPageDebug.bundleCount = capturedTables.length;
-    currentPageDebug.bundleKeys = sortPlatformNames(capturedTables.map((item) => item.platform));
+    refreshBundleDebugState();
   };
 
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"]|'/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -216,6 +302,114 @@
 
   const uniquePlatforms = (items) => [...new Set(items.filter(Boolean))];
 
+  const displayPlatformName = (platform) => {
+    const value = String(platform || '').trim();
+    if (/^google ads$/i.test(value)) return 'Google Ads';
+    if (/^meta ads$/i.test(value)) return 'Meta Ads';
+    if (/^linkedin campaign manager$/i.test(value)) return 'LinkedIn Campaign Manager';
+    if (/^local test page$/i.test(value)) return 'Local test page';
+    return value || 'Other';
+  };
+
+  const captureKeyFromPlatform = (platform) => displayPlatformName(platform);
+
+  const buildBundleSignature = (items = []) => JSON.stringify(sortCapturedTables(items).map((capture) => ({
+    platform: displayPlatformName(capture.platform),
+    tableKind: capture.tableKind || 'table',
+    rowsDetected: capture.rowsDetected || 0,
+    columnsDetected: capture.columnsDetected || 0,
+    capturedAt: capture.capturedAt || 0,
+    metricColumns: Array.isArray(capture.metricColumns) ? [...new Set(capture.metricColumns)].sort() : [],
+    snapshot: {
+      spendLabel: capture.snapshot?.spendLabel || '',
+      conversionLabel: capture.snapshot?.conversionLabel || '',
+      watchLabel: capture.snapshot?.watchLabel || '',
+      watchSpendValue: Number.isFinite(capture.snapshot?.watchSpendValue) ? capture.snapshot.watchSpendValue : null,
+      watchConversionValue: Number.isFinite(capture.snapshot?.watchConversionValue) ? capture.snapshot.watchConversionValue : null,
+      watchRoasValue: Number.isFinite(capture.snapshot?.watchRoasValue) ? capture.snapshot.watchRoasValue : null,
+    },
+  })));
+
+  const refreshBundleDebugState = () => {
+    currentPageDebug.bundleCount = capturedTables.length;
+    currentPageDebug.bundleKeys = sortPlatformNames(capturedTables.map((item) => item.platform));
+    currentPageDebug.currentBundleSignature = buildBundleSignature(capturedTables);
+    currentPageDebug.lastAnalysedSignature = analysisMeta.lastAnalysedSignature || '';
+    currentPageDebug.analysisFresh = Boolean(currentPageDebug.currentBundleSignature && currentPageDebug.currentBundleSignature === currentPageDebug.lastAnalysedSignature);
+    return currentPageDebug.analysisFresh;
+  };
+
+  const captureAnalysisFreshness = () => refreshBundleDebugState();
+
+  const makeStaleAnalysis = () => ({
+    ...EMPTY_ANALYSIS,
+    summary: {
+      ...EMPTY_ANALYSIS.summary,
+      executiveFinding: 'Tables changed — analyse again for an updated focus.',
+      attention: ['Analyse again to refresh the focus.'],
+      privacyNote: EMPTY_ANALYSIS.summary.privacyNote,
+    },
+    stale: true,
+  });
+
+  const platformLabelFromState = () => currentPageDebug.currentPlatform || currentPageDebug.platform || 'Unknown platform';
+
+  const derivePanelState = () => {
+    const bundleCount = capturedTables.length;
+    const currentPlatform = platformLabelFromState();
+    const supported = Boolean(currentPageDebug.contentScriptLoaded && currentPlatform && !/^unknown platform$/i.test(currentPlatform));
+    const currentCaptureKey = currentPlatform ? captureKeyFromPlatform(currentPlatform) : '';
+    const currentCaptureAdded = supported && capturedTables.some((item) => captureKeyFromPlatform(item.platform) === currentCaptureKey);
+    const analysisFresh = captureAnalysisFreshness();
+    const state = bundleCount === 0
+      ? 'empty'
+      : supported && currentCaptureAdded
+        ? 'current-added'
+        : supported
+          ? 'current-missing'
+          : 'unsupported';
+    const tableCountText = `${bundleCount} table${bundleCount === 1 ? '' : 's'} added`;
+    const addedPlatforms = sortPlatformNames(capturedTables.map((item) => item.platform));
+    const addedText = addedPlatforms.length ? addedPlatforms.join(', ') : 'None yet';
+    let note = '';
+    if (!supported) {
+      note = 'Open a supported campaign table, then click Add table.';
+    } else if (state === 'empty') {
+      note = 'Add the visible campaign table to start.';
+    } else if (state === 'current-added') {
+      note = 'This table is already added.';
+    } else {
+      note = 'Current page not added yet.';
+    }
+    if (supported && bundleCount > 0 && !analysisFresh) {
+      note = `${note} Tables changed — analyse again for an updated focus.`.trim();
+    }
+    return {
+      state,
+      supported,
+      currentPlatform,
+      currentCaptureKey,
+      currentCaptureAdded,
+      bundleCount,
+      tableCountText,
+      addedText,
+      note,
+      analysisFresh,
+      canAddTable: supported,
+      buttonLabel: bundleCount > 0 && currentCaptureAdded ? 'Update table' : 'Add table',
+      statusLine: !supported
+        ? 'Open a supported campaign table, then click Add table.'
+        : bundleCount === 0
+          ? 'Add the visible campaign table to start.'
+          : state === 'current-added'
+            ? (analysisFresh ? 'This table is already added. Analysis ready.' : 'This table is already added. Tables changed — analyse again for an updated focus.')
+            : state === 'current-missing'
+              ? (analysisFresh ? 'Current page not added yet. Analysis ready.' : 'Current page not added yet. Tables changed — analyse again for an updated focus.')
+              : 'Open a supported campaign table, then click Add table.',
+      summaryChip: analysisFresh ? 'Analysis ready' : (bundleCount ? 'Needs re-analysis' : 'No analysis yet'),
+    };
+  };
+
   const canonicalPlatformName = (platform) => {
     const value = String(platform || '').trim();
     if (/^google ads$/i.test(value)) return 'Google Ads';
@@ -225,11 +419,12 @@
   };
 
   const platformRank = (platform) => {
-    const value = canonicalPlatformName(platform);
+    const value = displayPlatformName(platform);
     if (value === 'Google Ads') return 0;
     if (value === 'Meta Ads') return 1;
     if (value === 'LinkedIn Campaign Manager') return 2;
-    return 3;
+    if (value === 'Local test page') return 3;
+    return 4;
   };
 
   const sortCapturedTables = (items = []) => [...items].sort((a, b) => {
@@ -243,15 +438,16 @@
   });
 
   const sortPlatformNames = (items = []) => {
-    const names = uniquePlatforms(items).map(canonicalPlatformName);
+    const names = uniquePlatforms(items).map(displayPlatformName);
     return [...new Set(names)].sort((a, b) => platformRank(a) - platformRank(b));
   };
 
   const platformAdvice = (platform) => {
-    const name = canonicalPlatformName(platform);
+    const name = displayPlatformName(platform);
     if (name === 'Google Ads') return 'For Google, check the landing page or keywords if this is a Search campaign.';
     if (name === 'Meta Ads') return 'For Meta, check the audience, creative, placement, or landing page.';
     if (name === 'LinkedIn Campaign Manager') return 'For LinkedIn, check the audience, offer, lead form, or landing page.';
+    if (name === 'Local test page') return 'For local fixtures, compare the visible rows and try another supported page if needed.';
     return 'Check why this is spending money without enough visible results.';
   };
 
@@ -299,26 +495,30 @@
     const container = $('capturedList');
     const countChip = $('bundleCount');
     const hint = $('bundleHint');
+    const addVisibleTableButton = $('addVisibleTable');
     const analyseNow = $('analyseNow');
     const clearCapturedTablesButton = $('clearCapturedTables');
     const capturedSummaryCard = $('capturedSummaryCard');
-    const capturedCountInline = $('capturedCountInline');
 
     const orderedTables = sortCapturedTables(capturedTables);
-    const orderedPlatforms = sortPlatformNames(orderedTables.map((capture) => capture.platform));
+    const panelState = derivePanelState();
 
-    countChip.textContent = `${orderedTables.length} table${orderedTables.length === 1 ? '' : 's'}`;
+    countChip.textContent = panelState.tableCountText;
+    if (addVisibleTableButton) {
+      addVisibleTableButton.textContent = panelState.buttonLabel;
+      addVisibleTableButton.disabled = !panelState.canAddTable || Boolean(pendingRequestId);
+    }
     analyseNow.disabled = capturedTables.length === 0;
     analyseNow.hidden = !capturedTables.length;
     clearCapturedTablesButton.hidden = !capturedTables.length;
-    capturedSummaryCard.hidden = true;
-    capturedCountInline.textContent = orderedTables.length
-      ? `${orderedTables.length} table${orderedTables.length === 1 ? '' : 's'}`
-      : '0 tables';
+    capturedSummaryCard.hidden = false;
+    capturedSummaryCard.querySelector('.card-label').textContent = 'Current page';
+    hint.textContent = `${panelState.note} Added: ${panelState.addedText}.`;
+    setStatus(panelState.statusLine);
 
     if (!orderedTables.length) {
       container.innerHTML = '<div class="captured-item"><strong>No tables yet</strong><span>Add a table from Google Ads, Meta Ads, or LinkedIn Ads.</span></div>';
-      hint.textContent = 'Add a table from one or more platforms, then analyse them together.';
+      countChip.textContent = '0 tables added';
       return;
     }
 
@@ -328,8 +528,6 @@
         <span>${escapeHtml(formatNumber((capture.metricColumns || []).length))} metric columns · ${escapeHtml(formatTime(capture.capturedAt))}</span>
       </div>
     `).join('');
-
-    hint.textContent = `${orderedTables.length} table${orderedTables.length === 1 ? '' : 's'} · ${orderedPlatforms.join(', ')}`;
   };
 
   const renderDebugState = () => {
@@ -340,11 +538,17 @@
     if (debugCard.hidden) return;
 
     $('debugPage').textContent = currentPageDebug.url || (currentPageDebug.host ? `${currentPageDebug.host}${currentPageDebug.path || '/'}` : 'Waiting…');
+    $('debugActiveTab').textContent = Number.isFinite(currentPageDebug.activeTabId) ? String(currentPageDebug.activeTabId) : 'Waiting…';
+    $('debugActiveUrl').textContent = currentPageDebug.activeUrl || 'Waiting…';
     $('debugPlatform').textContent = currentPageDebug.platform || 'Waiting…';
+    $('debugCurrentCapture').textContent = currentPageDebug.currentCaptureKey || '—';
     $('debugContentScript').textContent = currentPageDebug.contentScriptLoaded ? 'Yes' : 'No';
     $('debugStorage').textContent = currentPageDebug.storageAvailable ? 'Yes' : 'No';
     $('debugBundleCount').textContent = String(currentPageDebug.bundleCount ?? capturedTables.length ?? 0);
     $('debugBundleKeys').textContent = currentPageDebug.bundleKeys.length ? currentPageDebug.bundleKeys.join(' · ') : '—';
+    $('debugCurrentBundleSignature').textContent = currentPageDebug.currentBundleSignature || '—';
+    $('debugLastAnalysedSignature').textContent = currentPageDebug.lastAnalysedSignature || '—';
+    $('debugAnalysisFresh').textContent = currentPageDebug.analysisFresh ? 'Yes' : 'No';
     $('debugLastExtraction').textContent = currentPageDebug.lastExtractionStatus || '—';
     $('debugRows').textContent = Number.isFinite(currentPageDebug.rowsDetected) ? formatNumber(currentPageDebug.rowsDetected) : '—';
     $('debugColumns').textContent = Number.isFinite(currentPageDebug.columnsDetected) ? formatNumber(currentPageDebug.columnsDetected) : '—';
@@ -400,17 +604,18 @@
     const nextStepsList = $('nextStepsList');
     const capturedSummaryCard = $('capturedSummaryCard');
     const reviewContent = $('reviewContent');
+    const panelState = derivePanelState();
 
-    $('sourceChip').textContent = currentAnalysis.mode === 'bundle'
+    $('sourceChip').textContent = currentAnalysis.success && currentAnalysis.mode === 'bundle'
       ? `${currentAnalysis.sources.length} tables`
-      : currentAnalysis.mode === 'single'
+      : currentAnalysis.success && currentAnalysis.mode === 'single'
         ? currentAnalysis.platform || 'Local only'
-        : 'Local only';
+        : (currentAnalysis.stale ? 'Needs re-analysis' : 'Local only');
 
     const meta = [];
     if (currentAnalysis.success) {
       if (currentAnalysis.mode === 'bundle') {
-      meta.push(`<span class="chip">Tables: ${escapeHtml(formatNumber(currentAnalysis.sources.length || 0))}</span>`);
+        meta.push(`<span class="chip">Tables: ${escapeHtml(formatNumber(currentAnalysis.sources.length || 0))}</span>`);
         meta.push(`<span class="chip">Platforms: ${escapeHtml(currentAnalysis.platforms.join(', ') || '—')}</span>`);
       } else {
         meta.push(`<span class="chip">${escapeHtml(currentAnalysis.platform || 'Unknown platform')}</span>`);
@@ -419,25 +624,41 @@
         if (Array.isArray(currentAnalysis.metricColumns) && currentAnalysis.metricColumns.length) meta.push(`<span class="chip">Metric columns: ${escapeHtml(currentAnalysis.metricColumns.join(', '))}</span>`);
       }
       meta.push(`<span class="chip">${escapeHtml(currentAnalysis.reviewConfidence || 'Visible rows only · session-only prototype')}</span>`);
+    } else if (currentAnalysis.stale) {
+      meta.push('<span class="chip">Needs re-analysis</span>');
+      meta.push(`<span class="chip">${escapeHtml(panelState.tableCountText)}</span>`);
     } else {
       meta.push('<span class="chip">Local only</span>');
       meta.push('<span class="chip">Visible rows only</span>');
     }
     $('metaRow').innerHTML = meta.join('');
-    focusCard.hidden = !currentAnalysis.success;
+    focusCard.hidden = !currentAnalysis.success && !currentAnalysis.stale;
     nextStepsCard.hidden = !currentAnalysis.success;
-    capturedSummaryCard.hidden = true;
-    reviewContent.hidden = !capturedTables.length && !currentAnalysis.success;
-    focusText.textContent = currentAnalysis.success
-      ? (currentAnalysis.focus || summary.executiveFinding || EMPTY_ANALYSIS.summary.executiveFinding)
-      : 'Add a table to see the focus.';
-    focusConfidence.textContent = currentAnalysis.success
-      ? (currentAnalysis.reviewConfidence || 'Visible rows only')
-      : 'Visible rows only';
-    $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 4), 'No visible signals found yet.');
-    $('visiblePreview').innerHTML = renderPreview(currentAnalysis.previewRows);
-    $('attentionList').innerHTML = renderLines(summary.attention.slice(0, 3), 'No attention notes yet.');
-    nextStepsList.innerHTML = renderSteps(currentAnalysis.nextSteps || [], 'Add a table first.');
+    capturedSummaryCard.hidden = false;
+    capturedSummaryCard.querySelector('.card-label').textContent = 'Current page';
+    reviewContent.hidden = !currentAnalysis.success;
+    if (currentAnalysis.success) {
+      focusText.textContent = currentAnalysis.focus || summary.executiveFinding || EMPTY_ANALYSIS.summary.executiveFinding;
+      focusConfidence.textContent = currentAnalysis.reviewConfidence || 'Visible rows only';
+      $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 4), 'No visible signals found yet.');
+      $('visiblePreview').innerHTML = renderPreview(currentAnalysis.previewRows);
+      $('attentionList').innerHTML = renderLines(summary.attention.slice(0, 3), 'No attention notes yet.');
+      nextStepsList.innerHTML = renderSteps(currentAnalysis.nextSteps || [], 'Add a table first.');
+    } else if (currentAnalysis.stale) {
+      focusText.textContent = summary.executiveFinding || 'Tables changed — analyse again for an updated focus.';
+      focusConfidence.textContent = 'Needs re-analysis';
+      $('keySignals').innerHTML = '';
+      $('visiblePreview').innerHTML = '';
+      $('attentionList').innerHTML = '';
+      nextStepsList.innerHTML = '';
+    } else {
+      focusText.textContent = 'Add a table to see the focus.';
+      focusConfidence.textContent = 'Visible rows only';
+      $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 4), 'No visible signals found yet.');
+      $('visiblePreview').innerHTML = renderPreview(currentAnalysis.previewRows);
+      $('attentionList').innerHTML = renderLines(summary.attention.slice(0, 3), 'No attention notes yet.');
+      nextStepsList.innerHTML = renderSteps(currentAnalysis.nextSteps || [], 'Add a table first.');
+    }
   };
 
   const normaliseCapture = (payload) => ({
@@ -697,9 +918,12 @@
 
     const capture = normaliseCapture(payload);
     upsertCapturedTable(capture);
+    setAnalysis(makeStaleAnalysis());
+    refreshBundleDebugState();
     renderCapturedTables();
-    setAnalysis(capturedTables.length === 1 ? buildSingleReview(capture) : buildBundleReview(capturedTables));
-    setStatus(`${capturedTables.length} table${capturedTables.length === 1 ? '' : 's'} · ${sortPlatformNames(capturedTables.map((item) => item.platform)).join(', ')}`);
+    setStatus(capturedTables.length === 1
+      ? '1 table added. Analyse again for an updated focus.'
+      : `${capturedTables.length} tables added. Analyse again for an updated focus.`);
     try {
       const storageResult = await persistCapturedTables();
       if (storageResult?.ok === false) throw new Error(storageResult.error || 'Storage write failed');
@@ -720,16 +944,20 @@
       ? buildSingleReview(capturedTables[0])
       : buildBundleReview(capturedTables);
     setAnalysis(analysis);
+    analysisMeta.lastAnalysedSignature = buildBundleSignature(capturedTables);
+    analysisMeta.analysedAt = Date.now();
+    persistAnalysisMeta().catch(() => {});
+    refreshBundleDebugState();
+    renderCapturedTables();
     setStatus(capturedTables.length === 1
-      ? `${capturedTables[0].platform} analysed.`
-      : `${capturedTables.length} tables analysed.`);
+      ? 'Analysis ready.'
+      : 'Analysis ready.');
   };
 
   const clearCapturedTables = async () => {
     pendingRequestId = null;
     capturedTables = [];
-    currentPageDebug.bundleCount = 0;
-    currentPageDebug.bundleKeys = [];
+    analysisMeta = { lastAnalysedSignature: '', analysedAt: 0 };
     setAnalysis(EMPTY_ANALYSIS);
     renderCapturedTables();
     renderDebugState();
@@ -737,6 +965,7 @@
     $('addVisibleTable').disabled = false;
     setStatus('Only the visible table you choose. Nothing runs in the background.');
     await storageRemove(STORAGE_KEY);
+    await storageRemove(ANALYSIS_META_KEY);
   };
 
   const boot = async () => {
@@ -746,12 +975,29 @@
     const clearCapturedTablesButton = $('clearCapturedTables');
 
     await loadCapturedTables();
-    setAnalysis(EMPTY_ANALYSIS);
+    await loadAnalysisMeta();
     renderCapturedTables();
-    if (capturedTables.length) {
+    if (capturedTables.length && buildBundleSignature(capturedTables) === analysisMeta.lastAnalysedSignature) {
       setAnalysis(capturedTables.length === 1 ? buildSingleReview(capturedTables[0]) : buildBundleReview(capturedTables));
-      setStatus(`${capturedTables.length} table${capturedTables.length === 1 ? '' : 's'} · ${sortPlatformNames(capturedTables.map((item) => item.platform)).join(', ')}`);
+      refreshBundleDebugState();
+    } else if (capturedTables.length) {
+      setAnalysis(makeStaleAnalysis());
+      refreshBundleDebugState();
+    } else {
+      setAnalysis(EMPTY_ANALYSIS);
+      refreshBundleDebugState();
     }
+    await refreshActiveContext();
+
+    if (tabsApi?.onActivated?.addListener) {
+      tabsApi.onActivated.addListener(() => { scheduleContextRefresh(); });
+    }
+    if (tabsApi?.onUpdated?.addListener) {
+      tabsApi.onUpdated.addListener((tabId, changeInfo, tab) => {
+        if (changeInfo.status || changeInfo.url || tab?.active) scheduleContextRefresh();
+      });
+    }
+    activeRefreshTimer = window.setInterval(() => { scheduleContextRefresh(); }, 1500);
 
     close?.addEventListener('click', async () => {
       const closed = await closePanelView();
@@ -765,7 +1011,6 @@
     clearCapturedTablesButton?.addEventListener('click', clearCapturedTables);
 
     renderDebugState();
-    requestDebugState();
   };
 
   if (document.readyState === 'loading') {
@@ -773,4 +1018,9 @@
   } else {
     boot().catch(() => {});
   }
+
+  window.addEventListener('beforeunload', () => {
+    if (activeRefreshTimer) window.clearInterval(activeRefreshTimer);
+    if (contextRefreshScheduled) window.clearTimeout(contextRefreshScheduled);
+  });
 })();
