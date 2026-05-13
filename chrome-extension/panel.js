@@ -99,7 +99,7 @@
 
   const getSourceProgressState = (count = 0) => {
     if (count <= 0) {
-      return { label: '0 sources · hungry', copy: 'Ready when you are.', filled: 0, tone: 'neutral' };
+      return { label: '0 sources · hungry', copy: 'Add a table.', filled: 0, tone: 'neutral' };
     }
     if (count === 1) {
       return { label: '1 source · nibble', copy: 'Need one more.', filled: 1, tone: 'info' };
@@ -327,11 +327,12 @@
   };
 
   const renderWorkspaceSection = () => {
+    const hasSources = capturedTables.length > 0;
     const connected = Boolean(workspaceConnection?.token);
-    const promptOpen = Boolean(workspacePromptOpen && !connected);
-    const analysisReady = Boolean(currentAnalysis.success && !currentAnalysis.stale);
+    const analysisReady = Boolean(hasSources && currentAnalysis.success && !currentAnalysis.stale);
+    const promptOpen = Boolean(workspacePromptOpen && analysisReady && !connected);
     const visible = promptOpen;
-    const miniVisible = analysisReady || promptOpen;
+    const miniVisible = analysisReady && connected;
     const workspaceCard = $('workspaceCard');
     const workspaceMiniRow = $('workspaceMiniRow');
     const workspaceAction = $('workspaceAction');
@@ -348,8 +349,29 @@
     const input = $('workspaceLinkInput');
     const statusLine = $('workspaceStatusLine');
 
+    if (!analysisReady && workspacePromptOpen) workspacePromptOpen = false;
+
     if (workspaceCard) workspaceCard.hidden = !visible;
     if (workspaceMiniRow) workspaceMiniRow.hidden = !miniVisible;
+    if (!hasSources || !analysisReady) {
+      if (workspaceCard) workspaceCard.hidden = true;
+      if (workspaceMiniRow) workspaceMiniRow.hidden = true;
+      if (workspaceAction) workspaceAction.hidden = true;
+      if (disconnected) disconnected.hidden = true;
+      if (closed) closed.hidden = true;
+      setChipText(chip, 'Workspace ready', 'success', true);
+      if (statusLine) statusLine.hidden = true;
+      if (workspaceMiniStatus) workspaceMiniStatus.hidden = true;
+      if (workspaceMiniOpen) workspaceMiniOpen.hidden = true;
+      if (workspaceChangeMini) workspaceChangeMini.hidden = true;
+      if (inlineLinks) inlineLinks.hidden = true;
+      if (changeButton) changeButton.hidden = true;
+      if (cancelButton) cancelButton.hidden = true;
+      if (openLink) openLink.hidden = true;
+      if (input) input.value = '';
+      return;
+    }
+
     setChipText(chip, 'Workspace ready', 'success', !connected);
     if (closed) closed.hidden = !promptOpen;
     if (statusLine) {
@@ -360,7 +382,7 @@
     }
     if (workspaceAction) {
       workspaceAction.hidden = !analysisReady || promptOpen || connected;
-      workspaceAction.textContent = workspaceConnection.token ? 'Workspace' : 'Workspace';
+      workspaceAction.textContent = 'Save to workspace';
       workspaceAction.disabled = workspaceSaving;
     }
     if (workspaceMiniStatus) {
@@ -369,7 +391,7 @@
     }
     if (workspaceMiniOpen) {
       const href = workspaceConnection.portalUrl || workspaceConnection.rawInput || '';
-      const canOpen = Boolean(href) && analysisReady && connected;
+      const canOpen = Boolean(href) && connected;
       workspaceMiniOpen.hidden = !canOpen;
       if (canOpen) workspaceMiniOpen.href = href;
     }
@@ -1605,6 +1627,7 @@
     pendingRequestId = null;
     capturedTables = [];
     analysisMeta = { lastAnalysedSignature: '', analysedAt: 0 };
+    workspacePromptOpen = false;
     setAnalysis(EMPTY_ANALYSIS);
     renderCapturedTables();
     renderDebugState();
