@@ -433,7 +433,7 @@
         keySignals,
         attention,
         comparison: ['This is the first visible-page review in this panel session.'],
-        privacyNote: 'This prototype only reads the visible page after you click Review visible table. Nothing is sent or stored yet.',
+        privacyNote: 'This prototype only reads the visible page after you click Add visible table. Nothing is sent or stored yet.',
       },
       snapshot: {
         spendLabel: spendRow?.label || '',
@@ -442,6 +442,11 @@
         conversionValue: Number.isFinite(conversionValue) ? conversionValue : null,
         roasLabel: roasRow?.label || '',
         roasValue: Number.isFinite(roasValue) ? roasValue : null,
+        watchLabel: watchRow?.label || '',
+        watchSpendValue: Number.isFinite(watchSpend) ? watchSpend : null,
+        watchConversionValue: Number.isFinite(watchConversions) ? watchConversions : null,
+        watchRoasValue: Number.isFinite(watchRow?.metrics?.roas?.value) ? watchRow.metrics.roas.value : null,
+        watchEfficiencyValue: Number.isFinite(watchSpend) && watchSpend > 0 && Number.isFinite(watchConversions) ? watchConversions / watchSpend : null,
         rowsDetected: rows.length,
       },
     };
@@ -469,7 +474,7 @@
             'Use paste or upload if the page layout is still hiding the rows.',
           ],
           comparison: ['No visible table was captured yet in this panel session.'],
-          privacyNote: 'This prototype only reads the visible page after you click Review visible table. Nothing is sent or stored yet.',
+          privacyNote: 'This prototype only reads the visible page after you click Add visible table. Nothing is sent or stored yet.',
         },
       };
     }

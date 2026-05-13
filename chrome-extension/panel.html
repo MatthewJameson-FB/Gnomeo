@@ -19,8 +19,24 @@
       </header>
 
       <section class="composer">
-        <button id="reviewVisibleTable" class="primary-button" type="button">Review visible table</button>
-        <p class="hint">This prototype only reads the visible page after you click Review visible table. Nothing is sent or stored yet.</p>
+        <div class="button-row">
+          <button id="addVisibleTable" class="primary-button" type="button">Add visible table</button>
+          <button id="analyseNow" class="secondary-button" type="button" disabled>Analyse now</button>
+          <button id="analyseCapturedTables" class="secondary-button" type="button" disabled>Analyse captured tables</button>
+          <button id="addAnotherPlatform" class="text-button" type="button">Add another platform</button>
+          <button id="clearCapturedTables" class="text-button" type="button">Clear captured tables</button>
+        </div>
+        <p class="hint">Gnomeo only reviews visible tables you choose to add. Nothing is captured in the background, sent, or stored in this prototype.</p>
+        <p class="status-line" id="captureStatus">Open a visible campaign table, then click Add visible table.</p>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <span class="card-label">Captured tables</span>
+          <span class="chip" id="bundleCount">0 captured</span>
+        </div>
+        <div class="captured-list" id="capturedList"></div>
+        <p class="card-note" id="bundleHint">Add visible tables from one or more platforms, then analyse them together.</p>
       </section>
 
       <main class="content" id="reviewContent">
@@ -30,7 +46,7 @@
             <span class="chip" id="sourceChip">Local only</span>
           </div>
           <div class="meta-row" id="metaRow"></div>
-          <p class="finding" id="topFinding">Open a visible campaign table, then click Review visible table.</p>
+          <p class="finding" id="topFinding">Open a visible campaign table, then click Add visible table.</p>
         </section>
 
         <section class="card">
@@ -49,14 +65,16 @@
         </section>
 
         <section class="card">
-          <div class="card-head"><span class="card-label">What changed since last review</span></div>
-          <div class="bullet-list" id="comparisonList"></div>
+          <div class="card-head">
+            <span class="card-label">Review confidence</span>
+          </div>
+          <p id="reviewConfidence">Visible rows only. Session-only prototype.</p>
         </section>
 
         <section class="card privacy-card">
           <div class="card-head"><span class="card-label">Privacy note</span></div>
-          <p id="privacyNote">This prototype only reads the visible page after you click Review visible table. Nothing is sent or stored yet.</p>
-          <button id="clearReview" class="text-button" type="button">Reset current review</button>
+          <p id="privacyNote">Gnomeo only reviews visible tables you choose to add. Nothing is captured in the background, sent, or stored in this prototype.</p>
+          <button id="clearReview" class="text-button" type="button">Clear captured tables</button>
         </section>
       </main>
     </div>

@@ -6,13 +6,15 @@ A local-loadable prototype for a calm ad-spend review layer.
 
 - Adds a small **Review with Gnomeo** button on supported ad-platform pages.
 - Opens a lightweight right-side review panel.
-- Lets you review the **visible table only**.
+- Lets you add one or more **visible tables** to a session-only review bundle.
+- Analyses one table or multiple captured tables together.
 - Shows a concise review summary:
   - Top finding
   - Key signals
+  - Captured tables
   - Safe preview
   - What deserves attention
-  - What changed since last review
+  - Review confidence
   - Privacy note
 
 ## Supported pages
@@ -23,7 +25,7 @@ A local-loadable prototype for a calm ad-spend review layer.
 
 ## Local test pages
 
-Use these fake pages to test the visible-table flow without live accounts:
+Use these fake pages to test the local multi-capture flow without live accounts:
 
 - `chrome-extension/test-pages/google-ads-campaigns.html`
 - `chrome-extension/test-pages/meta-ads-campaigns.html`
@@ -40,7 +42,9 @@ Recommended test method:
 2. `python3 -m http.server 8080`
 3. Open `http://localhost:8080/chrome-extension/test-pages/`
 4. Load the unpacked extension in Chrome and click **Review with Gnomeo**
-5. Click **Review visible table** on a campaign page
+5. Click **Add visible table** on a campaign page
+6. Optionally open another fixture page and click **Add visible table** again
+7. Click **Analyse now** or **Analyse captured tables**
 
 If you need to verify injection, open DevTools on the test page and look for local-only `[Gnomeo]` debug messages in the console.
 
@@ -56,8 +60,9 @@ If you need to verify injection, open DevTools on the test page and look for loc
 - This is a **local prototype**.
 - Ad-platform APIs are **not connected yet**.
 - No screenshots are used.
-- No background monitoring is used.
-- The extension reads **visible rows only** after you click **Review visible table**.
+- No background activity is used.
+- The extension reads **visible rows only** after you click **Add visible table**.
+- Captured tables live only in panel/session memory.
 - Campaign-level pages are the MVP default because they usually contain the clearest spend/result signals.
 - Extraction may be imperfect because ad-platform UIs change frequently.
 - Nothing is sent or stored yet.
@@ -68,6 +73,7 @@ If you need to verify injection, open DevTools on the test page and look for loc
 - Raw extracted rows are not persisted.
 - No admin endpoints are exposed.
 - No billing, auth, or automation flows are included.
+- The bundle resets if the panel reloads.
 - The design stays intentionally small and calm.
 
 ## Future direction

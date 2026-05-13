@@ -85,6 +85,12 @@ h1 {
   gap: 10px;
 }
 
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .field-label, .card-label {
   font-size: 12px;
   font-weight: 700;
@@ -93,7 +99,7 @@ h1 {
   color: var(--muted);
 }
 
-.primary-button, .text-button {
+.primary-button, .secondary-button, .text-button {
   min-height: 38px;
   padding: 0 14px;
   cursor: pointer;
@@ -107,6 +113,18 @@ h1 {
   border-color: var(--text);
 }
 
+.secondary-button {
+  background: #fff;
+  color: var(--text);
+  border-color: var(--line);
+}
+
+.secondary-button:disabled,
+.primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .text-button {
   background: transparent;
   border-color: transparent;
@@ -116,6 +134,13 @@ h1 {
 }
 
 .hint { font-size: 12px; }
+
+.status-line {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.45;
+}
 
 .content {
   display: grid;
@@ -135,6 +160,13 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.card-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .meta-row {
@@ -162,6 +194,51 @@ h1 {
 .signal-list, .bullet-list, .preview-list {
   display: grid;
   gap: 8px;
+}
+
+.preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.source-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.captured-list {
+  display: grid;
+  gap: 8px;
+}
+
+.captured-item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--line);
+}
+
+.captured-item strong {
+  display: block;
+  color: var(--text);
+  margin-bottom: 2px;
+  font-size: 13px;
+}
+
+.captured-item span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .signal-item, .bullet-item, .preview-item {
@@ -208,4 +285,6 @@ h1 {
 @media (max-width: 640px) {
   .panel { padding: 10px; }
   .primary-button { width: 100%; }
+  .secondary-button { width: 100%; }
+  .button-row { display: grid; }
 }
