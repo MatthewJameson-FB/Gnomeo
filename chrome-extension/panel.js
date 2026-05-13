@@ -540,6 +540,69 @@
     }).join('');
   };
 
+  const pad2 = (value) => String(value).padStart(2, '0');
+
+  const formatLocalDateStamp = (date = new Date()) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+
+  const formatLocalDateTime = (date = new Date()) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+
+  const buildReportMarkdown = () => {
+    if (!currentAnalysis || !currentAnalysis.success) {
+      return [
+        '# Gnomeo Review',
+        '',
+        'Add a table first.',
+        '',
+        'Visible rows only.',
+      ].join('\n');
+    }
+
+    const summary = currentAnalysis.summary || EMPTY_ANALYSIS.summary;
+    const level = currentAnalysis.reviewLevel || (currentAnalysis.mode === 'bundle' ? 'Cross-platform spot check' : 'One-page spot check');
+    const platforms = Array.isArray(currentAnalysis.platforms) && currentAnalysis.platforms.length
+      ? currentAnalysis.platforms.join(', ')
+      : (currentAnalysis.platform || '—');
+    const keySignals = Array.isArray(summary.keySignals) ? summary.keySignals.slice(0, 5) : [];
+    const attention = Array.isArray(summary.attention) ? summary.attention.slice(0, 3) : [];
+    const lines = [
+      '# Gnomeo Review',
+      `Date: ${formatLocalDateTime(new Date())}`,
+      `Review level: ${level}`,
+      `Platforms included: ${platforms}`,
+      '',
+      '## Top finding',
+      currentAnalysis.focus || summary.executiveFinding || '—',
+      '',
+      '## What I’d do next',
+      ...(currentAnalysis.nextSteps || []).slice(0, 3).map((item) => `- ${item}`),
+      '',
+      '## Key signals',
+      ...keySignals.map((item) => `- ${item.label}: ${item.title}${item.details ? ` — ${item.details}` : ''}`),
+      '',
+      '## Platform notes',
+      ...attention.map((item) => `- ${item}`),
+      '',
+      '## Caveat',
+      currentAnalysis.reviewConfidence || 'Visible rows only',
+      'This review only uses visible rows from the current session.',
+    ];
+    return lines.join('\n');
+  };
+
+  const downloadAnalysis = () => {
+    if (!currentAnalysis || !currentAnalysis.success) return;
+    const markdown = buildReportMarkdown();
+    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `gnomeo-review-${formatLocalDateStamp(new Date())}.md`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   const renderCapturedTables = () => {
     const container = $('capturedList');
     const countChip = $('bundleCount');
@@ -660,6 +723,9 @@
     const capturedSummaryCard = $('capturedSummaryCard');
     const reviewContent = $('reviewContent');
     const panelState = derivePanelState();
+    const reportText = $('fullReportText');
+    const reportSummary = $('reportSummary');
+    const downloadButton = $('downloadAnalysis');
 
     $('sourceChip').textContent = currentAnalysis.success && currentAnalysis.mode === 'bundle'
       ? `${currentAnalysis.sources.length} tables`
@@ -692,6 +758,15 @@
     capturedSummaryCard.hidden = false;
     capturedSummaryCard.querySelector('.card-label').textContent = 'Current page';
     reviewContent.hidden = !currentAnalysis.success;
+    if (downloadButton) downloadButton.disabled = !currentAnalysis.success;
+    if (reportSummary) {
+      reportSummary.textContent = currentAnalysis.success
+        ? 'Open this for the fuller local note or download it as markdown.'
+        : (currentAnalysis.stale ? 'Analyse again to refresh the local report.' : 'Add a table to generate the local report.');
+    }
+    if (reportText) {
+      reportText.textContent = currentAnalysis.success ? buildReportMarkdown() : (currentAnalysis.stale ? 'Tables changed — analyse again for an updated report.' : 'Add a table first.');
+    }
     if (currentAnalysis.success) {
       focusText.textContent = currentAnalysis.focus || summary.executiveFinding || EMPTY_ANALYSIS.summary.executiveFinding;
       focusConfidence.textContent = currentAnalysis.reviewConfidence || 'Visible rows only';
@@ -747,13 +822,13 @@
     const reviewConfidence = capture.reviewConfidence || matrix.confidence || `${reviewLevel} · visible rows only`;
 
     const focus = watchItem
-      ? `On this page, ${rowLabel(watchItem)} is the main watch item because it is spending money with weaker visible results.${watchItem.visibleDataNote && watchItem.visibleDataNote.startsWith('Low data') ? ' The visible volume is still low, so do not overreact yet.' : ''}${efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference ? ` ${rowLabel(efficientPerformer)} looks safer to protect.` : ''}${highestSpend && highestSpend.rowReference !== watchItem.rowReference ? ` ${rowLabel(highestSpend)} is where mistakes cost the most.` : ''}`
-      : 'On this page, the visible rows are still too limited for a confident read.';
+      ? `Start with ${rowLabel(watchItem)}.${efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference ? ` ${rowLabel(efficientPerformer)} looks safer to protect.` : ''}${highestSpend && highestSpend.rowReference !== watchItem.rowReference ? ` ${rowLabel(highestSpend)} leads spend.` : ''}`
+      : 'The visible rows are still too limited for a confident read.';
 
     const nextSteps = [
-      watchItem ? `Check ${rowLabel(watchItem)} first. It is where mistakes would hurt most.` : 'Check the highest-spend row first. It is where mistakes would hurt most.',
+      watchItem ? `Check ${rowLabel(watchItem)} before adding budget.` : 'Check the highest-spend row before adding budget.',
       efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
-        ? `Keep ${rowLabel(efficientPerformer)} protected for now. It appears to be producing results more efficiently.`
+        ? `Keep ${rowLabel(efficientPerformer)} protected for now.`
         : 'Keep the clearer performer protected for now.',
       platformAdvice(capture.platform, watchItem?.label || highestSpend?.label || ''),
     ];
@@ -770,8 +845,8 @@
     }
     if (watchItem) {
       keySignals.push({ label: 'Main watch item', title: rowLabel(watchItem), details: Number.isFinite(watchItem.spend)
-        ? `${formatNumber(watchItem.spend, 2)} spent · ${Number.isFinite(watchItem.resultValue) ? `${formatNumber(watchItem.resultValue)} ${watchItem.resultLabel}` : 'weak visible results'}`
-        : 'Meaningful spend with weak visible results' });
+        ? `${formatNumber(watchItem.spend, 2)} spent · ${Number.isFinite(watchItem.resultValue) ? `${formatNumber(watchItem.resultValue)} ${watchItem.resultLabel}` : 'weak results'}`
+        : 'Meaningful spend · weak results' });
     }
     if (lowDataItem) {
       keySignals.push({ label: 'Low data', title: rowLabel(lowDataItem), details: lowDataItem.visibleDataNote });
@@ -779,12 +854,10 @@
     keySignals.push({ label: 'Review level', title: reviewLevel, details: 'Visible rows only' });
 
     const attention = [
-      watchItem && watchItem.visibleDataNote && watchItem.visibleDataNote.startsWith('Low data')
-        ? `${rowLabel(watchItem)} has spend, but the visible volume is still low. Do not overreact yet.`
-        : (watchItem ? `${rowLabel(watchItem)} is the main watch item because it is spending money with weaker visible results.` : 'Check the highest-spend row first. It is where mistakes cost the most.'),
+      watchItem ? `${rowLabel(watchItem)} is the main watch item.` : 'Check the highest-spend row first.',
       lowDataItem && lowDataItem.rowReference !== watchItem?.rowReference
-        ? `Treat ${rowLabel(lowDataItem)} as low confidence. Do not overreact until the visible volume improves.`
-        : (efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference ? `Keep ${rowLabel(efficientPerformer)} protected for now. It looks like the safer performer.` : 'Keep the clearer performer protected for now.'),
+        ? `${rowLabel(lowDataItem)} is still low confidence.`
+        : (efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference ? `Keep ${rowLabel(efficientPerformer)} protected.` : 'Keep the clearer performer protected.'),
       platformAdvice(capture.platform, watchItem?.label || highestSpend?.label || ''),
     ];
 
@@ -851,21 +924,19 @@
     if (highestSpend) keySignals.push({ label: 'Highest spend', title: rowLabel(highestSpend), details: `${shortPlatformName(highestSpend.platform)} · ${formatNumber(highestSpend.spend, 2)} spent` });
     if (strongestResult) keySignals.push({ label: 'Strongest result signal', title: rowLabel(strongestResult), details: Number.isFinite(strongestResult.resultValue) ? `${formatNumber(strongestResult.resultValue)} ${strongestResult.resultLabel}` : 'Strongest visible result signal' });
     if (efficientPerformer) keySignals.push({ label: 'Best efficiency signal', title: rowLabel(efficientPerformer), details: Number.isFinite(efficientPerformer.efficiencyScore) ? `${formatNumber(efficientPerformer.efficiencyScore, 2)} ${efficientPerformer.roas ? 'ROAS' : 'result per spend'}` : 'Best visible efficiency signal' });
-    if (watchItem) keySignals.push({ label: 'Main watch item', title: rowLabel(watchItem), details: `${shortPlatformName(watchItem.platform)} · ${Number.isFinite(watchItem.spend) ? `${formatNumber(watchItem.spend, 2)} spent` : 'meaningful spend'}${Number.isFinite(watchItem.resultValue) ? ` · ${formatNumber(watchItem.resultValue)} ${watchItem.resultLabel}` : ' · weak visible results'}` });
+    if (watchItem) keySignals.push({ label: 'Main watch item', title: rowLabel(watchItem), details: `${shortPlatformName(watchItem.platform)} · ${Number.isFinite(watchItem.spend) ? `${formatNumber(watchItem.spend, 2)} spent` : 'meaningful spend'}${Number.isFinite(watchItem.resultValue) ? ` · ${formatNumber(watchItem.resultValue)} ${watchItem.resultLabel}` : ' · weak results'}` });
     if (lowDataItem) keySignals.push({ label: 'Low data', title: rowLabel(lowDataItem), details: lowDataItem.visibleDataNote });
     keySignals.push({ label: 'Review level', title: reviewLevel, details: 'Visible rows only' });
 
     const topFinding = watchItem
-      ? `${multiPlatform ? 'Across the visible tables' : 'On this page'}, ${rowLabel(watchItem)} is the main watch item because it is spending money with weaker visible results.${watchItem.visibleDataNote && watchItem.visibleDataNote.startsWith('Low data') ? ' The visible volume is still low, so do not overreact yet.' : ''}${efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference ? ` ${rowLabel(efficientPerformer)} looks safer to protect.` : ''}${highestSpend && highestSpend.rowReference !== watchItem.rowReference ? ` ${rowLabel(highestSpend)} is where mistakes cost the most.` : ''}`
+      ? `${multiPlatform ? 'Across the visible tables' : 'On this page'}, ${rowLabel(watchItem)} is the main watch item.${efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference ? ` ${rowLabel(efficientPerformer)} looks safer to protect.` : ''}${highestSpend && highestSpend.rowReference !== watchItem.rowReference ? ` ${rowLabel(highestSpend)} leads spend.` : ''}`
       : `${multiPlatform ? 'Across the visible tables' : 'On this page'}, the visible rows are still too limited for a confident read.`;
 
     const attention = [
-      watchItem && watchItem.visibleDataNote && watchItem.visibleDataNote.startsWith('Low data')
-        ? `${rowLabel(watchItem)} has spend, but the visible volume is still low. Do not overreact yet.`
-        : (watchItem ? `Check ${rowLabel(watchItem)} first. It is where mistakes would hurt most.` : 'Check the highest-spend row first. It is where mistakes would hurt most.'),
+      watchItem ? `Check ${rowLabel(watchItem)} before adding budget.` : 'Check the highest-spend row before adding budget.',
       efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
-        ? `Keep ${rowLabel(efficientPerformer)} protected for now. It looks like the safer performer.`
-        : 'Keep the clearer performer protected for now.',
+        ? `Keep ${rowLabel(efficientPerformer)} protected.`
+        : 'Keep the clearer performer protected.',
       platformActionHint(watchItem?.platform || highestSpend?.platform || efficientPerformer?.platform, watchItem?.label || highestSpend?.label || efficientPerformer?.label || ''),
     ];
 
@@ -874,10 +945,10 @@
     }
 
     const nextSteps = [
-      watchItem ? `Check ${rowLabel(watchItem)} first. It is where mistakes would hurt most.` : 'Check the highest-spend row first. It is where mistakes would hurt most.',
+      watchItem ? `Check ${rowLabel(watchItem)} before adding budget.` : 'Check the highest-spend row before adding budget.',
       efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
-        ? `Keep ${rowLabel(efficientPerformer)} protected for now. It appears to be producing results more efficiently.`
-        : 'Keep the clearer performer protected for now.',
+        ? `Keep ${rowLabel(efficientPerformer)} protected.`
+        : 'Keep the clearer performer protected.',
       platformActionHint(watchItem?.platform || highestSpend?.platform || efficientPerformer?.platform, watchItem?.label || highestSpend?.label || efficientPerformer?.label || ''),
     ];
 
@@ -1030,6 +1101,7 @@
     const addButton = $('addVisibleTable');
     const analyseNowButton = $('analyseNow');
     const clearCapturedTablesButton = $('clearCapturedTables');
+    const downloadAnalysisButton = $('downloadAnalysis');
 
     await loadCapturedTables();
     await loadAnalysisMeta();
@@ -1066,6 +1138,7 @@
     addButton?.addEventListener('click', addVisibleTable);
     analyseNowButton?.addEventListener('click', analyseNow);
     clearCapturedTablesButton?.addEventListener('click', clearCapturedTables);
+    downloadAnalysisButton?.addEventListener('click', downloadAnalysis);
 
     renderDebugState();
   };

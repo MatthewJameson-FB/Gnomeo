@@ -526,8 +526,8 @@
     }
     if (watchItem) {
       const watchText = Number.isFinite(watchItem.spend)
-        ? `${formatMoney(watchItem.spend)} spent · ${Number.isFinite(watchItem.resultValue) ? `${formatPlain(watchItem.resultValue)} ${watchItem.resultLabel}` : 'weak visible results'}`
-        : 'Meaningful spend with weak visible results';
+        ? `${formatMoney(watchItem.spend)} · ${Number.isFinite(watchItem.resultValue) ? `${formatPlain(watchItem.resultValue)} ${watchItem.resultLabel}` : 'weak results'}`
+        : 'Meaningful spend with weak results';
       keySignals.push({ label: 'Main watch item', title: watchItem.rowReference, details: watchText });
     }
     if (lowDataItem) {
@@ -544,30 +544,30 @@
       : null;
     const watchReason = watchHeadline
       ? (watchHeadline.visibleDataNote.startsWith('Low data')
-        ? `${watchHeadline.rowReference} has spend, but the visible volume is still low. Do not overreact yet.`
-        : `${watchHeadline.rowReference} is the main watch item because it is spending money with weaker visible results.`)
+        ? `${watchHeadline.rowReference} has spend, but the sample is still thin.`
+        : `${watchHeadline.rowReference} is the main watch item.`)
       : 'There is not enough visible data for a confident call.';
 
     const topFinding = watchHeadline
-      ? `On this page, ${watchHeadline.rowReference} is the main watch item because it is spending money with weaker visible results.${saferPerformer ? ` ${saferPerformer.rowReference} looks safer to protect.` : ''}${spendLeader ? ` ${spendLeader.rowReference} is where mistakes cost the most.` : ''}`
+      ? `On this page, ${watchHeadline.rowReference} is the main watch item.${saferPerformer ? ` ${saferPerformer.rowReference} looks safer to protect.` : ''}${spendLeader ? ` ${spendLeader.rowReference} leads spend.` : ''}`
       : 'On this page, the visible rows are still too limited for a confident read.';
 
     const attention = [
       watchReason,
       saferPerformer && saferPerformer.rowReference !== watchHeadline?.rowReference
-        ? `Keep ${saferPerformer.rowReference} protected for now. It looks like the safer performer.`
+        ? `Keep ${saferPerformer.rowReference} protected.`
         : 'Keep the clearest performer protected for now.',
       matrix.platformHint,
     ];
 
     if (lowDataItem && lowDataItem.rowReference !== watchHeadline?.rowReference) {
-      attention.splice(1, 0, `Treat ${lowDataItem.rowReference} as low confidence. Do not overreact until the visible volume improves.`);
+      attention.splice(1, 0, `Treat ${lowDataItem.rowReference} as low confidence.`);
     }
 
     const nextSteps = [
-      watchHeadline ? `Check ${watchHeadline.rowReference} first. It is where mistakes would hurt most.` : 'Check the highest-spend row first. It is where mistakes would hurt most.',
+      watchHeadline ? `Check ${watchHeadline.rowReference} before adding budget.` : 'Check the highest-spend row before adding budget.',
       saferPerformer && saferPerformer.rowReference !== watchHeadline?.rowReference
-        ? `Keep ${saferPerformer.rowReference} protected for now. It appears to be producing results more efficiently.`
+        ? `Keep ${saferPerformer.rowReference} protected.`
         : 'Keep the clearer performer protected for now.',
       matrix.platformHint,
     ];
