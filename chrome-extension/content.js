@@ -58,7 +58,7 @@
         top: 16px;
         right: 16px;
         bottom: 16px;
-        width: min(440px, calc(100vw - 32px));
+        width: min(380px, calc(100vw - 24px));
         pointer-events: auto;
         transform: translateX(110%);
         transition: transform 180ms ease;

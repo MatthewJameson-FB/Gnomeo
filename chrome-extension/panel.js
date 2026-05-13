@@ -81,11 +81,15 @@
     const countChip = $('bundleCount');
     const hint = $('bundleHint');
     const analyseNow = $('analyseNow');
-    const analyseCapturedTables = $('analyseCapturedTables');
+    const capturedSummaryCard = $('capturedSummaryCard');
+    const capturedCountInline = $('capturedCountInline');
 
-    countChip.textContent = `${capturedTables.length} captured`;
+    countChip.textContent = `${capturedTables.length} table${capturedTables.length === 1 ? '' : 's'} captured`;
     analyseNow.disabled = capturedTables.length === 0;
-    analyseCapturedTables.disabled = capturedTables.length === 0;
+    capturedSummaryCard.hidden = !capturedTables.length;
+    capturedCountInline.textContent = capturedTables.length
+      ? `${capturedTables.length} table${capturedTables.length === 1 ? '' : 's'} captured`
+      : '0 tables';
 
     if (!capturedTables.length) {
       container.innerHTML = '<div class="captured-item"><strong>No captured tables yet</strong><span>Add a visible table from Google Ads, Meta Ads, or LinkedIn Ads.</span></div>';
@@ -93,14 +97,15 @@
       return;
     }
 
+    const platforms = uniquePlatforms(capturedTables.map((capture) => capture.platform));
     container.innerHTML = capturedTables.map((capture) => `
       <div class="captured-item">
-        <strong>${escapeHtml(capture.platform)} — ${escapeHtml(formatNumber(capture.rowsDetected || 0))} rows, ${escapeHtml(formatNumber((capture.metricColumns || []).length))} metric columns</strong>
-        <span>${escapeHtml(formatTime(capture.capturedAt))} · ${escapeHtml(formatNumber(capture.columnsDetected || 0))} columns · ${escapeHtml(capture.reviewConfidence || 'Visible rows only')}</span>
+        <strong>${escapeHtml(capture.platform)} — ${escapeHtml(formatNumber(capture.rowsDetected || 0))} rows</strong>
+        <span>${escapeHtml(formatNumber((capture.metricColumns || []).length))} metric columns · ${escapeHtml(formatTime(capture.capturedAt))}</span>
       </div>
     `).join('');
 
-    hint.textContent = 'Open another ad platform campaign table, then click Add visible table again.';
+    hint.textContent = `${capturedTables.length} table${capturedTables.length === 1 ? '' : 's'} captured · ${platforms.join(', ')}`;
   };
 
   const setStatus = (text) => {
@@ -110,6 +115,11 @@
   const setAnalysis = (analysis) => {
     currentAnalysis = analysis || EMPTY_ANALYSIS;
     const summary = currentAnalysis.summary || EMPTY_ANALYSIS.summary;
+    const focusCard = $('focusCard');
+    const focusText = $('focusText');
+    const focusConfidence = $('focusConfidence');
+    const capturedSummaryCard = $('capturedSummaryCard');
+    const privacyHint = $('privacyHint');
 
     $('sourceChip').textContent = currentAnalysis.mode === 'bundle'
       ? `${currentAnalysis.sources.length} tables`
@@ -134,12 +144,21 @@
       meta.push('<span class="chip">Visible rows only</span>');
     }
     $('metaRow').innerHTML = meta.join('');
-    $('topFinding').textContent = summary.executiveFinding || EMPTY_ANALYSIS.summary.executiveFinding;
-    $('keySignals').innerHTML = renderLines(summary.keySignals, 'No visible signals found yet.');
+    focusCard.hidden = !currentAnalysis.success;
+    capturedSummaryCard.hidden = !currentAnalysis.success || !capturedTables.length;
+    focusText.textContent = currentAnalysis.success
+      ? (currentAnalysis.focus || summary.executiveFinding || EMPTY_ANALYSIS.summary.executiveFinding)
+      : 'Add a visible table to see the focus.';
+    focusConfidence.textContent = currentAnalysis.success
+      ? (currentAnalysis.reviewConfidence || 'Visible rows only')
+      : 'Visible rows only';
+    $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 4), 'No visible signals found yet.');
     $('visiblePreview').innerHTML = renderPreview(currentAnalysis.previewRows);
-    $('attentionList').innerHTML = renderLines(summary.attention, 'No attention notes yet.');
-    $('reviewConfidence').textContent = currentAnalysis.reviewConfidence || EMPTY_ANALYSIS.reviewConfidence;
-    $('privacyNote').textContent = summary.privacyNote || EMPTY_ANALYSIS.summary.privacyNote;
+    $('attentionList').innerHTML = renderLines(summary.attention.slice(0, 3), 'No attention notes yet.');
+    if (privacyHint) privacyHint.textContent = currentAnalysis.success ? 'Visible rows only.' : 'Nothing is captured in the background.';
+    $('privacyNote').textContent = currentAnalysis.success
+      ? (summary.privacyNote || EMPTY_ANALYSIS.summary.privacyNote)
+      : 'Nothing is captured in the background.';
   };
 
   const normaliseCapture = (payload) => ({
@@ -159,6 +178,7 @@
 
   const buildSingleReview = (capture) => {
     if (!capture) return EMPTY_ANALYSIS;
+    const summary = capture.summary || EMPTY_ANALYSIS.summary;
     return {
       mode: 'single',
       success: true,
@@ -169,14 +189,15 @@
       metricColumns: capture.metricColumns,
       reviewConfidence: capture.reviewConfidence,
       previewRows: capture.previewRows,
+      focus: capture.summary?.executiveFinding || `${capture.platform} is ready for a spot check.`,
       summary: {
         executiveFinding: capture.summary?.executiveFinding || `${capture.platform} is ready for a spot check.`,
         keySignals: [
           { label: 'Captured source', title: capture.platform, details: `${formatNumber(capture.rowsDetected || 0)} rows · ${formatNumber(capture.columnsDetected || 0)} columns` },
-          ...(capture.summary?.keySignals || []).slice(0, 3),
+          ...(summary.keySignals || []).slice(0, 3),
         ],
-        attention: capture.summary?.attention || ['Treat this as a visible-row spot check, not a full account review.'],
-        privacyNote: capture.summary?.privacyNote || EMPTY_ANALYSIS.summary.privacyNote,
+        attention: summary.attention || ['Treat this as a visible-row spot check, not a full account review.'],
+        privacyNote: summary.privacyNote || EMPTY_ANALYSIS.summary.privacyNote,
       },
       sources: [capture],
       platforms: [capture.platform],
@@ -264,15 +285,15 @@
       details: 'Session-only prototype',
     });
 
-    const summaryParts = [];
-    if (spendCandidate) summaryParts.push(`${spendCandidate.capture.platform} — ${spendCandidate.capture.snapshot?.spendLabel || spendCandidate.capture.platform} carries the highest visible spend`);
-    if (conversionCandidate) summaryParts.push(`${conversionCandidate.capture.platform} — ${conversionCandidate.capture.snapshot?.conversionLabel || conversionCandidate.capture.platform} shows the strongest visible result signal`);
-    if (roasCandidate) summaryParts.push(`${roasCandidate.capture.platform} — ${roasCandidate.capture.snapshot?.roasLabel || roasCandidate.capture.platform} has the best visible ROAS signal`);
-    if (watchCandidate) summaryParts.push(`${watchCandidate.capture.platform} — ${watchCandidate.capture.snapshot?.watchLabel || watchCandidate.capture.platform} is the watch item`);
+    const focus = watchCandidate
+      ? `${watchCandidate.capture.platform} is the main watch item.`
+      : conversionCandidate
+        ? `${conversionCandidate.capture.platform} shows the strongest visible result signal.`
+        : spendCandidate
+          ? `${spendCandidate.capture.platform} carries the highest visible spend.`
+          : 'Treat this as a visible-table spot check.';
 
-    const topFinding = summaryParts.length
-      ? `${summaryParts.join('; ')}. Treat this as a spot check because only visible rows were reviewed.`
-      : 'Captured tables are ready, but the visible rows are too limited for a stronger cross-platform read.';
+    const topFinding = focus;
 
     const attention = [
       spendCandidate ? `Review ${spendCandidate.capture.platform} first.` : 'Review the highest-signal platform first.',
@@ -290,6 +311,7 @@
       metricColumns: uniquePlatforms(captures.flatMap((capture) => capture.metricColumns || [])),
       reviewConfidence: 'Visible rows only · session-only prototype',
       previewRows,
+      focus,
       summary: {
         executiveFinding: topFinding,
         keySignals,
@@ -306,7 +328,7 @@
     pendingRequestId = (window.crypto && typeof window.crypto.randomUUID === 'function') ? window.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     $('addVisibleTable').textContent = 'Adding…';
     $('addVisibleTable').disabled = true;
-    $('topFinding').textContent = 'Reading the visible table…';
+    $('focusText').textContent = 'Reading the visible table…';
     setStatus('Gnomeo is reading the visible table you chose to add.');
     window.parent.postMessage({ type: 'gnomeo-review-visible-table-request', requestId: pendingRequestId }, '*');
   };
@@ -316,22 +338,18 @@
       setStatus('Add a visible table first.');
       return;
     }
-    setAnalysis(buildSingleReview(capturedTables[capturedTables.length - 1]));
-    setStatus(`${capturedTables[capturedTables.length - 1].platform} analysed. Add another platform if you want to compare more sources.`);
-  };
-
-  const analyseCapturedTables = () => {
-    if (!capturedTables.length) {
-      setStatus('Add a visible table first.');
-      return;
-    }
-    setAnalysis(buildBundleReview(capturedTables));
-    setStatus(`Analysed ${capturedTables.length} captured tables together.`);
+    const analysis = capturedTables.length === 1
+      ? buildSingleReview(capturedTables[0])
+      : buildBundleReview(capturedTables);
+    setAnalysis(analysis);
+    setStatus(capturedTables.length === 1
+      ? `${capturedTables[0].platform} analysed.`
+      : `${capturedTables.length} captured tables analysed.`);
   };
 
   const addAnotherPlatform = () => {
     $('bundleHint').textContent = 'Open another ad platform campaign table, then click Add visible table again.';
-    setStatus('Open another ad platform campaign table, then click Add visible table again.');
+    setStatus('Open another table, then click Add visible table again.');
   };
 
   const clearCapturedTables = () => {
@@ -348,7 +366,6 @@
     const close = $('closePanel');
     const addButton = $('addVisibleTable');
     const analyseNowButton = $('analyseNow');
-    const analyseCapturedTablesButton = $('analyseCapturedTables');
     const addAnotherPlatformButton = $('addAnotherPlatform');
     const clearCapturedTablesButton = $('clearCapturedTables');
     const clearReviewButton = $('clearReview');
@@ -362,7 +379,6 @@
 
     addButton?.addEventListener('click', addVisibleTable);
     analyseNowButton?.addEventListener('click', analyseNow);
-    analyseCapturedTablesButton?.addEventListener('click', analyseCapturedTables);
     addAnotherPlatformButton?.addEventListener('click', addAnotherPlatform);
     clearCapturedTablesButton?.addEventListener('click', clearCapturedTables);
     clearReviewButton?.addEventListener('click', clearCapturedTables);
@@ -396,7 +412,7 @@
       capturedTables.push(capture);
       renderCapturedTables();
       setAnalysis(buildSingleReview(capture));
-      setStatus(`${capture.platform} table added to this review.`);
+      setStatus(`${capturedTables.length} table${capturedTables.length === 1 ? '' : 's'} captured.`);
     });
   };
 
