@@ -99,7 +99,7 @@
 
   const getSourceProgressState = (count = 0) => {
     if (count <= 0) {
-      return { label: '0 sources · hungry', copy: 'Feed me a table.', filled: 0, tone: 'neutral' };
+      return { label: '0 sources · hungry', copy: 'Ready when you are.', filled: 0, tone: 'neutral' };
     }
     if (count === 1) {
       return { label: '1 source · nibble', copy: 'Need one more.', filled: 1, tone: 'info' };
@@ -330,8 +330,14 @@
     const connected = Boolean(workspaceConnection?.token);
     const promptOpen = Boolean(workspacePromptOpen && !connected);
     const analysisReady = Boolean(currentAnalysis.success && !currentAnalysis.stale);
-    const visible = promptOpen || (connected && analysisReady);
+    const visible = promptOpen;
+    const miniVisible = analysisReady || promptOpen;
     const workspaceCard = $('workspaceCard');
+    const workspaceMiniRow = $('workspaceMiniRow');
+    const workspaceAction = $('workspaceAction');
+    const workspaceMiniStatus = $('workspaceMiniStatus');
+    const workspaceMiniOpen = $('workspaceMiniOpen');
+    const workspaceChangeMini = $('workspaceChangeMini');
     const disconnected = $('workspaceDisconnected');
     const closed = $('workspaceClosed');
     const chip = $('workspaceConnectionChip');
@@ -343,22 +349,41 @@
     const statusLine = $('workspaceStatusLine');
 
     if (workspaceCard) workspaceCard.hidden = !visible;
+    if (workspaceMiniRow) workspaceMiniRow.hidden = !miniVisible;
     setChipText(chip, 'Workspace ready', 'success', !connected);
-    if (closed) closed.hidden = promptOpen;
+    if (closed) closed.hidden = !promptOpen;
     if (statusLine) {
       statusLine.textContent = connected
         ? (workspaceConnection.saved ? 'Saved.' : 'Ready to save.')
         : 'Paste your private workspace link.';
-      statusLine.hidden = promptOpen || (!analysisReady && !connected);
+      statusLine.hidden = !promptOpen;
+    }
+    if (workspaceAction) {
+      workspaceAction.hidden = !analysisReady || promptOpen || connected;
+      workspaceAction.textContent = workspaceConnection.token ? 'Workspace' : 'Workspace';
+      workspaceAction.disabled = workspaceSaving;
+    }
+    if (workspaceMiniStatus) {
+      workspaceMiniStatus.hidden = !(analysisReady && connected);
+      workspaceMiniStatus.textContent = workspaceConnection.saved ? 'Saved.' : 'Connected.';
+    }
+    if (workspaceMiniOpen) {
+      const href = workspaceConnection.portalUrl || workspaceConnection.rawInput || '';
+      const canOpen = Boolean(href) && analysisReady && connected;
+      workspaceMiniOpen.hidden = !canOpen;
+      if (canOpen) workspaceMiniOpen.href = href;
+    }
+    if (workspaceChangeMini) {
+      workspaceChangeMini.hidden = !(analysisReady && connected);
     }
     if (disconnected) disconnected.hidden = !promptOpen;
-    if (inlineLinks) inlineLinks.hidden = !(connected && analysisReady);
+    if (inlineLinks) inlineLinks.hidden = true;
     if (changeButton) changeButton.hidden = !connected;
     if (cancelButton) cancelButton.hidden = !promptOpen;
     if (openLink) {
       const href = workspaceConnection.portalUrl || workspaceConnection.rawInput || '';
       const canOpen = Boolean(href);
-      openLink.hidden = !connected || !canOpen || !analysisReady;
+      openLink.hidden = true;
       if (canOpen) openLink.href = href;
     }
     if (input && promptOpen && !connected) {
@@ -506,6 +531,24 @@
     }
     if (action.mode === 'save') {
       await saveReviewToWorkspace();
+      return;
+    }
+    workspacePromptOpen = true;
+    setWorkspaceError('');
+    renderWorkspaceSection();
+    const input = $('workspaceLinkInput');
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  };
+
+  const triggerWorkspaceMiniAction = async () => {
+    const analysisReady = Boolean(currentAnalysis.success && !currentAnalysis.stale);
+    if (!analysisReady) return;
+    if (workspaceConnection.token) {
+      const href = workspaceConnection.portalUrl || workspaceConnection.rawInput || '';
+      if (href) window.open(href, '_blank', 'noreferrer');
       return;
     }
     workspacePromptOpen = true;
@@ -778,7 +821,7 @@
     if (!supported) {
       note = 'Open Google Ads, Meta Ads, or LinkedIn.';
     } else if (state === 'empty') {
-      note = 'Feed me a table.';
+      note = 'Add a table.';
     } else if (state === 'current-added') {
       note = analysisFresh ? 'This table is already added.' : 'Analyse.';
     } else {
@@ -800,8 +843,8 @@
       buttonLabel: bundleCount > 0 && currentCaptureAdded ? 'Update table' : 'Add table',
       statusLine: !supported
         ? 'Open Google Ads, Meta Ads, or LinkedIn.'
-        : bundleCount === 0
-          ? 'Feed me a table.'
+      : bundleCount === 0
+          ? '0 sources · hungry'
           : state === 'current-added'
             ? (analysisFresh ? 'This table is already added.' : 'Analyse.')
             : state === 'current-missing'
@@ -975,11 +1018,12 @@
     const keySignals = Array.isArray(summary.keySignals) ? summary.keySignals.slice(0, 5) : [];
     const attention = Array.isArray(summary.attention) ? summary.attention.slice(0, 3) : [];
     const workspaceState = workspaceConnection.saved ? 'saved' : (workspaceConnection.token ? 'connected' : 'not connected');
+    const alsoProtect = currentAnalysis.nextBest || currentAnalysis.nextSteps?.[1] || currentAnalysis.nextSteps?.[0] || '';
     const lines = [
       '# Gnomeo',
       `First fix: ${currentAnalysis.focus || summary.executiveFinding || '—'}`,
       `Why: ${currentAnalysis.why || summary.attention?.[0] || '—'}`,
-      `Also protect: ${currentAnalysis.nextBest || currentAnalysis.nextSteps?.[1] || currentAnalysis.nextSteps?.[0] || '—'}`,
+      ...(alsoProtect ? [`Also protect: ${alsoProtect}`] : []),
       '',
       '## Signals',
       ...keySignals.map((item) => `- ${item.label}: ${item.title}${item.details ? ` — ${item.details}` : ''}`),
@@ -1182,6 +1226,7 @@
     const analyseNowButton = $('analyseNow');
     const decision = deriveDecisionCard(currentAnalysis);
     const confidenceVariant = currentAnalysis.stale ? 'warn' : (currentAnalysis.success ? 'info' : 'neutral');
+    const ready = currentAnalysis.success && !currentAnalysis.stale;
 
     if (analyseNowButton) {
       analyseNowButton.textContent = currentAnalysis.success && !currentAnalysis.stale ? 'Analyse again' : 'Analyse';
@@ -1217,8 +1262,11 @@
       meta.push(chipHTML('visible only', 'info'));
     }
     $('metaRow').innerHTML = meta.join('');
+    focusCard.classList.toggle('is-ready', ready);
+    focusCard.classList.toggle('is-stale', currentAnalysis.stale);
+    focusCard.classList.toggle('is-empty', !ready && !currentAnalysis.stale);
     focusCard.hidden = false;
-    nextStepsCard.hidden = !currentAnalysis.success || currentAnalysis.stale;
+    nextStepsCard.hidden = !ready || !decision.nextBest;
     reviewContent.hidden = !currentAnalysis.success && !currentAnalysis.stale;
     if (downloadButton) downloadButton.disabled = !currentAnalysis.success;
     if (reportSummary) {
@@ -1578,6 +1626,8 @@
     const workspaceConnectButton = $('workspaceConnect');
     const workspaceCancelConnectButton = $('workspaceCancelConnect');
     const workspaceChangeButton = $('workspaceChange');
+    const workspaceActionButton = $('workspaceAction');
+    const workspaceChangeMiniButton = $('workspaceChangeMini');
 
     await loadCapturedTables();
     await loadAnalysisMeta();
@@ -1647,6 +1697,17 @@
       workspacePromptOpen = false;
       setWorkspaceError('');
       renderWorkspaceSection();
+    });
+    workspaceActionButton?.addEventListener('click', triggerWorkspaceMiniAction);
+    workspaceChangeMiniButton?.addEventListener('click', () => {
+      workspacePromptOpen = true;
+      setWorkspaceError('');
+      renderWorkspaceSection();
+      const input = $('workspaceLinkInput');
+      if (input) {
+        input.focus();
+        input.select();
+      }
     });
     workspaceChangeButton?.addEventListener('click', async () => {
       workspacePromptOpen = true;

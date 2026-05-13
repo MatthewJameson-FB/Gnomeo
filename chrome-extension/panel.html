@@ -31,7 +31,7 @@
           <span class="source-segment"></span>
           <span class="source-segment"></span>
         </div>
-        <p class="source-copy" id="sourceCopy">Feed me a table.</p>
+        <p class="source-copy" id="sourceCopy">Ready when you are.</p>
       </section>
 
       <section class="focus-card" id="focusCard" hidden>
@@ -56,11 +56,19 @@
           <button id="addVisibleTable" class="text-button" type="button">Add/update</button>
           <button id="analyseNow" class="text-button" type="button" hidden>Analyse again</button>
           <button id="detailsToggle" class="text-button" type="button">Burrow deeper ▾</button>
+          <button id="workspaceAction" class="text-button" type="button" hidden>Workspace</button>
           <button id="clearCapturedTables" class="text-button danger" type="button">Clear</button>
         </div>
         <p class="status-line" id="captureStatus">0 sources · hungry</p>
         <p class="hint" id="captureHint">Add a table to start.</p>
         <p class="error-line" id="actionError" hidden></p>
+      </section>
+
+      <section class="workspace-mini" id="workspaceMiniRow" hidden>
+        <span class="card-label">Workspace</span>
+        <span class="workspace-mini-status" id="workspaceMiniStatus" hidden>Saved.</span>
+        <a id="workspaceMiniOpen" class="workspace-link" href="#" target="_blank" rel="noreferrer" hidden>Open workspace</a>
+        <button id="workspaceChangeMini" class="text-button" type="button" hidden>Change</button>
       </section>
 
       <section class="workspace-card" id="workspaceCard" hidden>
