@@ -3,8 +3,7 @@
   window.__gnomeoReviewLayerInjected = true;
 
   const isLocalTestHost = ['localhost', '127.0.0.1'].includes(location.hostname.toLowerCase());
-  const sidePanelApi = globalThis.chrome?.sidePanel || null;
-  const tabsApi = globalThis.chrome?.tabs || null;
+  const runtimeApi = globalThis.chrome?.runtime || null;
   const debug = (...args) => {
     if (isLocalTestHost) console.debug('[Gnomeo]', ...args);
   };
@@ -64,39 +63,22 @@
   (document.documentElement || document.body || document.head).appendChild(host);
 
   const button = shadow.querySelector('.button');
-  const supportsSidePanel = Boolean(sidePanelApi?.open);
-
-  const queryActiveWindow = async () => {
-    if (!tabsApi?.query) {
-      return { ok: false, error: { stage: 'active-window', message: 'chrome.tabs.query is unavailable', userMessage: 'Open a supported campaign table, then click Add table.' } };
-    }
+  const openSidePanel = async () => {
+    if (!runtimeApi?.sendMessage) return { ok: false, error: { stage: 'runtime-message', message: 'chrome.runtime.sendMessage is unavailable', userMessage: 'Open a supported campaign table, then click Add table.' } };
     return await new Promise((resolve) => {
-      tabsApi.query({ active: true, currentWindow: true }, (tabs) => {
-        const message = globalThis.chrome?.runtime?.lastError?.message || '';
+      runtimeApi.sendMessage({ type: 'GNOMEO_OPEN_SIDE_PANEL' }, (response) => {
+        const message = runtimeApi?.lastError?.message || '';
         if (message) {
-          resolve({ ok: false, error: { stage: 'active-window', message, userMessage: 'Open a supported campaign table, then click Add table.' } });
+          resolve({ ok: false, error: { stage: 'runtime-message', message, userMessage: 'Open a supported campaign table, then click Add table.' } });
           return;
         }
-        if (!Array.isArray(tabs) || !tabs.length || !tabs[0]?.id) {
-          resolve({ ok: false, error: { stage: 'active-window', message: 'No active tab found', userMessage: 'Open a supported campaign table, then click Add table.' } });
+        if (!response?.ok) {
+          resolve({ ok: false, error: { stage: 'runtime-message', message: response?.error || 'Open side panel failed', userMessage: 'Open a supported campaign table, then click Add table.' } });
           return;
         }
-        resolve({ ok: true, tab: tabs[0] });
+        resolve({ ok: true, response });
       });
     });
-  };
-
-  const openSidePanel = async () => {
-    if (!supportsSidePanel) return { ok: false, error: { stage: 'side-panel', message: 'chrome.sidePanel is unavailable', userMessage: '' } };
-    const activeWindow = await queryActiveWindow();
-    if (!activeWindow.ok) return activeWindow;
-    try {
-      await sidePanelApi.open({ windowId: activeWindow.tab.windowId });
-      return { ok: true };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error || 'Side panel open failed');
-      return { ok: false, error: { stage: 'side-panel', message, userMessage: 'Open a supported campaign table, then click Add table.' } };
-    }
   };
 
   button.addEventListener('click', async () => {

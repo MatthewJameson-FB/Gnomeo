@@ -7,6 +7,7 @@ Principles:
 - MV3
 - Chrome side panel as the only review UI
 - optional floating "Review with Gnomeo" opener button
+- toolbar icon can open the same panel
 - persistent side panel review flow
 - visible DOM/table extraction only
 - local-only initially
@@ -90,6 +91,7 @@ Columns like:
 ## Current architecture
 - Chrome side panel is the only review UI.
 - The content script is opener + extraction helper only.
+- A minimal service worker opens the side panel from opener clicks.
 - Session state lives in `chrome.storage.session`.
 - No background capture.
 - No screenshots.

@@ -3,6 +3,9 @@
   "name": "Gnomeo Review Layer",
   "version": "0.1.0",
   "description": "A calm review layer for ad platforms.",
+  "action": {
+    "default_title": "Open Gnomeo"
+  },
   "permissions": ["storage", "tabs", "sidePanel"],
   "side_panel": {
     "default_path": "panel.html"
@@ -25,6 +28,9 @@
       "run_at": "document_idle"
     }
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "web_accessible_resources": [
     {
       "resources": ["panel.html", "panel.css", "panel.js"],
