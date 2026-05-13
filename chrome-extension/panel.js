@@ -1252,6 +1252,7 @@
   const buildBundleReview = (captures) => {
     if (!captures.length) return EMPTY_ANALYSIS;
     const orderedCaptures = sortCapturedTables(captures);
+    const summary = orderedCaptures[0]?.summary || EMPTY_ANALYSIS.summary;
     const allRows = orderedCaptures.flatMap((capture) => (capture.decisionMatrix?.rows || []).map((row) => ({ ...row, platform: capture.platform })));
     const platforms = sortPlatformNames(orderedCaptures.map((capture) => capture.platform));
     const multiPlatform = platforms.length > 1;
