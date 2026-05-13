@@ -3,6 +3,8 @@
   window.__gnomeoReviewLayerInjected = true;
 
   const isLocalTestHost = ['localhost', '127.0.0.1'].includes(location.hostname.toLowerCase());
+  const sidePanelApi = globalThis.chrome?.sidePanel || null;
+  const tabsApi = globalThis.chrome?.tabs || null;
   const debug = (...args) => {
     if (isLocalTestHost) console.debug('[Gnomeo]', ...args);
   };
@@ -93,11 +95,48 @@
   const button = shadow.querySelector('.button');
   const panel = shadow.querySelector('.panel-shell');
   const frame = shadow.querySelector('iframe');
+  const supportsSidePanel = Boolean(sidePanelApi?.open && sidePanelApi?.close);
+  if (supportsSidePanel && typeof sidePanelApi.setOptions === 'function') {
+    Promise.resolve(sidePanelApi.setOptions({ path: 'panel.html', enabled: true })).catch(() => {});
+  }
   let lastExtractionStatus = 'Waiting for a review request';
   let lastError = '';
   let lastRowsDetected = 0;
   let lastColumnsDetected = 0;
   let lastMetricColumns = [];
+
+  const queryActiveTab = async () => {
+    if (!tabsApi?.query) {
+      return { ok: false, error: { stage: 'active-tab', message: 'chrome.tabs.query is unavailable', userMessage: 'Open a supported campaign table, then click Add table.' } };
+    }
+    return await new Promise((resolve) => {
+      tabsApi.query({ active: true, currentWindow: true }, (tabs) => {
+        const message = globalThis.chrome?.runtime?.lastError?.message || '';
+        if (message) {
+          resolve({ ok: false, error: { stage: 'active-tab', message, userMessage: 'Open a supported campaign table, then click Add table.' } });
+          return;
+        }
+        if (!Array.isArray(tabs) || !tabs.length || !tabs[0]?.id) {
+          resolve({ ok: false, error: { stage: 'active-tab', message: 'No active tab found', userMessage: 'Open a supported campaign table, then click Add table.' } });
+          return;
+        }
+        resolve({ ok: true, tab: tabs[0] });
+      });
+    });
+  };
+
+  const openSidePanel = async () => {
+    if (!supportsSidePanel) return { ok: false, error: { stage: 'side-panel', message: 'chrome.sidePanel is unavailable', userMessage: '' } };
+    const activeTab = await queryActiveTab();
+    if (!activeTab.ok) return activeTab;
+    try {
+      await sidePanelApi.open({ windowId: activeTab.tab.windowId });
+      return { ok: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || 'Side panel open failed');
+      return { ok: false, error: { stage: 'side-panel', message, userMessage: 'Open a supported campaign table, then click Add table.' } };
+    }
+  };
 
   const postDebugState = () => {
     frame.contentWindow?.postMessage({
@@ -122,13 +161,27 @@
     postDebugState();
   });
 
+  window.addEventListener('message', (event) => {
+    if (event.source !== frame.contentWindow) return;
+    if (!event.data || event.data.type !== 'gnomeo-close') return;
+    setOpen(false);
+  });
+
   const setOpen = (open) => {
     panel.dataset.open = open ? 'true' : 'false';
     panel.setAttribute('aria-hidden', open ? 'false' : 'true');
     button.setAttribute('aria-expanded', open ? 'true' : 'false');
   };
 
-  button.addEventListener('click', () => {
+  button.addEventListener('click', async () => {
+    if (supportsSidePanel) {
+      const result = await openSidePanel();
+      if (result.ok) {
+        debug('side panel opened');
+        return;
+      }
+      debug('side panel open failed', result.error?.message || result.error?.userMessage || 'unknown');
+    }
     debug('toggle panel', panel.dataset.open !== 'true' ? 'open' : 'close');
     setOpen(panel.dataset.open !== 'true');
   });

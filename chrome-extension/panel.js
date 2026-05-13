@@ -30,6 +30,7 @@
   const STORAGE_KEY = 'gnomeo-captured-tables';
   const sessionStorageApi = globalThis.chrome?.storage?.session || null;
   const tabsApi = globalThis.chrome?.tabs || null;
+  const sidePanelApi = globalThis.chrome?.sidePanel || null;
   const runtimeApi = globalThis.chrome?.runtime || null;
   const isLocalFixtureHost = () => ['localhost', '127.0.0.1'].includes((currentPageDebug.host || '').toLowerCase());
 
@@ -105,17 +106,17 @@
 
   const queryActiveTab = async () => {
     if (!tabsApi?.query) {
-      return { ok: false, error: { stage: 'active-tab', message: 'chrome.tabs.query is unavailable', userMessage: 'No active tab found' } };
+      return { ok: false, error: { stage: 'active-tab', message: 'chrome.tabs.query is unavailable', userMessage: 'Open a supported campaign table, then click Add table.' } };
     }
     return await new Promise((resolve) => {
       tabsApi.query({ active: true, currentWindow: true }, (tabs) => {
         const message = runtimeApi?.lastError?.message || '';
         if (message) {
-          resolve({ ok: false, error: { stage: 'active-tab', message, userMessage: 'No active tab found' } });
+          resolve({ ok: false, error: { stage: 'active-tab', message, userMessage: 'Open a supported campaign table, then click Add table.' } });
           return;
         }
         if (!Array.isArray(tabs) || !tabs.length || !tabs[0]?.id) {
-          resolve({ ok: false, error: { stage: 'active-tab', message: 'No active tab found', userMessage: 'No active tab found' } });
+          resolve({ ok: false, error: { stage: 'active-tab', message: 'No active tab found', userMessage: 'Open a supported campaign table, then click Add table.' } });
           return;
         }
         resolve({ ok: true, tab: tabs[0] });
@@ -125,18 +126,34 @@
 
   const sendMessageToTab = async (tabId, message) => {
     if (!tabsApi?.sendMessage) {
-      return { ok: false, error: { stage: 'message-send', message: 'chrome.tabs.sendMessage is unavailable', userMessage: 'Content script did not respond' } };
+      return { ok: false, error: { stage: 'message-send', message: 'chrome.tabs.sendMessage is unavailable', userMessage: 'Open a supported campaign table, then click Add table.' } };
     }
     return await new Promise((resolve) => {
       tabsApi.sendMessage(tabId, message, (response) => {
         const messageText = runtimeApi?.lastError?.message || '';
         if (messageText) {
-          resolve({ ok: false, error: { stage: 'message-send', message: messageText, userMessage: messageText.includes('Receiving end does not exist') ? 'Content script did not respond' : `Message send failed: ${messageText}` } });
+          resolve({ ok: false, error: { stage: 'message-send', message: messageText, userMessage: 'Open a supported campaign table, then click Add table.' } });
           return;
         }
         resolve({ ok: true, response });
       });
     });
+  };
+
+  const closePanelView = async () => {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'gnomeo-close' }, '*');
+      return true;
+    }
+    if (!sidePanelApi?.close || !tabsApi?.query) return false;
+    const activeTab = await queryActiveTab();
+    if (!activeTab.ok) return false;
+    try {
+      await sidePanelApi.close({ windowId: activeTab.tab.windowId });
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const requestDebugSnapshot = async () => {
@@ -361,9 +378,9 @@
       }
       const error = response.error || {};
       currentPageDebug.contentScriptLoaded = Boolean(response.contentScriptLoaded);
-      currentPageDebug.lastExtractionStatus = error.userMessage || 'Gnomeo is not available on this page.';
+      currentPageDebug.lastExtractionStatus = error.userMessage || 'Open a supported campaign table, then click Add table.';
       currentPageDebug.lastError = error.message || error.userMessage || 'No content script response on this page.';
-      setStatus(error.userMessage || 'Gnomeo is not available on this page. Open a supported campaign table or local fixture page.');
+      setStatus(error.userMessage || 'Open a supported campaign table, then click Add table.');
       setActionError(error.userMessage || error.message || '');
       renderDebugState();
     }, 0);
@@ -736,8 +753,11 @@
       setStatus(`${capturedTables.length} table${capturedTables.length === 1 ? '' : 's'} · ${sortPlatformNames(capturedTables.map((item) => item.platform)).join(', ')}`);
     }
 
-    close?.addEventListener('click', () => {
-      window.parent.postMessage({ type: 'gnomeo-close' }, '*');
+    close?.addEventListener('click', async () => {
+      const closed = await closePanelView();
+      if (!closed) {
+        setStatus('Could not close the panel.');
+      }
     });
 
     addButton?.addEventListener('click', addVisibleTable);

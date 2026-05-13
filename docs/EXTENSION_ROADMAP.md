@@ -6,7 +6,7 @@ Build a local-loadable Chrome extension prototype first.
 Principles:
 - MV3
 - floating "Review with Gnomeo" button
-- side panel review flow
+- persistent side panel review flow
 - visible DOM/table extraction only
 - local-only initially
 - user-triggered only
@@ -21,7 +21,7 @@ Principles:
 2. User clicks "Review visible table".
 3. Extension detects platform and extracts visible table text.
 4. Extension previews up to 5 rows.
-5. Extension shows concise analyst summary.
+5. Extension shows concise analyst summary in a persistent side panel.
 6. Nothing is transmitted until a safe backend endpoint is explicitly designed later.
 
 ## Extraction principles

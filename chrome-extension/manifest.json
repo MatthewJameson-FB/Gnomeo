@@ -3,7 +3,10 @@
   "name": "Gnomeo Review Layer",
   "version": "0.1.0",
   "description": "A calm review layer for ad platforms.",
-  "permissions": ["storage", "tabs"],
+  "permissions": ["storage", "tabs", "sidePanel"],
+  "side_panel": {
+    "default_path": "panel.html"
+  },
   "host_permissions": [
     "http://localhost/*",
     "http://127.0.0.1/*"
