@@ -93,8 +93,34 @@
   const button = shadow.querySelector('.button');
   const panel = shadow.querySelector('.panel-shell');
   const frame = shadow.querySelector('iframe');
+  let lastExtractionStatus = 'Waiting for a review request';
+  let lastError = '';
+  let lastRowsDetected = 0;
+  let lastColumnsDetected = 0;
+  let lastMetricColumns = [];
 
-  frame.addEventListener('load', () => debug('panel loaded', location.href));
+  const postDebugState = () => {
+    frame.contentWindow?.postMessage({
+      type: 'gnomeo-debug-state',
+      host: location.host,
+      path: `${location.pathname}${location.search || ''}`,
+      url: location.href,
+      platform: detectPlatform(),
+      contentScriptLoaded: true,
+      storageAvailable: Boolean(chrome?.storage?.session),
+      isLocalTestHost,
+      lastExtractionStatus,
+      lastError,
+      rowsDetected: lastRowsDetected,
+      columnsDetected: lastColumnsDetected,
+      metricColumns: lastMetricColumns,
+    }, '*');
+  };
+
+  frame.addEventListener('load', () => {
+    debug('panel loaded', location.href);
+    postDebugState();
+  });
 
   const setOpen = (open) => {
     panel.dataset.open = open ? 'true' : 'false';
@@ -487,21 +513,60 @@
   window.addEventListener('message', (event) => {
     if (event.source !== frame.contentWindow) return;
     const data = event.data || {};
+    if (data.type === 'gnomeo-debug-request') {
+      postDebugState();
+      return;
+    }
     if (data.type !== 'gnomeo-review-visible-table-request') return;
     debug('review requested');
-    const response = extractVisibleTableReview();
+    let response;
+    try {
+      response = extractVisibleTableReview();
+      lastExtractionStatus = response.success
+        ? `Captured ${response.platform || 'visible table'}`
+        : (response.summary?.executiveFinding || 'No visible table found');
+      lastError = response.error || '';
+      lastRowsDetected = Number.isFinite(response.rowsDetected) ? response.rowsDetected : 0;
+      lastColumnsDetected = Number.isFinite(response.columnsDetected) ? response.columnsDetected : 0;
+      lastMetricColumns = Array.isArray(response.metricColumns) ? response.metricColumns : [];
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || 'Unknown extraction error');
+      lastExtractionStatus = 'Gnomeo hit an extraction error.';
+      lastError = message;
+      response = {
+        success: false,
+        platform: detectPlatform(),
+        tableKind: 'error',
+        rowsDetected: 0,
+        columnsDetected: 0,
+        metricColumns: [],
+        reviewConfidence: 'Limited — visible rows only',
+        previewRows: [],
+        error: message,
+        summary: {
+          executiveFinding: 'Gnomeo hit an extraction error.',
+          keySignals: [],
+          attention: ['Try the page again after it finishes loading.'],
+          comparison: ['Extraction failed before a table could be analyzed.'],
+          privacyNote: 'This prototype only reads the visible page after you click Add visible table. Nothing is sent or stored yet.',
+        },
+      };
+    }
     debug('review response', {
       success: response.success,
       platform: response.platform,
       rowsDetected: response.rowsDetected,
       columnsDetected: response.columnsDetected,
       tableKind: response.tableKind,
+      lastExtractionStatus,
+      lastError,
     });
     frame.contentWindow?.postMessage({
       type: 'gnomeo-visible-table-result',
       requestId: data.requestId || '',
       payload: response,
     }, '*');
+    postDebugState();
   });
 
   debug('injected', location.href);

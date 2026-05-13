@@ -195,6 +195,55 @@ h1 {
   gap: 10px;
 }
 
+.debug-card summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.debug-card summary::-webkit-details-marker { display: none; }
+
+.debug-body {
+  padding-top: 0;
+}
+
+.debug-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.debug-grid > div {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid var(--line);
+}
+
+.debug-grid span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.debug-grid strong {
+  display: block;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.debug-error strong {
+  color: #991b1b;
+}
+
 .details-card details {
   border: 1px solid var(--line);
   background: var(--panel);

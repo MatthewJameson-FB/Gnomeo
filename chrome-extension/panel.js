@@ -29,6 +29,33 @@
   let currentAnalysis = EMPTY_ANALYSIS;
   const STORAGE_KEY = 'gnomeo-captured-tables';
   const sessionStorageApi = globalThis.chrome?.storage?.session || null;
+  const isLocalFixtureHost = () => ['localhost', '127.0.0.1'].includes((currentPageDebug.host || '').toLowerCase());
+
+  const currentPageDebug = {
+    host: '',
+    path: '',
+    platform: '',
+    contentScriptLoaded: false,
+    storageAvailable: Boolean(sessionStorageApi),
+    bundleCount: 0,
+    bundleKeys: [],
+    lastExtractionStatus: 'Waiting for page response…',
+    rowsDetected: 0,
+    columnsDetected: 0,
+    metricColumns: [],
+    lastError: '',
+  };
+  let debugRequestTimer = null;
+
+  try {
+    if (document.referrer) {
+      const referrerUrl = new URL(document.referrer);
+      currentPageDebug.host = referrerUrl.host;
+      currentPageDebug.path = `${referrerUrl.pathname}${referrerUrl.search || ''}`;
+    }
+  } catch {
+    // Ignore referrer parsing issues; the content script can still fill this in.
+  }
 
   const storageGet = async (key) => {
     if (!sessionStorageApi) return null;
@@ -54,6 +81,8 @@
   const loadCapturedTables = async () => {
     const stored = await storageGet(STORAGE_KEY);
     capturedTables = Array.isArray(stored) ? stored.filter(Boolean) : [];
+    currentPageDebug.bundleCount = capturedTables.length;
+    currentPageDebug.bundleKeys = capturedTables.map((capture) => capture.platform).filter(Boolean);
   };
 
   const persistCapturedTables = async () => {
@@ -61,12 +90,16 @@
   };
 
   const upsertCapturedTable = (capture) => {
-    const index = capturedTables.findIndex((item) => item.platform === capture.platform);
+    const platform = String(capture?.platform || '').trim();
+    const canReplace = platform && !/^unknown platform$/i.test(platform) && !/^local only$/i.test(platform) && !/^local test page$/i.test(platform);
+    const index = canReplace ? capturedTables.findIndex((item) => item.platform === platform) : -1;
     if (index >= 0) {
       capturedTables.splice(index, 1, capture);
     } else {
       capturedTables.push(capture);
     }
+    currentPageDebug.bundleCount = capturedTables.length;
+    currentPageDebug.bundleKeys = capturedTables.map((item) => item.platform).filter(Boolean);
   };
 
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"]|'/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -154,6 +187,54 @@
     `).join('');
 
     hint.textContent = `${capturedTables.length} table${capturedTables.length === 1 ? '' : 's'} captured · ${platforms.join(', ')}`;
+  };
+
+  const renderDebugState = () => {
+    const debugCard = $('debugCard');
+    if (!debugCard) return;
+
+    debugCard.hidden = !isLocalFixtureHost();
+    if (debugCard.hidden) return;
+
+    $('debugPage').textContent = currentPageDebug.host ? `${currentPageDebug.host}${currentPageDebug.path || '/'}` : 'Waiting…';
+    $('debugPlatform').textContent = currentPageDebug.platform || 'Waiting…';
+    $('debugContentScript').textContent = currentPageDebug.contentScriptLoaded ? 'Loaded' : 'Not confirmed yet';
+    $('debugStorage').textContent = currentPageDebug.storageAvailable ? 'Available' : 'Unavailable';
+    $('debugBundleCount').textContent = String(currentPageDebug.bundleCount ?? capturedTables.length ?? 0);
+    $('debugBundleKeys').textContent = currentPageDebug.bundleKeys.length ? currentPageDebug.bundleKeys.join(' · ') : '—';
+    $('debugLastExtraction').textContent = currentPageDebug.lastExtractionStatus || '—';
+    $('debugRows').textContent = Number.isFinite(currentPageDebug.rowsDetected) ? formatNumber(currentPageDebug.rowsDetected) : '—';
+    $('debugColumns').textContent = Number.isFinite(currentPageDebug.columnsDetected) ? formatNumber(currentPageDebug.columnsDetected) : '—';
+    $('debugMetricColumns').textContent = currentPageDebug.metricColumns.length ? currentPageDebug.metricColumns.join(', ') : '—';
+    $('debugError').textContent = currentPageDebug.lastError || '—';
+  };
+
+  const applyDebugState = (state = {}) => {
+    currentPageDebug.host = state.host || currentPageDebug.host || '';
+    currentPageDebug.path = state.path || currentPageDebug.path || '';
+    currentPageDebug.platform = state.platform || currentPageDebug.platform || '';
+    currentPageDebug.contentScriptLoaded = Boolean(state.contentScriptLoaded || currentPageDebug.contentScriptLoaded);
+    currentPageDebug.storageAvailable = Boolean(state.storageAvailable ?? currentPageDebug.storageAvailable);
+    currentPageDebug.lastExtractionStatus = state.lastExtractionStatus || currentPageDebug.lastExtractionStatus;
+    currentPageDebug.rowsDetected = Number.isFinite(state.rowsDetected) ? state.rowsDetected : currentPageDebug.rowsDetected;
+    currentPageDebug.columnsDetected = Number.isFinite(state.columnsDetected) ? state.columnsDetected : currentPageDebug.columnsDetected;
+    currentPageDebug.metricColumns = Array.isArray(state.metricColumns) ? state.metricColumns : currentPageDebug.metricColumns;
+    currentPageDebug.lastError = state.lastError || '';
+    renderDebugState();
+  };
+
+  const requestDebugState = () => {
+    if (debugRequestTimer) window.clearTimeout(debugRequestTimer);
+    currentPageDebug.lastError = '';
+    window.parent.postMessage({ type: 'gnomeo-debug-request' }, '*');
+    debugRequestTimer = window.setTimeout(() => {
+      if (!currentPageDebug.contentScriptLoaded) {
+        currentPageDebug.lastExtractionStatus = 'Gnomeo is not available on this page.';
+        currentPageDebug.lastError = 'No content script response on this page.';
+        setStatus('Gnomeo is not available on this page. Open a supported campaign table or local fixture page.');
+        renderDebugState();
+      }
+    }, 600);
   };
 
   const setStatus = (text) => {
@@ -442,8 +523,11 @@
   const clearCapturedTables = async () => {
     pendingRequestId = null;
     capturedTables = [];
+    currentPageDebug.bundleCount = 0;
+    currentPageDebug.bundleKeys = [];
     setAnalysis(EMPTY_ANALYSIS);
     renderCapturedTables();
+    renderDebugState();
     $('addVisibleTable').textContent = 'Add visible table';
     $('addVisibleTable').disabled = false;
     setStatus('Captured tables cleared. Start again with Add visible table.');
@@ -476,8 +560,30 @@
     clearCapturedTablesButton?.addEventListener('click', clearCapturedTables);
     clearReviewButton?.addEventListener('click', clearCapturedTables);
 
+    renderDebugState();
+    requestDebugState();
+
     window.addEventListener('message', (event) => {
       const data = event.data || {};
+      if (data.type === 'gnomeo-debug-state') {
+        if (debugRequestTimer) {
+          window.clearTimeout(debugRequestTimer);
+          debugRequestTimer = null;
+        }
+        applyDebugState({
+          host: data.host,
+          path: data.path,
+          platform: data.platform,
+          contentScriptLoaded: true,
+          storageAvailable: data.storageAvailable,
+          lastExtractionStatus: data.lastExtractionStatus,
+          rowsDetected: data.rowsDetected,
+          columnsDetected: data.columnsDetected,
+          metricColumns: data.metricColumns,
+          lastError: data.lastError,
+        });
+        return;
+      }
       if (data.type !== 'gnomeo-visible-table-result') return;
       if (pendingRequestId && data.requestId && data.requestId !== pendingRequestId) return;
       pendingRequestId = null;
@@ -485,6 +591,20 @@
       addButton.disabled = false;
 
       const payload = data.payload || EMPTY_ANALYSIS;
+      applyDebugState({
+        host: currentPageDebug.host,
+        path: currentPageDebug.path,
+        platform: payload.platform || currentPageDebug.platform,
+        contentScriptLoaded: true,
+        storageAvailable: currentPageDebug.storageAvailable,
+        lastExtractionStatus: payload.success
+          ? `Captured ${payload.platform || 'table'}`
+          : (payload.summary?.executiveFinding || 'Gnomeo could not find a visible campaign table on this page.'),
+        rowsDetected: Number.isFinite(payload.rowsDetected) ? payload.rowsDetected : currentPageDebug.rowsDetected,
+        columnsDetected: Number.isFinite(payload.columnsDetected) ? payload.columnsDetected : currentPageDebug.columnsDetected,
+        metricColumns: Array.isArray(payload.metricColumns) ? payload.metricColumns : currentPageDebug.metricColumns,
+        lastError: payload.error || '',
+      });
       if (!payload.success) {
         setStatus(payload.summary?.executiveFinding || 'Gnomeo could not find a visible campaign table on this page.');
         if (!capturedTables.length) {
