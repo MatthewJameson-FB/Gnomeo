@@ -16,14 +16,14 @@
             <span class="brand-name">Gnomeo</span>
           </div>
           <h1>What needs attention?</h1>
-          <p class="lede">Feed tables. Get the first fix.</p>
+          <p class="lede">Feed a table. Get the first fix.</p>
         </div>
         <button class="icon-button" id="closePanel" type="button" aria-label="Close panel">×</button>
       </header>
 
       <section class="source-strip" id="sourceStrip">
         <div class="source-strip-head">
-          <span class="card-label">Sources</span>
+          <span class="card-label">Feed</span>
           <span class="chip chip--neutral" id="sourceProgressLabel">0 sources</span>
         </div>
         <div class="source-meter" id="sourceMeter" aria-hidden="true">
@@ -31,16 +31,16 @@
           <span class="source-segment"></span>
           <span class="source-segment"></span>
         </div>
-        <p class="source-copy" id="sourceCopy">Gnomeo needs a table.</p>
+        <p class="source-copy" id="sourceCopy">Feed me a table.</p>
       </section>
 
       <section class="focus-card" id="focusCard" hidden>
         <div class="card-head compact-head">
-          <span class="card-label">Start here</span>
+          <span class="card-label">First fix</span>
           <span class="chip chip--neutral" id="focusConfidence">visible only</span>
         </div>
-        <p class="focus-text" id="focusText">Add a table to see the focus.</p>
-        <p class="card-note" id="focusWhy">Add a campaign table to get your first recommendation.</p>
+        <p class="focus-text" id="focusText">Feed me a campaign table to start.</p>
+        <p class="card-note" id="focusWhy">Then I’ll tell you the first fix.</p>
       </section>
 
       <section class="next-steps-card" id="nextStepsCard" hidden>
@@ -53,12 +53,12 @@
       <section class="composer">
         <div class="button-row">
           <button id="primaryAction" class="primary-button" type="button">Add table</button>
-          <button id="addVisibleTable" class="text-button" type="button">Add/update table</button>
+          <button id="addVisibleTable" class="text-button" type="button">Add/update</button>
           <button id="analyseNow" class="text-button" type="button" hidden>Analyse again</button>
-          <button id="detailsToggle" class="text-button" type="button">Details</button>
-          <button id="clearCapturedTables" class="text-button" type="button">Clear</button>
+          <button id="detailsToggle" class="text-button" type="button">Burrow deeper ▾</button>
+          <button id="clearCapturedTables" class="text-button danger" type="button">Clear</button>
         </div>
-        <p class="status-line" id="captureStatus">No ad pages reviewed</p>
+        <p class="status-line" id="captureStatus">0 sources · hungry</p>
         <p class="hint" id="captureHint">Add a table to start.</p>
         <p class="error-line" id="actionError" hidden></p>
       </section>
@@ -72,7 +72,7 @@
           <p class="workspace-status" id="workspaceStatusLine">Want deeper memory?</p>
           <div class="workspace-inline-links" id="workspaceInlineLinks" hidden>
             <a id="openWorkspaceLink" class="workspace-link" href="#" target="_blank" rel="noreferrer" hidden>Open workspace</a>
-            <button id="workspaceChange" class="text-button" type="button" hidden>Change</button>
+            <button id="workspaceChange" class="text-button" type="button" hidden>Change workspace</button>
           </div>
         </div>
         <div id="workspaceDisconnected" class="workspace-disconnected" hidden>
@@ -91,7 +91,7 @@
         <section class="details-card">
           <details id="detailsCard">
             <summary>
-              <span class="card-label">Details</span>
+              <span class="card-label">Burrow deeper</span>
               <span class="chip">Why</span>
             </summary>
             <div class="detail-body">
@@ -108,7 +108,7 @@
               <div class="signal-list" id="keySignals"></div>
               <div class="card-head compact-head">
                 <span class="card-label">Preview</span>
-                <span class="chip">Visible rows only</span>
+                <span class="chip">visible only</span>
               </div>
               <div class="preview-list" id="visiblePreview"></div>
               <div class="bullet-list" id="attentionList"></div>
@@ -116,9 +116,9 @@
                 <span class="card-label">Report</span>
                 <span class="chip">Local</span>
               </div>
-              <p class="report-copy" id="reportSummary">Open this for the fuller local note or download it as markdown.</p>
+              <p class="report-copy" id="reportSummary">Open for the full note.</p>
               <div class="report-box">
-                <pre id="fullReportText">Add a table to generate the report.</pre>
+                <pre id="fullReportText">Add a table.</pre>
               </div>
               <div class="report-actions">
                 <button id="downloadAnalysis" class="secondary-button" type="button" disabled>Download</button>
