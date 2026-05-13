@@ -4,8 +4,8 @@ A local-loadable prototype for a calm ad-spend review layer.
 
 ## What it does
 
-- Adds a small **Review with Gnomeo** button on supported ad-platform pages.
-- Opens a lightweight persistent right-side review panel.
+- Uses the Chrome side panel as the only review UI.
+- Optionally shows a small **Review with Gnomeo** opener button on supported ad-platform pages.
 - Lets you add one or more **visible tables** to a session-only review bundle.
 - Analyses one table or multiple captured tables together.
 - Shows a concise review summary:
@@ -74,7 +74,8 @@ The debug section is collapsed by default and is intended for local fixture test
 - The extension reads **visible rows only** after you click **Add table**.
 - Captured tables live only in panel/session memory.
 - `chrome.storage.session` is used for the session bundle, so captured tables should survive tab/page changes but clear when the browser session ends.
-- The side panel stays open across supported tabs in the same browser window.
+- The Chrome side panel is the only review UI and stays open across supported tabs in the same browser window.
+- The content script is opener + extraction helper only.
 - Campaign-level pages are the MVP default because they usually contain the clearest spend/result signals.
 - Extraction may be imperfect because ad-platform UIs change frequently.
 - Nothing is sent or stored yet.

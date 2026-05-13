@@ -171,10 +171,6 @@
   };
 
   const closePanelView = async () => {
-    if (window.parent && window.parent !== window) {
-      window.parent.postMessage({ type: 'gnomeo-close' }, '*');
-      return true;
-    }
     if (!sidePanelApi?.close || !tabsApi?.query) return false;
     const activeTab = await queryActiveTab();
     if (!activeTab.ok) return false;

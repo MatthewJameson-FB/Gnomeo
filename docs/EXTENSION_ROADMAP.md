@@ -5,7 +5,8 @@ Build a local-loadable Chrome extension prototype first.
 
 Principles:
 - MV3
-- floating "Review with Gnomeo" button
+- Chrome side panel as the only review UI
+- optional floating "Review with Gnomeo" opener button
 - persistent side panel review flow
 - visible DOM/table extraction only
 - local-only initially
@@ -85,3 +86,11 @@ Columns like:
 - refine extension panel UX
 - later add safe backend review storage
 - later add platform APIs only if the product direction changes
+
+## Current architecture
+- Chrome side panel is the only review UI.
+- The content script is opener + extraction helper only.
+- Session state lives in `chrome.storage.session`.
+- No background capture.
+- No screenshots.
+- No backend calls yet.

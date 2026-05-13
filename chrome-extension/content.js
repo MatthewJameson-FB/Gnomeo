@@ -10,7 +10,7 @@
   };
 
   const host = document.createElement('div');
-  host.id = 'gnomeo-review-layer-host';
+  host.id = 'gnomeo-review-opener-host';
   host.setAttribute('aria-live', 'polite');
   host.style.all = 'initial';
   host.style.position = 'fixed';
@@ -55,69 +55,30 @@
         background: #64748b;
         display: inline-block;
       }
-      .panel-shell {
-        position: fixed;
-        top: 16px;
-        right: 16px;
-        bottom: 16px;
-        width: min(380px, calc(100vw - 24px));
-        pointer-events: auto;
-        transform: translateX(110%);
-        transition: transform 180ms ease;
-        border-radius: 20px;
-        overflow: hidden;
-        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.20);
-        border: 1px solid rgba(15, 23, 42, 0.12);
-        background: #fff;
-      }
-      .panel-shell[data-open='true'] { transform: translateX(0); }
-      .panel-frame {
-        width: 100%;
-        height: 100%;
-        border: 0;
-        display: block;
-        background: #fff;
-      }
-      @media (max-width: 640px) {
-        .panel-shell { left: 12px; right: 12px; width: auto; top: 12px; bottom: 12px; }
-      }
     </style>
     <div class="wrap">
-      <button class="button" type="button" aria-controls="gnomeo-review-panel" aria-expanded="false">Review with Gnomeo</button>
-      <div class="panel-shell" id="gnomeo-review-panel" data-open="false" aria-hidden="true">
-        <iframe class="panel-frame" title="Gnomeo review panel" src="${chrome.runtime.getURL('panel.html')}"></iframe>
-      </div>
+      <button class="button" type="button">Review with Gnomeo</button>
     </div>
   `;
 
   (document.documentElement || document.body || document.head).appendChild(host);
 
   const button = shadow.querySelector('.button');
-  const panel = shadow.querySelector('.panel-shell');
-  const frame = shadow.querySelector('iframe');
-  const supportsSidePanel = Boolean(sidePanelApi?.open && sidePanelApi?.close);
-  if (supportsSidePanel && typeof sidePanelApi.setOptions === 'function') {
-    Promise.resolve(sidePanelApi.setOptions({ path: 'panel.html', enabled: true })).catch(() => {});
-  }
-  let lastExtractionStatus = 'Waiting for a review request';
-  let lastError = '';
-  let lastRowsDetected = 0;
-  let lastColumnsDetected = 0;
-  let lastMetricColumns = [];
+  const supportsSidePanel = Boolean(sidePanelApi?.open);
 
-  const queryActiveTab = async () => {
+  const queryActiveWindow = async () => {
     if (!tabsApi?.query) {
-      return { ok: false, error: { stage: 'active-tab', message: 'chrome.tabs.query is unavailable', userMessage: 'Open a supported campaign table, then click Add table.' } };
+      return { ok: false, error: { stage: 'active-window', message: 'chrome.tabs.query is unavailable', userMessage: 'Open a supported campaign table, then click Add table.' } };
     }
     return await new Promise((resolve) => {
       tabsApi.query({ active: true, currentWindow: true }, (tabs) => {
         const message = globalThis.chrome?.runtime?.lastError?.message || '';
         if (message) {
-          resolve({ ok: false, error: { stage: 'active-tab', message, userMessage: 'Open a supported campaign table, then click Add table.' } });
+          resolve({ ok: false, error: { stage: 'active-window', message, userMessage: 'Open a supported campaign table, then click Add table.' } });
           return;
         }
         if (!Array.isArray(tabs) || !tabs.length || !tabs[0]?.id) {
-          resolve({ ok: false, error: { stage: 'active-tab', message: 'No active tab found', userMessage: 'Open a supported campaign table, then click Add table.' } });
+          resolve({ ok: false, error: { stage: 'active-window', message: 'No active tab found', userMessage: 'Open a supported campaign table, then click Add table.' } });
           return;
         }
         resolve({ ok: true, tab: tabs[0] });
@@ -127,10 +88,10 @@
 
   const openSidePanel = async () => {
     if (!supportsSidePanel) return { ok: false, error: { stage: 'side-panel', message: 'chrome.sidePanel is unavailable', userMessage: '' } };
-    const activeTab = await queryActiveTab();
-    if (!activeTab.ok) return activeTab;
+    const activeWindow = await queryActiveWindow();
+    if (!activeWindow.ok) return activeWindow;
     try {
-      await sidePanelApi.open({ windowId: activeTab.tab.windowId });
+      await sidePanelApi.open({ windowId: activeWindow.tab.windowId });
       return { ok: true };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error || 'Side panel open failed');
@@ -138,52 +99,13 @@
     }
   };
 
-  const postDebugState = () => {
-    frame.contentWindow?.postMessage({
-      type: 'gnomeo-debug-state',
-      host: location.host,
-      path: `${location.pathname}${location.search || ''}`,
-      url: location.href,
-      platform: detectPlatform(),
-      contentScriptLoaded: true,
-      storageAvailable: Boolean(chrome?.storage?.session),
-      isLocalTestHost,
-      lastExtractionStatus,
-      lastError,
-      rowsDetected: lastRowsDetected,
-      columnsDetected: lastColumnsDetected,
-      metricColumns: lastMetricColumns,
-    }, '*');
-  };
-
-  frame.addEventListener('load', () => {
-    debug('panel loaded', location.href);
-    postDebugState();
-  });
-
-  window.addEventListener('message', (event) => {
-    if (event.source !== frame.contentWindow) return;
-    if (!event.data || event.data.type !== 'gnomeo-close') return;
-    setOpen(false);
-  });
-
-  const setOpen = (open) => {
-    panel.dataset.open = open ? 'true' : 'false';
-    panel.setAttribute('aria-hidden', open ? 'false' : 'true');
-    button.setAttribute('aria-expanded', open ? 'true' : 'false');
-  };
-
   button.addEventListener('click', async () => {
-    if (supportsSidePanel) {
-      const result = await openSidePanel();
-      if (result.ok) {
-        debug('side panel opened');
-        return;
-      }
-      debug('side panel open failed', result.error?.message || result.error?.userMessage || 'unknown');
+    const result = await openSidePanel();
+    if (result.ok) {
+      debug('side panel opened');
+      return;
     }
-    debug('toggle panel', panel.dataset.open !== 'true' ? 'open' : 'close');
-    setOpen(panel.dataset.open !== 'true');
+    debug('side panel open failed', result.error?.message || result.error?.userMessage || 'unknown');
   });
 
   const detectPlatform = () => {
