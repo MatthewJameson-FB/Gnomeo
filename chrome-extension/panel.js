@@ -330,7 +330,7 @@
     const connected = Boolean(workspaceConnection?.token);
     const promptOpen = Boolean(workspacePromptOpen && !connected);
     const analysisReady = Boolean(currentAnalysis.success && !currentAnalysis.stale);
-    const visible = connected || promptOpen;
+    const visible = promptOpen || (connected && analysisReady);
     const workspaceCard = $('workspaceCard');
     const disconnected = $('workspaceDisconnected');
     const closed = $('workspaceClosed');
@@ -349,16 +349,16 @@
       statusLine.textContent = connected
         ? (workspaceConnection.saved ? 'Saved.' : 'Ready to save.')
         : 'Paste your private workspace link.';
-      statusLine.hidden = promptOpen;
+      statusLine.hidden = promptOpen || (!analysisReady && !connected);
     }
     if (disconnected) disconnected.hidden = !promptOpen;
-    if (inlineLinks) inlineLinks.hidden = !connected;
+    if (inlineLinks) inlineLinks.hidden = !(connected && analysisReady);
     if (changeButton) changeButton.hidden = !connected;
     if (cancelButton) cancelButton.hidden = !promptOpen;
     if (openLink) {
       const href = workspaceConnection.portalUrl || workspaceConnection.rawInput || '';
-      const canOpen = Boolean(href && workspaceConnection.saved);
-      openLink.hidden = !connected || !canOpen;
+      const canOpen = Boolean(href);
+      openLink.hidden = !connected || !canOpen || !analysisReady;
       if (canOpen) openLink.href = href;
     }
     if (input && promptOpen && !connected) {
