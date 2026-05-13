@@ -280,8 +280,8 @@
   };
 
   const setWorkspaceStatus = (message = '') => {
-    const el = $('workspaceConnectedText');
-    if (el) el.textContent = String(message || 'Workspace connected.');
+    const el = $('workspaceStatusLine');
+    if (el) el.textContent = String(message || 'Save after analysis.');
   };
 
   const setWorkspaceError = (message = '') => {
@@ -296,36 +296,36 @@
     const connected = Boolean(workspaceConnection?.token);
     const promptOpen = Boolean(workspacePromptOpen && !connected);
     const analysisReady = Boolean(currentAnalysis.success && !currentAnalysis.stale);
+    const visible = connected || promptOpen || analysisReady;
+    const workspaceCard = $('workspaceCard');
     const disconnected = $('workspaceDisconnected');
-    const connectedPanel = $('workspaceConnected');
     const closed = $('workspaceClosed');
     const chip = $('workspaceConnectionChip');
-    const saveButton = $('saveReview');
     const primaryButton = $('workspacePrimary');
     const cancelButton = $('workspaceCancelConnect');
     const changeButton = $('workspaceChange');
-    const disconnectButton = $('workspaceDisconnect');
     const openLink = $('openWorkspaceLink');
+    const inlineLinks = $('workspaceInlineLinks');
     const input = $('workspaceLinkInput');
     const statusLine = $('workspaceStatusLine');
 
+    if (workspaceCard) workspaceCard.hidden = !visible;
     setChipText(chip, 'Connected', 'success', !connected);
-    if (closed) closed.hidden = connected || promptOpen;
+    if (closed) closed.hidden = promptOpen;
     if (statusLine) {
-      statusLine.textContent = analysisReady ? 'Connect first' : 'Add a table first.';
-      statusLine.hidden = connected || promptOpen;
+      statusLine.textContent = connected
+        ? (analysisReady ? 'Ready to save.' : 'Analyse again to save.')
+        : (analysisReady ? 'Connect first.' : 'Save after analysis.');
+      statusLine.hidden = promptOpen || (connected && analysisReady && workspaceConnection.saved);
     }
     if (primaryButton) {
-      primaryButton.hidden = connected || promptOpen;
-      primaryButton.textContent = analysisReady ? 'Save to workspace' : 'Connect workspace';
-      primaryButton.disabled = false;
+      primaryButton.hidden = promptOpen || (!analysisReady && !connected);
+      primaryButton.textContent = connected ? (analysisReady ? 'Save to workspace' : 'Save after analysis') : 'Save to workspace';
+      primaryButton.disabled = workspaceSaving || (!connected && !analysisReady);
     }
     if (disconnected) disconnected.hidden = !promptOpen;
-    if (connectedPanel) connectedPanel.hidden = !connected;
-    if (saveButton) saveButton.disabled = !connected || !currentAnalysis.success || workspaceSaving;
-    if (saveButton) saveButton.textContent = workspaceSaving ? 'Saving…' : 'Save to workspace';
+    if (inlineLinks) inlineLinks.hidden = !connected;
     if (changeButton) changeButton.hidden = !connected;
-    if (disconnectButton) disconnectButton.hidden = true;
     if (cancelButton) cancelButton.hidden = !promptOpen;
     if (openLink) {
       const href = workspaceConnection.portalUrl || workspaceConnection.rawInput || '';
@@ -354,7 +354,7 @@
       });
       await persistWorkspaceConnection();
       workspacePromptOpen = false;
-      setWorkspaceStatus(verified.workspaceName ? `Workspace connected · ${verified.workspaceName}` : 'Workspace connected.');
+      setWorkspaceStatus(verified.workspaceName ? `Connected · ${verified.workspaceName}` : 'Connected.');
       renderWorkspaceSection();
       setStatus('Workspace connected.');
     } catch (error) {
@@ -367,7 +367,7 @@
   const disconnectWorkspace = async () => {
     await clearWorkspaceConnection();
     workspacePromptOpen = false;
-    setWorkspaceStatus('Workspace disconnected.');
+    setWorkspaceStatus('Save after analysis.');
     setWorkspaceError('');
     renderWorkspaceSection();
     setStatus('Workspace disconnected.');
@@ -1499,9 +1499,7 @@
     const workspacePrimaryButton = $('workspacePrimary');
     const workspaceConnectButton = $('workspaceConnect');
     const workspaceCancelConnectButton = $('workspaceCancelConnect');
-    const workspaceSaveButton = $('saveReview');
     const workspaceChangeButton = $('workspaceChange');
-    const workspaceDisconnectButton = $('workspaceDisconnect');
 
     await loadCapturedTables();
     await loadAnalysisMeta();
@@ -1585,7 +1583,6 @@
       setWorkspaceError('');
       renderWorkspaceSection();
     });
-    workspaceSaveButton?.addEventListener('click', saveReviewToWorkspace);
     workspaceChangeButton?.addEventListener('click', async () => {
       workspacePromptOpen = true;
       workspaceConnection = normalizeWorkspaceState({
@@ -1606,7 +1603,6 @@
       }
       setStatus('Paste your private workspace link again if you want to change it.');
     });
-    workspaceDisconnectButton?.addEventListener('click', disconnectWorkspace);
 
     renderDebugState();
   };

@@ -49,14 +49,18 @@
         <p class="error-line" id="actionError" hidden></p>
       </section>
 
-      <section class="workspace-card">
+      <section class="workspace-card" id="workspaceCard">
         <div class="card-head compact-head">
           <span class="card-label">Workspace</span>
           <span class="chip" id="workspaceConnectionChip" hidden>Connected</span>
         </div>
         <div class="workspace-closed" id="workspaceClosed">
           <button id="workspacePrimary" class="primary-button" type="button">Save to workspace</button>
-          <p class="workspace-status" id="workspaceStatusLine">Connect first</p>
+          <p class="workspace-status" id="workspaceStatusLine">Save after analysis.</p>
+          <div class="workspace-inline-links" id="workspaceInlineLinks" hidden>
+            <a id="openWorkspaceLink" class="workspace-link" href="#" target="_blank" rel="noreferrer" hidden>Open workspace</a>
+            <button id="workspaceChange" class="text-button" type="button" hidden>Change</button>
+          </div>
         </div>
         <div id="workspaceDisconnected" class="workspace-disconnected" hidden>
           <input id="workspaceLinkInput" class="workspace-input" type="text" placeholder="Paste private workspace link or token" autocomplete="off" spellcheck="false" />
@@ -64,15 +68,6 @@
             <button id="workspaceConnect" class="secondary-button" type="button">Connect workspace</button>
             <button id="workspaceCancelConnect" class="text-button" type="button">Cancel</button>
           </div>
-        </div>
-        <div id="workspaceConnected" class="workspace-connected" hidden>
-          <p class="card-note" id="workspaceConnectedText">Workspace connected.</p>
-          <div class="button-row workspace-row">
-            <button id="saveReview" class="primary-button" type="button" disabled>Save to workspace</button>
-          </div>
-          <a id="openWorkspaceLink" class="workspace-link" href="#" target="_blank" rel="noreferrer" hidden>Open workspace</a>
-          <button id="workspaceChange" class="text-button" type="button" hidden>Change</button>
-          <button id="workspaceDisconnect" class="text-button" type="button" hidden>Disconnect</button>
         </div>
         <p id="workspaceError" class="error-line" hidden></p>
       </section>
