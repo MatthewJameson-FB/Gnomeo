@@ -1,7 +1,18 @@
 # Gnomeo Workflow
 
+## Start here
+Use the living product docs first:
+- `docs/PRODUCT_DIRECTION.md`
+- `docs/EXTENSION_ROADMAP.md`
+- `docs/PRICING_MODEL.md`
+- `docs/OPENCLAW_CONTEXT.md`
+
+## Legacy portal context
+Keep the existing portal/memory work, but frame it under the new extension-first review layer.
+
 ## Source of truth
-- Active repo: `~/Gnomeo` only.
+- OpenClaw working copy: `/Users/matthewjameson/.openclaw/workspace/Gnomeo_ACTIVE`.
+- Real local repo sync target after pushes: `~/Gnomeo`.
 - Do not use `~/.openclaw/workspace/Gnomeo` for production work.
 
 ## Homepage
