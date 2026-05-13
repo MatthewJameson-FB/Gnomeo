@@ -391,6 +391,8 @@
     })[0] || null;
     const roasRow = rows.filter((row) => Number.isFinite(row.metrics.roas?.value)).sort((a, b) => (b.metrics.roas.value - a.metrics.roas.value))[0] || null;
     const watchRow = spendRow && ((spendRow.metrics.conversions?.value ?? spendRow.metrics.results?.value ?? 0) === 0 || !conversionRow) ? spendRow : (spendRow || conversionRow || rows[0] || null);
+    const watchConversions = watchRow?.metrics.conversions?.value ?? watchRow?.metrics.results?.value ?? null;
+    const watchSpend = watchRow?.metrics.spend?.value ?? null;
 
     const spendValue = spendRow?.metrics.spend?.value;
     const spendCurrency = spendRow?.metrics.spend?.currency || conversionRow?.metrics.spend?.currency || '';
@@ -403,8 +405,6 @@
     if (conversionRow) keySignals.push({ label: 'Best results', title: conversionRow.label, details: Number.isFinite(conversionValue) ? 'This one appears to be getting results more efficiently.' : 'This one appears to be getting the clearest results.' });
     if (roasRow) keySignals.push({ label: 'Confidence', title: 'Visible rows only', details: 'Treat this as a spot check, not a full account decision.' });
     if (watchRow) {
-      const watchConversions = watchRow.metrics.conversions?.value ?? watchRow.metrics.results?.value ?? null;
-      const watchSpend = watchRow.metrics.spend?.value ?? null;
       keySignals.push({
         label: 'Main watch item',
         title: watchRow.label,
@@ -459,7 +459,7 @@
         keySignals,
         attention,
         comparison: ['This is the first visible-page review in this panel session.'],
-        privacyNote: 'This prototype only reads the visible page after you click Add visible table. Nothing is sent or stored yet.',
+        privacyNote: 'This prototype only reads the visible page after you click Add table. Nothing is sent or stored yet.',
       },
       snapshot: {
         spendLabel: spendRow?.label || '',
@@ -492,7 +492,7 @@
         reviewConfidence: 'Limited — visible rows only',
         previewRows: [],
         summary: {
-          executiveFinding: 'Gnomeo could not find a visible campaign table on this page.',
+          executiveFinding: 'Couldn’t find a visible campaign table on this page.',
           keySignals: [],
           attention: [
             'Try opening a campaign table.',
@@ -500,7 +500,7 @@
             'Use paste or upload if the page layout is still hiding the rows.',
           ],
           comparison: ['No visible table was captured yet in this panel session.'],
-          privacyNote: 'This prototype only reads the visible page after you click Add visible table. Nothing is sent or stored yet.',
+          privacyNote: 'This prototype only reads the visible page after you click Add table. Nothing is sent or stored yet.',
         },
       };
     }
@@ -531,7 +531,7 @@
       lastMetricColumns = Array.isArray(response.metricColumns) ? response.metricColumns : [];
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error || 'Unknown extraction error');
-      lastExtractionStatus = 'Gnomeo hit an extraction error.';
+      lastExtractionStatus = 'Gnomeo could not read this table yet.';
       lastError = message;
       response = {
         success: false,
@@ -544,11 +544,11 @@
         previewRows: [],
         error: message,
         summary: {
-          executiveFinding: 'Gnomeo hit an extraction error.',
+          executiveFinding: 'Gnomeo could not read this table yet. Try refreshing the page or opening a campaign table.',
           keySignals: [],
-          attention: ['Try the page again after it finishes loading.'],
-          comparison: ['Extraction failed before a table could be analyzed.'],
-          privacyNote: 'This prototype only reads the visible page after you click Add visible table. Nothing is sent or stored yet.',
+          attention: ['Try refreshing the page or opening a campaign table.'],
+          comparison: ['Extraction failed before a table could be reviewed.'],
+          privacyNote: 'This prototype only reads the visible page after you click Add table. Nothing is sent or stored yet.',
         },
       };
     }

@@ -23,7 +23,7 @@
           <span class="card-label">Focus on this</span>
           <span class="chip" id="focusConfidence">Visible rows only</span>
         </div>
-        <p class="focus-text" id="focusText">Add a visible table to see the focus.</p>
+        <p class="focus-text" id="focusText">Add a table to see the focus.</p>
       </section>
 
       <section class="next-steps-card" id="nextStepsCard" hidden>
@@ -35,7 +35,7 @@
 
       <section class="card captured-card" id="capturedSummaryCard" hidden>
         <div class="card-head">
-          <span class="card-label">Captured</span>
+          <span class="card-label">Status</span>
           <span class="chip" id="bundleCount">0 tables</span>
         </div>
         <p class="card-note" id="bundleHint">Add another table, then analyse everything together.</p>
@@ -43,13 +43,11 @@
 
       <section class="composer">
         <div class="button-row">
-          <button id="addVisibleTable" class="primary-button" type="button">Add visible table</button>
+          <button id="addVisibleTable" class="primary-button" type="button">Add table</button>
           <button id="analyseNow" class="secondary-button" type="button" disabled>Analyse</button>
-          <button id="addAnotherPlatform" class="text-button" type="button">Add another table</button>
           <button id="clearCapturedTables" class="text-button" type="button">Clear</button>
         </div>
-        <p class="hint" id="privacyHint">Nothing is captured in the background.</p>
-        <p class="status-line" id="captureStatus">Open a visible campaign table, then click Add visible table.</p>
+        <p class="status-line" id="captureStatus">Only the visible table you choose. Nothing runs in the background.</p>
       </section>
 
       <main class="content" id="reviewContent">
@@ -90,11 +88,6 @@
             </div>
           </details>
         </section>
-
-      <section class="card privacy-card">
-        <p id="privacyNote">Nothing is captured in the background.</p>
-        <button id="clearReview" class="text-button" type="button">Clear</button>
-      </section>
 
       <details class="details-card debug-card" id="debugCard" hidden>
         <summary>

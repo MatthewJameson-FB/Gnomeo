@@ -42,11 +42,11 @@ Recommended test method:
 2. `python3 -m http.server 8080`
 3. Open `http://localhost:8080/chrome-extension/test-pages/`
 4. Load the unpacked extension in Chrome and click **Review with Gnomeo**
-5. Open the Google fixture and click **Add visible table**
+5. Open the Google fixture and click **Add table**
 6. Open the **Debug (local fixtures)** section and confirm the session bundle count is `1`
 7. Open the Meta fixture in another tab/page
 8. Confirm the debug bundle count is still `1` before adding anything
-9. Click **Add visible table** on Meta and confirm the count becomes `2`
+9. Click **Add table** on Meta and confirm the count becomes `2`
 10. Open the LinkedIn fixture and repeat
 11. Confirm the count becomes `3`
 12. Click **Analyse** and confirm all captured platforms are included
@@ -69,7 +69,7 @@ The debug section is collapsed by default and is intended for local fixture test
 - Ad-platform APIs are **not connected yet**.
 - No screenshots are used.
 - No background activity is used.
-- The extension reads **visible rows only** after you click **Add visible table**.
+- The extension reads **visible rows only** after you click **Add table**.
 - Captured tables live only in panel/session memory.
 - `chrome.storage.session` is used for the session bundle, so captured tables should survive tab/page changes but clear when the browser session ends.
 - Campaign-level pages are the MVP default because they usually contain the clearest spend/result signals.
