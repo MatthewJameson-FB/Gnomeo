@@ -18,8 +18,8 @@ body { overflow: hidden; }
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 10px;
+  gap: 8px;
+  padding: 8px;
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
 }
 
@@ -28,21 +28,45 @@ body { overflow: hidden; }
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 4px 2px 0;
+  padding: 2px 2px 0;
 }
 
-.eyebrow {
-  margin: 0 0 4px;
+.brand-stack {
+  display: grid;
+  gap: 4px;
+}
+
+.brand-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-mark {
+  width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  color: #fff;
   font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.brand-name {
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
 h1 {
   margin: 0;
-  font-size: 17px;
+  font-size: 16px;
   line-height: 1.2;
   letter-spacing: -0.03em;
 }
@@ -80,7 +104,7 @@ h1 {
 }
 
 .composer {
-  padding: 10px;
+  padding: 8px;
   display: grid;
   gap: 8px;
 }
@@ -90,7 +114,7 @@ h1 {
   background: #fff;
   border-radius: 14px;
   box-shadow: var(--shadow);
-  padding: 10px;
+  padding: 8px;
   display: grid;
   gap: 8px;
 }
@@ -100,7 +124,7 @@ h1 {
   background: #fff;
   border-radius: 14px;
   box-shadow: var(--shadow);
-  padding: 10px;
+  padding: 8px;
   display: grid;
   gap: 8px;
 }
@@ -140,8 +164,8 @@ h1 {
 }
 
 .primary-button, .secondary-button, .text-button {
-  min-height: 32px;
-  padding: 0 12px;
+  min-height: 30px;
+  padding: 0 10px;
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;

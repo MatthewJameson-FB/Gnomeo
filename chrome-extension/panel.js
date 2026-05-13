@@ -163,7 +163,7 @@
     const stored = await storageGet(STORAGE_KEY);
     capturedTables = Array.isArray(stored) ? stored.filter(Boolean) : [];
     currentPageDebug.bundleCount = capturedTables.length;
-    currentPageDebug.bundleKeys = capturedTables.map((capture) => capture.platform).filter(Boolean);
+    currentPageDebug.bundleKeys = sortPlatformNames(capturedTables.map((capture) => capture.platform));
   };
 
   const persistCapturedTables = async () => {
@@ -181,7 +181,7 @@
       capturedTables.push(capture);
     }
     currentPageDebug.bundleCount = capturedTables.length;
-    currentPageDebug.bundleKeys = capturedTables.map((item) => item.platform).filter(Boolean);
+    currentPageDebug.bundleKeys = sortPlatformNames(capturedTables.map((item) => item.platform));
   };
 
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"]|'/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -198,6 +198,45 @@
   };
 
   const uniquePlatforms = (items) => [...new Set(items.filter(Boolean))];
+
+  const canonicalPlatformName = (platform) => {
+    const value = String(platform || '').trim();
+    if (/^google ads$/i.test(value)) return 'Google Ads';
+    if (/^meta ads$/i.test(value)) return 'Meta Ads';
+    if (/^linkedin campaign manager$/i.test(value)) return 'LinkedIn Campaign Manager';
+    return 'Other';
+  };
+
+  const platformRank = (platform) => {
+    const value = canonicalPlatformName(platform);
+    if (value === 'Google Ads') return 0;
+    if (value === 'Meta Ads') return 1;
+    if (value === 'LinkedIn Campaign Manager') return 2;
+    return 3;
+  };
+
+  const sortCapturedTables = (items = []) => [...items].sort((a, b) => {
+    const rankDiff = platformRank(a.platform) - platformRank(b.platform);
+    if (rankDiff !== 0) return rankDiff;
+    const aLabel = String(a?.snapshot?.watchLabel || a?.snapshot?.spendLabel || a?.platform || '').toLowerCase();
+    const bLabel = String(b?.snapshot?.watchLabel || b?.snapshot?.spendLabel || b?.platform || '').toLowerCase();
+    if (aLabel < bLabel) return -1;
+    if (aLabel > bLabel) return 1;
+    return (a.capturedAt || 0) - (b.capturedAt || 0);
+  });
+
+  const sortPlatformNames = (items = []) => {
+    const names = uniquePlatforms(items).map(canonicalPlatformName);
+    return [...new Set(names)].sort((a, b) => platformRank(a) - platformRank(b));
+  };
+
+  const platformAdvice = (platform) => {
+    const name = canonicalPlatformName(platform);
+    if (name === 'Google Ads') return 'For Google, check the landing page or keywords if this is a Search campaign.';
+    if (name === 'Meta Ads') return 'For Meta, check the audience, creative, placement, or landing page.';
+    if (name === 'LinkedIn Campaign Manager') return 'For LinkedIn, check the audience, offer, lead form, or landing page.';
+    return 'Check why this is spending money without enough visible results.';
+  };
 
   const getMetric = (capture, key) => Number.isFinite(capture?.snapshot?.[key]) ? capture.snapshot[key] : null;
 
@@ -248,30 +287,32 @@
     const capturedSummaryCard = $('capturedSummaryCard');
     const capturedCountInline = $('capturedCountInline');
 
-    countChip.textContent = `${capturedTables.length} table${capturedTables.length === 1 ? '' : 's'}`;
+    const orderedTables = sortCapturedTables(capturedTables);
+    const orderedPlatforms = sortPlatformNames(orderedTables.map((capture) => capture.platform));
+
+    countChip.textContent = `${orderedTables.length} table${orderedTables.length === 1 ? '' : 's'}`;
     analyseNow.disabled = capturedTables.length === 0;
     analyseNow.hidden = !capturedTables.length;
     clearCapturedTablesButton.hidden = !capturedTables.length;
-    capturedSummaryCard.hidden = !capturedTables.length;
-    capturedCountInline.textContent = capturedTables.length
-      ? `${capturedTables.length} table${capturedTables.length === 1 ? '' : 's'}`
+    capturedSummaryCard.hidden = true;
+    capturedCountInline.textContent = orderedTables.length
+      ? `${orderedTables.length} table${orderedTables.length === 1 ? '' : 's'}`
       : '0 tables';
 
-    if (!capturedTables.length) {
+    if (!orderedTables.length) {
       container.innerHTML = '<div class="captured-item"><strong>No tables yet</strong><span>Add a table from Google Ads, Meta Ads, or LinkedIn Ads.</span></div>';
       hint.textContent = 'Add a table from one or more platforms, then analyse them together.';
       return;
     }
 
-    const platforms = uniquePlatforms(capturedTables.map((capture) => capture.platform));
-    container.innerHTML = capturedTables.map((capture) => `
+    container.innerHTML = orderedTables.map((capture) => `
       <div class="captured-item">
         <strong>${escapeHtml(capture.platform)} — ${escapeHtml(formatNumber(capture.rowsDetected || 0))} rows</strong>
         <span>${escapeHtml(formatNumber((capture.metricColumns || []).length))} metric columns · ${escapeHtml(formatTime(capture.capturedAt))}</span>
       </div>
     `).join('');
 
-    hint.textContent = `${capturedTables.length} table${capturedTables.length === 1 ? '' : 's'} · ${platforms.join(', ')}`;
+    hint.textContent = `${orderedTables.length} table${orderedTables.length === 1 ? '' : 's'} · ${orderedPlatforms.join(', ')}`;
   };
 
   const renderDebugState = () => {
@@ -368,7 +409,7 @@
     $('metaRow').innerHTML = meta.join('');
     focusCard.hidden = !currentAnalysis.success;
     nextStepsCard.hidden = !currentAnalysis.success;
-    capturedSummaryCard.hidden = !currentAnalysis.success || !capturedTables.length;
+    capturedSummaryCard.hidden = true;
     reviewContent.hidden = !capturedTables.length && !currentAnalysis.success;
     focusText.textContent = currentAnalysis.success
       ? (currentAnalysis.focus || summary.executiveFinding || EMPTY_ANALYSIS.summary.executiveFinding)
@@ -417,12 +458,9 @@
       `Check ${spendLabel} first. It is where mistakes cost the most.`,
     ];
     if (conversionLabel && conversionLabel !== spendLabel) {
-      nextSteps.push(`Protect ${conversionLabel}. Do not cut it just because another campaign is louder.`);
+      nextSteps.push(`Protect ${conversionLabel} if it keeps producing results efficiently.`);
     }
-    if (capture.snapshot?.watchLabel) {
-      nextSteps.push(`Be cautious with ${watchLabel}. Review the page, audience, or search terms before adding budget.`);
-    }
-    nextSteps.push('Treat this as a visible-table spot check, not a full account decision.');
+    nextSteps.push(platformAdvice(capture.platform));
 
     return {
       mode: 'single',
@@ -439,15 +477,15 @@
       summary: {
         executiveFinding: focus,
         keySignals: [
-          { label: 'Biggest spend', title: spendLabel, details: Number.isFinite(spendValue) ? `This campaign is spending ${formatNumber(spendValue, 2)}.` : 'This campaign is spending the most money.' },
-          conversionLabel ? { label: 'Best results', title: conversionLabel, details: Number.isFinite(conversionValue) ? 'This one appears to be getting results more efficiently.' : 'This one appears to be getting the clearest results.' } : null,
-          capture.snapshot?.watchLabel ? { label: 'Main watch item', title: watchLabel, details: Number.isFinite(watchSpend) ? `Spending ${formatNumber(watchSpend, 2)} with fewer results.` : 'Spending money but showing fewer results.' } : null,
-          { label: 'Confidence', title: 'Visible rows only', details: 'Treat this as a spot check, not a full account decision.' },
+          { label: 'Biggest spend', title: spendLabel, details: Number.isFinite(spendValue) ? `This is spending ${formatNumber(spendValue, 2)}.` : 'This is spending the most money.' },
+          conversionLabel ? { label: 'Best results', title: conversionLabel, details: Number.isFinite(conversionValue) ? 'This appears to be getting results more efficiently.' : 'This appears to be getting the clearest results.' } : null,
+          capture.snapshot?.watchLabel ? { label: 'Main watch item', title: watchLabel, details: Number.isFinite(watchSpend) ? `${capture.platform} · spending ${formatNumber(watchSpend, 2)} with fewer results.` : `${capture.platform} · spending money but showing fewer results.` } : null,
+          { label: 'Confidence', title: 'Visible rows only', details: 'Spot check only.' },
         ].filter(Boolean),
         attention: [
           `Check ${spendLabel} first. It is where mistakes cost the most.`,
-          conversionLabel && conversionLabel !== spendLabel ? `Protect ${conversionLabel}. Do not cut it just because another campaign is louder.` : 'Protect the campaign getting the clearest results. Do not cut it just because another campaign is louder.',
-          capture.snapshot?.watchLabel ? `Be cautious with ${watchLabel}. Review the page, audience, or search terms before adding budget.` : 'Be cautious with the campaign spending money but showing fewer results.',
+          conversionLabel && conversionLabel !== spendLabel ? `Protect ${conversionLabel} if it keeps producing results efficiently.` : 'Do not increase budget until another review confirms the pattern.',
+          platformAdvice(capture.platform),
         ],
         privacyNote: summary.privacyNote || EMPTY_ANALYSIS.summary.privacyNote,
       },
@@ -458,13 +496,14 @@
 
   const buildBundleReview = (captures) => {
     if (!captures.length) return EMPTY_ANALYSIS;
+    const orderedCaptures = sortCapturedTables(captures);
 
-    const spendCandidate = captures
+    const spendCandidate = orderedCaptures
       .map((capture) => ({ capture, value: getMetric(capture, 'spendValue') }))
       .filter((item) => Number.isFinite(item.value))
       .sort((a, b) => b.value - a.value)[0] || null;
 
-    const conversionCandidate = captures
+    const conversionCandidate = orderedCaptures
       .map((capture) => ({ capture, value: getMetric(capture, 'conversionValue') }))
       .filter((item) => Number.isFinite(item.value))
       .sort((a, b) => b.value - a.value)[0] || null;
@@ -481,14 +520,14 @@
       return null;
     };
 
-    const watchCandidate = captures
+    const watchCandidate = orderedCaptures
       .map((capture) => ({ capture, score: efficiencyScore(capture) }))
       .filter((item) => Number.isFinite(item.score))
       .sort((a, b) => a.score - b.score)[0]
       || spendCandidate;
 
-    const platforms = uniquePlatforms(captures.map((capture) => capture.platform));
-    const previewRows = captures.flatMap((capture) => capture.previewRows.slice(0, 2).map((row) => ({ ...row, source: capture.platform }))).slice(0, 5);
+    const platforms = sortPlatformNames(orderedCaptures.map((capture) => capture.platform));
+    const previewRows = orderedCaptures.flatMap((capture) => capture.previewRows.slice(0, 2).map((row) => ({ ...row, source: capture.platform }))).slice(0, 5);
 
     const spendLabel = spendCandidate?.capture?.snapshot?.spendLabel || spendCandidate?.capture?.platform || '';
     const conversionLabel = conversionCandidate?.capture?.snapshot?.conversionLabel || '';
@@ -498,33 +537,33 @@
     if (spendCandidate) {
       keySignals.push({
         label: 'Biggest spend',
-        title: `${spendCandidate.capture.platform} — ${spendLabel}`,
-        details: `This campaign is spending ${formatNumber(spendCandidate.value, 2)}.`,
+        title: spendLabel,
+        details: `${spendCandidate.capture.platform} · spending ${formatNumber(spendCandidate.value, 2)}.`,
       });
     }
     if (conversionCandidate) {
       keySignals.push({
         label: 'Best results',
-        title: `${conversionCandidate.capture.platform} — ${conversionLabel || conversionCandidate.capture.platform}`,
-        details: 'This one appears to be getting results more efficiently.',
+        title: conversionLabel || conversionCandidate.capture.platform,
+        details: `${conversionCandidate.capture.platform} · this appears to be getting results more efficiently.`,
       });
     }
     if (watchCandidate) {
       keySignals.push({
         label: 'Main watch item',
-        title: `${watchCandidate.capture.platform} — ${watchLabel}`,
-        details: 'This campaign is spending money but showing fewer results.',
+        title: watchLabel,
+        details: `${watchCandidate.capture.platform} · spending money but showing fewer results.`,
       });
     }
     keySignals.push({
       label: 'Confidence',
       title: 'Visible rows only',
-      details: 'Treat this as a spot check, not a full account decision.',
+      details: 'Spot check only.',
     });
     keySignals.push({
       label: 'Platforms',
       title: platforms.join(' · '),
-      details: `${captures.length} tables in this session`,
+      details: `${orderedCaptures.length} tables in this session`,
     });
     keySignals.push({
       label: 'Review confidence',
@@ -533,25 +572,25 @@
     });
 
     const focus = watchCandidate
-      ? `${watchCandidate.capture.platform} is the main watch item because it is spending money but showing fewer results.`
+      ? `${watchLabel} is the main watch item because it is spending money but showing fewer results.`
       : conversionCandidate
-        ? `${conversionCandidate.capture.platform} appears to be producing the clearest results.`
+        ? `${conversionLabel || conversionCandidate.capture.platform} appears to be producing the clearest results.`
         : spendCandidate
-          ? `${spendCandidate.capture.platform} is spending the most money.`
+          ? `${spendLabel} is spending the most money.`
           : 'Treat this as a visible-table spot check.';
 
     const topFinding = focus;
 
     const attention = [
-      spendCandidate ? `Check ${spendCandidate.capture.platform} first. It is where mistakes cost the most.` : 'Check the highest-spend platform first. It is where mistakes cost the most.',
-      conversionCandidate ? `Protect ${conversionCandidate.capture.platform}. Do not cut it just because another campaign is louder.` : 'Protect the campaign getting the clearest results. Do not cut it just because another campaign is louder.',
-      watchCandidate ? `Be cautious with ${watchCandidate.capture.platform}. Review the page, audience, or search terms before adding budget.` : 'Be cautious with the campaign spending money but showing fewer results.',
+      spendCandidate ? `Check ${spendLabel} first. It is where mistakes cost the most.` : 'Check the highest-spend item first. It is where mistakes cost the most.',
+      conversionCandidate ? `Protect ${conversionLabel || 'the best-performing item'} if it keeps producing results efficiently.` : 'Do not increase budget until another review confirms the pattern.',
+      platformAdvice(watchCandidate?.capture?.platform),
     ];
 
     const nextSteps = [
-      spendCandidate ? `Check ${spendCandidate.capture.platform} first. It is where mistakes cost the most.` : 'Check the highest-spend campaign first. It is where mistakes cost the most.',
-      conversionCandidate ? `Protect ${conversionCandidate.capture.platform}. Do not cut it just because another campaign is louder.` : 'Protect the campaign getting the clearest results. Do not cut it just because another campaign is louder.',
-      watchCandidate ? `Be cautious with ${watchCandidate.capture.platform}. Review the page, audience, or search terms before adding budget.` : 'Treat this as a visible-table spot check, not a full account decision.',
+      spendCandidate ? `Check ${spendLabel} first. It is where mistakes cost the most.` : 'Check the highest-spend item first. It is where mistakes cost the most.',
+      conversionCandidate ? `Protect ${conversionLabel || 'the best-performing item'} if it keeps producing results efficiently.` : 'Do not increase budget until another review confirms the pattern.',
+      platformAdvice(watchCandidate?.capture?.platform),
     ];
 
     return {
@@ -559,9 +598,9 @@
       success: true,
       platform: 'Captured tables',
       tableKind: 'bundle',
-      rowsDetected: captures.reduce((sum, capture) => sum + (capture.rowsDetected || 0), 0),
-      columnsDetected: captures.reduce((sum, capture) => sum + (capture.columnsDetected || 0), 0),
-      metricColumns: uniquePlatforms(captures.flatMap((capture) => capture.metricColumns || [])),
+      rowsDetected: orderedCaptures.reduce((sum, capture) => sum + (capture.rowsDetected || 0), 0),
+      columnsDetected: orderedCaptures.reduce((sum, capture) => sum + (capture.columnsDetected || 0), 0),
+      metricColumns: uniquePlatforms(orderedCaptures.flatMap((capture) => capture.metricColumns || [])),
       reviewConfidence: 'Visible rows only · session-only prototype',
       previewRows,
       focus,
@@ -572,7 +611,7 @@
         attention,
         privacyNote: EMPTY_ANALYSIS.summary.privacyNote,
       },
-      sources: captures,
+      sources: orderedCaptures,
       platforms,
     };
   };
@@ -603,6 +642,7 @@
       return;
     }
 
+    clearActionError();
     const payload = result.payload || EMPTY_ANALYSIS;
     applyDebugState({
       host: currentPageDebug.host,
@@ -642,7 +682,7 @@
     upsertCapturedTable(capture);
     renderCapturedTables();
     setAnalysis(capturedTables.length === 1 ? buildSingleReview(capture) : buildBundleReview(capturedTables));
-    setStatus(`${capturedTables.length} table${capturedTables.length === 1 ? '' : 's'} · ${uniquePlatforms(capturedTables.map((item) => item.platform)).join(', ')}`);
+    setStatus(`${capturedTables.length} table${capturedTables.length === 1 ? '' : 's'} · ${sortPlatformNames(capturedTables.map((item) => item.platform)).join(', ')}`);
     try {
       const storageResult = await persistCapturedTables();
       if (storageResult?.ok === false) throw new Error(storageResult.error || 'Storage write failed');
@@ -693,7 +733,7 @@
     renderCapturedTables();
     if (capturedTables.length) {
       setAnalysis(capturedTables.length === 1 ? buildSingleReview(capturedTables[0]) : buildBundleReview(capturedTables));
-      setStatus(`${capturedTables.length} table${capturedTables.length === 1 ? '' : 's'} · ${uniquePlatforms(capturedTables.map((item) => item.platform)).join(', ')}`);
+      setStatus(`${capturedTables.length} table${capturedTables.length === 1 ? '' : 's'} · ${sortPlatformNames(capturedTables.map((item) => item.platform)).join(', ')}`);
     }
 
     close?.addEventListener('click', () => {
