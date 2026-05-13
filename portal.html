@@ -139,7 +139,7 @@
       <section class="hero">
         <div class="eyebrow">Private workspace</div>
         <h1 id="workspaceTitle">Gnomeo Workspace</h1>
-        <p class="subhead" id="workspaceSubtitle">Private ad-spend review history. Open your private link to see the latest review, top actions, and memory.</p>
+        <p class="subhead" id="workspaceSubtitle">Private ad-spend review history. Open your private link to see the latest review, saved reviews, recurring memory, and comparison against previous reviews.</p>
         <div class="pill-row" id="workspacePills"></div>
         <div id="accessCallout" class="card" style="margin-top: 18px; display: none;">
           <h2>Request access</h2>
@@ -596,7 +596,7 @@
             ? 'Latest finding'
             : queuedReview
               ? 'Review received'
-              : 'Submit your first review';
+              : 'Request access to start your first review';
       const stateCopy = !hasToken
         ? 'Gnomeo workspaces are currently invite-only.'
         : !hasWorkspace
@@ -605,7 +605,7 @@
             ? 'Here is your private review file.'
             : queuedReview
               ? 'Gnomeo is processing this review. Return to this private link to see the report when it is ready.'
-              : 'Upload Google Ads and/or Meta Ads CSV exports. Gnomeo will review the data and save the result here.';
+              : 'Upload Google Ads, Meta Ads, or LinkedIn CSV exports for deeper review history. The extension handles quick visible-table review first.';
 
       els.title.textContent = hasWorkspace ? (workspace?.workspace_name || 'Private review file') : stateLabel;
       els.subtitle.textContent = stateCopy;
@@ -739,8 +739,8 @@
           `
           : `
             <div>
-              <h3>Submit your first review</h3>
-              <p>Upload Google Ads or Meta Ads CSV exports to create the first private review file.</p>
+              <h3>Request access to start your first review</h3>
+              <p>Use the extension for quick visible-table review, then upload Google Ads, Meta Ads, or LinkedIn CSV exports for deeper review history.</p>
             </div>
           `;
 
