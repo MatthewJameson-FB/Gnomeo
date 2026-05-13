@@ -16,41 +16,36 @@
             <span class="brand-name">Gnomeo</span>
           </div>
           <h1>Review this page</h1>
-          <p class="lede">Add the visible campaign table when you choose.</p>
+          <p class="lede">What should I fix first?</p>
         </div>
         <button class="icon-button" id="closePanel" type="button" aria-label="Close panel">×</button>
       </header>
 
       <section class="focus-card" id="focusCard" hidden>
         <div class="card-head compact-head">
-          <span class="card-label">Focus on this</span>
+          <span class="card-label">Fix first</span>
           <span class="chip" id="focusConfidence">Visible rows only</span>
         </div>
         <p class="focus-text" id="focusText">Add a table to see the focus.</p>
+        <p class="card-note" id="focusWhy">Add a campaign table to get your first recommendation.</p>
       </section>
 
       <section class="next-steps-card" id="nextStepsCard" hidden>
         <div class="card-head compact-head">
-          <span class="card-label">What I’d do next</span>
+          <span class="card-label">Next best</span>
         </div>
         <ul class="step-list" id="nextStepsList"></ul>
-      </section>
-
-      <section class="card captured-card" id="capturedSummaryCard" hidden>
-        <div class="card-head">
-          <span class="card-label">Current page</span>
-          <span class="chip" id="bundleCount">0 tables added</span>
-        </div>
-        <p class="card-note" id="bundleHint">Add the visible campaign table to start.</p>
       </section>
 
       <section class="composer">
         <div class="button-row">
           <button id="addVisibleTable" class="primary-button" type="button">Add table</button>
           <button id="analyseNow" class="secondary-button" type="button" disabled>Analyse</button>
+          <button id="detailsToggle" class="secondary-button" type="button">Details</button>
           <button id="clearCapturedTables" class="text-button" type="button">Clear</button>
         </div>
-        <p class="status-line" id="captureStatus">Only the visible table you choose. Nothing runs in the background.</p>
+        <p class="status-line" id="captureStatus">No ad pages reviewed</p>
+        <p class="hint" id="captureHint">Add a campaign table to get your first recommendation.</p>
         <p class="error-line" id="actionError" hidden></p>
       </section>
 
@@ -59,19 +54,23 @@
           <span class="card-label">Workspace</span>
           <span class="chip" id="workspaceConnectionChip">Not connected</span>
         </div>
-        <div id="workspaceDisconnected" class="workspace-disconnected">
-          <input id="workspaceLinkInput" class="workspace-input" type="text" placeholder="Paste private workspace link" autocomplete="off" spellcheck="false" />
+        <div class="button-row workspace-row">
+          <button id="workspacePrimary" class="primary-button" type="button">Connect workspace</button>
+          <button id="workspaceChange" class="secondary-button" type="button" hidden>Change</button>
+          <button id="workspaceDisconnect" class="text-button" type="button" hidden>Disconnect</button>
+        </div>
+        <div id="workspaceDisconnected" class="workspace-disconnected" hidden>
+          <input id="workspaceLinkInput" class="workspace-input" type="text" placeholder="Paste private workspace link or token" autocomplete="off" spellcheck="false" />
           <div class="button-row workspace-row">
             <button id="workspaceConnect" class="secondary-button" type="button">Connect</button>
+            <button id="workspaceCancelConnect" class="text-button" type="button">Cancel</button>
             <span class="workspace-helper">Your link stays in this browser.</span>
           </div>
         </div>
         <div id="workspaceConnected" class="workspace-connected" hidden>
           <p class="card-note" id="workspaceConnectedText">Workspace connected.</p>
           <div class="button-row workspace-row">
-            <button id="saveReview" class="primary-button" type="button" disabled>Save review</button>
-            <button id="workspaceChange" class="secondary-button" type="button">Change</button>
-            <button id="workspaceDisconnect" class="text-button" type="button">Disconnect</button>
+            <button id="saveReview" class="primary-button" type="button" disabled>Save to workspace</button>
           </div>
           <a id="openWorkspaceLink" class="workspace-link" href="#" target="_blank" rel="noreferrer" hidden>Open workspace</a>
         </div>
@@ -80,50 +79,33 @@
 
       <main class="content" id="reviewContent">
         <section class="details-card">
-          <details id="keySignalsDetails">
+          <details id="detailsCard">
             <summary>
-              <span class="card-label">Key signals</span>
-              <span class="chip" id="sourceChip">Local only</span>
+              <span class="card-label">Details</span>
+              <span class="chip">Why this recommendation?</span>
             </summary>
             <div class="detail-body">
               <div class="meta-row" id="metaRow"></div>
-              <div class="signal-list" id="keySignals"></div>
-            </div>
-          </details>
-        </section>
-
-        <section class="details-card">
-          <details id="capturedDetails">
-            <summary>
-              <span class="card-label">Tables added</span>
-              <span class="chip" id="capturedCountInline">0 tables</span>
-            </summary>
-            <div class="detail-body">
+              <div class="card-head compact-head">
+                <span class="card-label">Tables added</span>
+                <span class="chip" id="capturedCountInline">0 tables</span>
+              </div>
               <div class="captured-list" id="capturedList"></div>
-            </div>
-          </details>
-        </section>
-
-        <section class="details-card">
-          <details id="previewDetails">
-            <summary>
-              <span class="card-label">Preview</span>
-              <span class="chip">Visible rows only</span>
-            </summary>
-            <div class="detail-body">
+              <div class="card-head compact-head">
+                <span class="card-label">Key signals</span>
+                <span class="chip" id="sourceChip">Local only</span>
+              </div>
+              <div class="signal-list" id="keySignals"></div>
+              <div class="card-head compact-head">
+                <span class="card-label">Preview</span>
+                <span class="chip">Visible rows only</span>
+              </div>
               <div class="preview-list" id="visiblePreview"></div>
               <div class="bullet-list" id="attentionList"></div>
-            </div>
-          </details>
-        </section>
-
-        <section class="details-card">
-          <details id="fullReportDetails">
-            <summary>
-              <span class="card-label">Full report</span>
-              <span class="chip">Local report</span>
-            </summary>
-            <div class="detail-body">
+              <div class="card-head compact-head">
+                <span class="card-label">Full report</span>
+                <span class="chip">Local report</span>
+              </div>
               <p class="report-copy" id="reportSummary">Open this for the fuller local note or download it as markdown.</p>
               <div class="report-box">
                 <pre id="fullReportText">Add a table to generate the report.</pre>
@@ -131,39 +113,38 @@
               <div class="report-actions">
                 <button id="downloadAnalysis" class="secondary-button" type="button" disabled>Download analysis</button>
               </div>
+              <details class="debug-card" id="debugCard" hidden>
+                <summary>
+                  <span class="card-label">Debug (local fixtures)</span>
+                  <span class="chip">collapsed</span>
+                </summary>
+                <div class="detail-body debug-body">
+                  <div class="debug-grid">
+                    <div><span>Page</span><strong id="debugPage">Waiting…</strong></div>
+                    <div><span>Active tab</span><strong id="debugActiveTab">Waiting…</strong></div>
+                    <div><span>Active URL</span><strong id="debugActiveUrl">Waiting…</strong></div>
+                    <div><span>Platform</span><strong id="debugPlatform">Waiting…</strong></div>
+                    <div><span>Supported page</span><strong id="debugSupportedPage">No</strong></div>
+                    <div><span>Current capture</span><strong id="debugCurrentCapture">Waiting…</strong></div>
+                    <div><span>Content script</span><strong id="debugContentScript">Waiting…</strong></div>
+                    <div><span>chrome.storage.session</span><strong id="debugStorage">Waiting…</strong></div>
+                    <div><span>Session bundle count</span><strong id="debugBundleCount">0</strong></div>
+                    <div><span>Captured platforms</span><strong id="debugBundleKeys">—</strong></div>
+                    <div><span>Current bundle signature</span><strong id="debugCurrentBundleSignature">—</strong></div>
+                    <div><span>Last analysed signature</span><strong id="debugLastAnalysedSignature">—</strong></div>
+                    <div><span>Analysis fresh</span><strong id="debugAnalysisFresh">No</strong></div>
+                    <div><span>Last extraction status</span><strong id="debugLastExtraction">Waiting…</strong></div>
+                    <div><span>Rows detected</span><strong id="debugRows">—</strong></div>
+                    <div><span>Columns detected</span><strong id="debugColumns">—</strong></div>
+                    <div><span>Likely metric columns</span><strong id="debugMetricColumns">—</strong></div>
+                    <div class="debug-error"><span>Last error</span><strong id="debugError">—</strong></div>
+                  </div>
+                </div>
+              </details>
             </div>
           </details>
         </section>
-
-      <details class="details-card debug-card" id="debugCard" hidden>
-        <summary>
-          <span class="card-label">Debug (local fixtures)</span>
-          <span class="chip">collapsed</span>
-        </summary>
-        <div class="detail-body debug-body">
-          <div class="debug-grid">
-            <div><span>Page</span><strong id="debugPage">Waiting…</strong></div>
-            <div><span>Active tab</span><strong id="debugActiveTab">Waiting…</strong></div>
-            <div><span>Active URL</span><strong id="debugActiveUrl">Waiting…</strong></div>
-            <div><span>Platform</span><strong id="debugPlatform">Waiting…</strong></div>
-            <div><span>Supported page</span><strong id="debugSupportedPage">No</strong></div>
-            <div><span>Current capture</span><strong id="debugCurrentCapture">Waiting…</strong></div>
-            <div><span>Content script</span><strong id="debugContentScript">Waiting…</strong></div>
-            <div><span>chrome.storage.session</span><strong id="debugStorage">Waiting…</strong></div>
-            <div><span>Session bundle count</span><strong id="debugBundleCount">0</strong></div>
-            <div><span>Captured platforms</span><strong id="debugBundleKeys">—</strong></div>
-            <div><span>Current bundle signature</span><strong id="debugCurrentBundleSignature">—</strong></div>
-            <div><span>Last analysed signature</span><strong id="debugLastAnalysedSignature">—</strong></div>
-            <div><span>Analysis fresh</span><strong id="debugAnalysisFresh">No</strong></div>
-            <div><span>Last extraction status</span><strong id="debugLastExtraction">Waiting…</strong></div>
-            <div><span>Rows detected</span><strong id="debugRows">—</strong></div>
-            <div><span>Columns detected</span><strong id="debugColumns">—</strong></div>
-            <div><span>Likely metric columns</span><strong id="debugMetricColumns">—</strong></div>
-            <div class="debug-error"><span>Last error</span><strong id="debugError">—</strong></div>
-          </div>
-        </div>
-      </details>
-    </main>
+      </main>
   </div>
 </body>
 </html>

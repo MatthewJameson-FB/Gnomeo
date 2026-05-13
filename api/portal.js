@@ -320,7 +320,8 @@ const buildExtensionReviewMarkdown = ({ payload = {}, tables = [] } = {}) => {
   const platforms = normalizeStringArray(payload.platforms || [], { limit: 6, max: 64 });
   const signals = normalizeStringArray(payload.key_signals || payload.keySignals || [], { limit: 5, max: 180 });
   const nextSteps = normalizeStringArray(payload.next_steps || payload.nextSteps || [], { limit: 3, max: 180 });
-  const finding = clampText(payload.top_finding || payload.topFinding || 'Visible rows only review saved from Chrome.', 500) || 'Visible rows only review saved from Chrome.';
+  const finding = clampText(payload.fix_first?.label || payload.top_finding || payload.topFinding || 'Visible rows only review saved from Chrome.', 500) || 'Visible rows only review saved from Chrome.';
+  const why = clampText(payload.fix_first?.reason || payload.why || payload.reason || 'It carries spend but shows weaker results than the other reviewed tables.', 320);
   const visibleNote = clampText(payload.visible_rows_note || payload.visibleRowsNote || 'This review only uses visible rows you chose to save.', 240);
   const confidence = clampText(payload.confidence_note || payload.confidenceNote || 'Visible rows only · user-triggered extension save', 240);
   const date = clampText(payload.generated_at || payload.generatedAt || new Date().toISOString(), 64);
@@ -348,12 +349,13 @@ const buildExtensionReviewMarkdown = ({ payload = {}, tables = [] } = {}) => {
     '',
     '## Executive Summary',
     finding,
+    why ? `Why: ${why}` : '',
     '',
     '## Key Insights',
     ...(signals.length ? signals.map((item) => `- ${item}`) : ['- Visible rows only review saved from Chrome.']),
     '',
     '## Key Decisions',
-    ...(nextSteps.length ? nextSteps.map((item, index) => `${index + 1}. ${item}`) : ['1. Review the visible rows you chose to save.']),
+    ...(payload.next_best?.label || payload.nextBest?.label ? [`1. ${clampText(payload.next_best?.label || payload.nextBest?.label, 180)}`] : (nextSteps.length ? nextSteps.map((item, index) => `${index + 1}. ${item}`) : ['1. Review the visible rows you chose to save.'])),
     '',
     '## Confidence & Limitations',
     `- ${confidence}`,
@@ -499,6 +501,10 @@ module.exports = async (req, res) => {
     const platformList = normalizeStringArray(extensionPayload.platforms || [], { limit: 6, max: 64 });
     const nextSteps = normalizeStringArray(extensionPayload.next_steps || extensionPayload.nextSteps || [], { limit: 3, max: 180 });
     const keySignals = normalizeStringArray(extensionPayload.key_signals || extensionPayload.keySignals || [], { limit: 5, max: 180 });
+    const fixFirst = clampText(extensionPayload.fix_first?.label || extensionPayload.fixFirst?.label || extensionPayload.top_finding || extensionPayload.topFinding || nextSteps[0] || 'Visible rows only review saved from Chrome.', 260);
+    const why = clampText(extensionPayload.fix_first?.reason || extensionPayload.why || extensionPayload.reason || keySignals[0] || 'It carries spend but shows weaker results than the other reviewed tables.', 260);
+    const nextBestLabel = clampText(extensionPayload.next_best?.label || extensionPayload.nextBest?.label || nextSteps[0] || '', 260);
+    const nextBestAction = clampText(extensionPayload.next_best?.action || extensionPayload.nextBest?.action || nextSteps[0] || '', 260);
     const tableSummaries = Array.isArray(extensionPayload.table_summaries) ? extensionPayload.table_summaries.slice(0, 6).map((table, index) => ({
       platform: clampText(table?.platform || `Table ${index + 1}`, 64),
       rows_detected: Number.isFinite(Number(table?.rows_detected)) ? Number(table.rows_detected) : 0,
@@ -509,6 +515,10 @@ module.exports = async (req, res) => {
 
     const currentSummary = {
       title: 'Gnomeo Review',
+      fix_first: { label: fixFirst, reason: why, platform: platformList[0] || null, action: nextBestAction || nextBestLabel || null },
+      why,
+      next_best: { label: nextBestLabel || nextBestAction, action: nextBestAction || nextBestLabel, platform: platformList[0] || null },
+      evidence: keySignals.slice(0, 3),
       key_decisions: nextSteps.map((item, index) => ({ title: item, details: index === 0 ? 'Saved from Chrome extension.' : '' })),
       key_insights: keySignals,
       confidence_and_limitations: normalizeStringArray(extensionPayload.confidence_notes || extensionPayload.confidenceNotes || [], { limit: 3, max: 220 }),
@@ -575,6 +585,10 @@ module.exports = async (req, res) => {
           review_source: 'chrome_extension',
           review_level: prettyLevel,
           platforms: platformList,
+          fix_first: currentSummary.fix_first,
+          why,
+          next_best: currentSummary.next_best,
+          evidence: currentSummary.evidence,
           metrics: {
             campaign_names: platformList,
           },
