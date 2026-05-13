@@ -16,15 +16,28 @@
             <span class="brand-name">Gnomeo</span>
           </div>
           <h1>What needs attention?</h1>
-          <p class="lede">Ad spend review</p>
+          <p class="lede">Feed tables. Get the first fix.</p>
         </div>
         <button class="icon-button" id="closePanel" type="button" aria-label="Close panel">×</button>
       </header>
 
+      <section class="source-strip" id="sourceStrip">
+        <div class="source-strip-head">
+          <span class="card-label">Sources</span>
+          <span class="chip chip--neutral" id="sourceProgressLabel">0 sources</span>
+        </div>
+        <div class="source-meter" id="sourceMeter" aria-hidden="true">
+          <span class="source-segment"></span>
+          <span class="source-segment"></span>
+          <span class="source-segment"></span>
+        </div>
+        <p class="source-copy" id="sourceCopy">Gnomeo needs a table.</p>
+      </section>
+
       <section class="focus-card" id="focusCard" hidden>
         <div class="card-head compact-head">
           <span class="card-label">Start here</span>
-          <span class="chip" id="focusConfidence">Visible rows only</span>
+          <span class="chip chip--neutral" id="focusConfidence">visible only</span>
         </div>
         <p class="focus-text" id="focusText">Add a table to see the focus.</p>
         <p class="card-note" id="focusWhy">Add a campaign table to get your first recommendation.</p>
@@ -39,35 +52,37 @@
 
       <section class="composer">
         <div class="button-row">
-          <button id="addVisibleTable" class="primary-button" type="button">Add table</button>
-          <button id="analyseNow" class="secondary-button" type="button" disabled>Analyse</button>
-          <button id="detailsToggle" class="secondary-button" type="button">Details</button>
+          <button id="primaryAction" class="primary-button" type="button">Add table</button>
+          <button id="addVisibleTable" class="text-button" type="button">Add/update table</button>
+          <button id="analyseNow" class="text-button" type="button" hidden>Analyse again</button>
+          <button id="detailsToggle" class="text-button" type="button">Details</button>
           <button id="clearCapturedTables" class="text-button" type="button">Clear</button>
         </div>
         <p class="status-line" id="captureStatus">No ad pages reviewed</p>
-        <p class="hint" id="captureHint">Add a campaign table to get your first recommendation.</p>
+        <p class="hint" id="captureHint">Add a table to start.</p>
         <p class="error-line" id="actionError" hidden></p>
       </section>
 
       <section class="workspace-card" id="workspaceCard">
         <div class="card-head compact-head">
           <span class="card-label">Workspace</span>
-          <span class="chip" id="workspaceConnectionChip" hidden>Connected</span>
+          <span class="chip chip--success" id="workspaceConnectionChip" hidden>Workspace ready</span>
         </div>
         <div class="workspace-closed" id="workspaceClosed">
-          <button id="workspacePrimary" class="primary-button" type="button">Save to workspace</button>
-          <p class="workspace-status" id="workspaceStatusLine">Save after analysis.</p>
+          <p class="workspace-status" id="workspaceStatusLine">Want deeper memory?</p>
           <div class="workspace-inline-links" id="workspaceInlineLinks" hidden>
             <a id="openWorkspaceLink" class="workspace-link" href="#" target="_blank" rel="noreferrer" hidden>Open workspace</a>
             <button id="workspaceChange" class="text-button" type="button" hidden>Change</button>
           </div>
         </div>
         <div id="workspaceDisconnected" class="workspace-disconnected" hidden>
+          <label class="workspace-label" for="workspaceLinkInput">Paste private workspace link</label>
           <input id="workspaceLinkInput" class="workspace-input" type="text" placeholder="Paste private workspace link or token" autocomplete="off" spellcheck="false" />
           <div class="button-row workspace-row">
-            <button id="workspaceConnect" class="secondary-button" type="button">Connect workspace</button>
+            <button id="workspaceConnect" class="secondary-button" type="button">Connect</button>
             <button id="workspaceCancelConnect" class="text-button" type="button">Cancel</button>
           </div>
+          <p class="workspace-helper">Saved in this browser.</p>
         </div>
         <p id="workspaceError" class="error-line" hidden></p>
       </section>
@@ -77,13 +92,13 @@
           <details id="detailsCard">
             <summary>
               <span class="card-label">Details</span>
-              <span class="chip">Why this recommendation?</span>
+              <span class="chip">Why</span>
             </summary>
             <div class="detail-body">
               <div class="meta-row" id="metaRow"></div>
               <div class="card-head compact-head">
-                <span class="card-label">Tables added</span>
-                <span class="chip" id="capturedCountInline">0 tables</span>
+                <span class="card-label">Sources</span>
+                <span class="chip" id="capturedCountInline">0 sources</span>
               </div>
               <div class="captured-list" id="capturedList"></div>
               <div class="card-head compact-head">
@@ -98,15 +113,15 @@
               <div class="preview-list" id="visiblePreview"></div>
               <div class="bullet-list" id="attentionList"></div>
               <div class="card-head compact-head">
-                <span class="card-label">Full report</span>
-                <span class="chip">Local report</span>
+                <span class="card-label">Report</span>
+                <span class="chip">Local</span>
               </div>
               <p class="report-copy" id="reportSummary">Open this for the fuller local note or download it as markdown.</p>
               <div class="report-box">
                 <pre id="fullReportText">Add a table to generate the report.</pre>
               </div>
               <div class="report-actions">
-                <button id="downloadAnalysis" class="secondary-button" type="button" disabled>Download analysis</button>
+                <button id="downloadAnalysis" class="secondary-button" type="button" disabled>Download</button>
               </div>
               <details class="debug-card" id="debugCard" hidden>
                 <summary>

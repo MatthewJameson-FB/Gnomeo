@@ -9,17 +9,17 @@
     rowsDetected: 0,
     columnsDetected: 0,
     metricColumns: [],
-    reviewConfidence: 'Visible rows only',
+    reviewConfidence: 'visible only',
     previewRows: [],
     summary: {
-      executiveFinding: 'Add a table to see the focus.',
+      executiveFinding: 'Add a table.',
       keySignals: [],
       attention: [
-        'Gnomeo only reviews visible tables you choose to add.',
-        'Only the visible table you choose. Nothing runs in the background.',
-        'Try another campaign table if this page is not the right one.',
+        'Gnomeo only reviews visible tables.',
+        'Nothing runs in the background.',
+        'Try another table if this page is not right.',
       ],
-      privacyNote: 'Only the visible table you choose. Nothing runs in the background.',
+      privacyNote: 'Visible only.',
     },
     sources: [],
   };
@@ -96,6 +96,40 @@
   };
 
   const clearActionError = () => setActionError('');
+
+  const getSourceProgressState = (count = 0) => {
+    if (count <= 0) {
+      return { label: '0 sources', copy: 'Gnomeo needs a table.', filled: 0, tone: 'neutral' };
+    }
+    if (count === 1) {
+      return { label: '1 source', copy: 'Add one more.', filled: 1, tone: 'info' };
+    }
+    if (count === 2) {
+      return { label: '2 sources', copy: 'Almost there.', filled: 2, tone: 'success' };
+    }
+    return { label: '3+ sources', copy: 'Ready.', filled: 3, tone: 'success' };
+  };
+
+  const renderSourceProgress = () => {
+    const count = capturedTables.length;
+    const state = getSourceProgressState(count);
+    const label = $('sourceProgressLabel');
+    const copy = $('sourceCopy');
+    const segments = $('sourceMeter')?.querySelectorAll('.source-segment') || [];
+    if (label) {
+      label.textContent = state.label;
+      label.className = `chip chip--${state.tone === 'success' ? 'success' : state.tone === 'info' ? 'info' : 'neutral'}`;
+    }
+    if (copy) copy.textContent = state.copy;
+    segments.forEach((segment, index) => {
+      segment.className = 'source-segment';
+      if (state.filled >= 3) {
+        segment.classList.add('is-filled-3');
+      } else if (index < state.filled) {
+        segment.classList.add(`is-filled-${Math.max(1, state.filled)}`);
+      }
+    });
+  };
 
   try {
     if (document.referrer) {
@@ -281,7 +315,7 @@
 
   const setWorkspaceStatus = (message = '') => {
     const el = $('workspaceStatusLine');
-    if (el) el.textContent = String(message || 'Save after analysis.');
+    if (el) el.textContent = String(message || 'Want deeper memory?');
   };
 
   const setWorkspaceError = (message = '') => {
@@ -296,12 +330,11 @@
     const connected = Boolean(workspaceConnection?.token);
     const promptOpen = Boolean(workspacePromptOpen && !connected);
     const analysisReady = Boolean(currentAnalysis.success && !currentAnalysis.stale);
-    const visible = connected || promptOpen || analysisReady;
+    const visible = connected || promptOpen;
     const workspaceCard = $('workspaceCard');
     const disconnected = $('workspaceDisconnected');
     const closed = $('workspaceClosed');
     const chip = $('workspaceConnectionChip');
-    const primaryButton = $('workspacePrimary');
     const cancelButton = $('workspaceCancelConnect');
     const changeButton = $('workspaceChange');
     const openLink = $('openWorkspaceLink');
@@ -310,18 +343,13 @@
     const statusLine = $('workspaceStatusLine');
 
     if (workspaceCard) workspaceCard.hidden = !visible;
-    setChipText(chip, 'Connected', 'success', !connected);
+    setChipText(chip, 'Workspace ready', 'success', !connected);
     if (closed) closed.hidden = promptOpen;
     if (statusLine) {
       statusLine.textContent = connected
-        ? (analysisReady ? 'Ready to save.' : 'Analyse again to save.')
-        : (analysisReady ? 'Connect first.' : 'Save after analysis.');
-      statusLine.hidden = promptOpen || (connected && analysisReady && workspaceConnection.saved);
-    }
-    if (primaryButton) {
-      primaryButton.hidden = promptOpen || (!analysisReady && !connected);
-      primaryButton.textContent = connected ? (analysisReady ? 'Save to workspace' : 'Save after analysis') : 'Save to workspace';
-      primaryButton.disabled = workspaceSaving || (!connected && !analysisReady);
+        ? (workspaceConnection.saved ? 'Saved.' : 'Ready to save.')
+        : 'Paste your private workspace link.';
+      statusLine.hidden = promptOpen;
     }
     if (disconnected) disconnected.hidden = !promptOpen;
     if (inlineLinks) inlineLinks.hidden = !connected;
@@ -354,9 +382,9 @@
       });
       await persistWorkspaceConnection();
       workspacePromptOpen = false;
-      setWorkspaceStatus(verified.workspaceName ? `Connected · ${verified.workspaceName}` : 'Connected.');
+      setWorkspaceStatus(verified.workspaceName ? `Workspace ready · ${verified.workspaceName}` : 'Workspace ready.');
       renderWorkspaceSection();
-      setStatus('Workspace connected.');
+      setStatus('Workspace ready.');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error || 'Workspace connection failed');
       setWorkspaceError(message);
@@ -367,7 +395,7 @@
   const disconnectWorkspace = async () => {
     await clearWorkspaceConnection();
     workspacePromptOpen = false;
-    setWorkspaceStatus('Save after analysis.');
+    setWorkspaceStatus('Want deeper memory?');
     setWorkspaceError('');
     renderWorkspaceSection();
     setStatus('Workspace disconnected.');
@@ -382,7 +410,7 @@
       source: 'chrome_extension',
       review_level: level,
       platforms: Array.isArray(decision.platforms) ? decision.platforms.slice(0, 6) : [currentAnalysis.platform || 'Unknown'],
-      top_finding: decision.fixFirst || currentAnalysis.focus || summary.executiveFinding || 'Visible rows only review saved from Chrome.',
+      top_finding: decision.fixFirst || currentAnalysis.focus || summary.executiveFinding || 'visible only review saved from Chrome.',
       next_steps: [decision.nextBest].filter(Boolean),
       fix_first: {
         label: decision.fixFirst,
@@ -411,7 +439,7 @@
         ].filter(Boolean).slice(0, 3),
       })),
       visible_rows_note: 'This review only uses the visible table(s) you chose to save.',
-      confidence_note: decision.caveat || currentAnalysis.reviewConfidence || 'Visible rows only · user-triggered extension save',
+      confidence_note: decision.caveat || currentAnalysis.reviewConfidence || 'visible only · user-triggered extension save',
       expected_impact: decision.fixFirst || summary.executiveFinding || 'Keeps the workspace memory anchored to the review you chose to save.',
       generated_at: new Date().toISOString(),
       report_markdown: buildReportMarkdown(),
@@ -446,7 +474,7 @@
       });
       await persistWorkspaceConnection();
       renderWorkspaceSection();
-      setWorkspaceStatus(data.workspace_name ? `Saved to workspace · ${data.workspace_name}` : 'Saved to workspace.');
+      setWorkspaceStatus(data.workspace_name ? `Workspace ready · ${data.workspace_name}` : 'Workspace ready.');
       setStatus('Saved to workspace.');
       setWorkspaceError('');
       if (data.portal_url || data.workspace_url) {
@@ -463,6 +491,30 @@
     } finally {
       workspaceSaving = false;
       renderWorkspaceSection();
+    }
+  };
+
+  const triggerPrimaryAction = async () => {
+    const action = derivePrimaryActionState();
+    if (action.mode === 'add') {
+      await addVisibleTable();
+      return;
+    }
+    if (action.mode === 'analyse') {
+      analyseNow();
+      return;
+    }
+    if (action.mode === 'save') {
+      await saveReviewToWorkspace();
+      return;
+    }
+    workspacePromptOpen = true;
+    setWorkspaceError('');
+    renderWorkspaceSection();
+    const input = $('workspaceLinkInput');
+    if (input) {
+      input.focus();
+      input.select();
     }
   };
 
@@ -684,8 +736,8 @@
     ...EMPTY_ANALYSIS,
     summary: {
       ...EMPTY_ANALYSIS.summary,
-      executiveFinding: 'Tables changed — analyse again for an updated focus.',
-      attention: ['Analyse again to refresh the focus.'],
+      executiveFinding: 'Tables changed. Analyse.',
+      attention: ['Analyse.'],
       privacyNote: EMPTY_ANALYSIS.summary.privacyNote,
     },
     stale: true,
@@ -715,10 +767,10 @@
           ? 'current-missing'
           : 'unsupported';
     const reviewCountText = bundleCount === 0
-      ? 'No ad pages reviewed'
+      ? '0 sources'
       : analysisFresh
-        ? `${bundleCount} page${bundleCount === 1 ? '' : 's'} analysed`
-        : `${bundleCount} page${bundleCount === 1 ? '' : 's'} reviewed · needs analysis`;
+        ? `${bundleCount} source${bundleCount === 1 ? '' : 's'}`
+        : `${bundleCount} source${bundleCount === 1 ? '' : 's'}`;
     const tableCountText = `${bundleCount} table${bundleCount === 1 ? '' : 's'} added`;
     const addedPlatforms = sortPlatformNames(capturedTables.map((item) => item.platform));
     const addedText = addedPlatforms.length ? addedPlatforms.join(', ') : 'None yet';
@@ -726,14 +778,11 @@
     if (!supported) {
       note = 'Open Google Ads, Meta Ads, or LinkedIn.';
     } else if (state === 'empty') {
-      note = 'Add the visible table to start.';
+      note = 'Add a table.';
     } else if (state === 'current-added') {
-      note = analysisFresh ? 'This table is already added.' : 'This table is already added. Analyse again.';
+      note = analysisFresh ? 'This table is already added.' : 'Analyse.';
     } else {
-      note = 'Current ad page not added yet.';
-    }
-    if (supported && bundleCount > 0 && !analysisFresh) {
-      note = note.includes('Analyse again') ? note : `${note} Analyse again.`.trim();
+      note = analysisFresh ? 'Current ad page not added yet.' : 'Analyse.';
     }
     return {
       state,
@@ -752,14 +801,34 @@
       statusLine: !supported
         ? 'Open Google Ads, Meta Ads, or LinkedIn.'
         : bundleCount === 0
-          ? 'Add the visible table to start.'
+          ? 'Add a table.'
           : state === 'current-added'
-            ? (analysisFresh ? 'This table is already added.' : 'This table is already added. Analyse again.')
+            ? (analysisFresh ? 'This table is already added.' : 'Analyse.')
             : state === 'current-missing'
-              ? (analysisFresh ? 'Current ad page not added yet.' : 'Current ad page not added yet. Analyse again.')
+              ? (analysisFresh ? 'Current ad page not added yet.' : 'Analyse.')
               : 'Open Google Ads, Meta Ads, or LinkedIn.',
       summaryChip: analysisFresh ? 'Analysis ready' : (bundleCount ? 'Needs analysis' : 'No analysis yet'),
     };
+  };
+
+  const derivePrimaryActionState = () => {
+    const bundleCount = capturedTables.length;
+    const analysisFresh = captureAnalysisFreshness();
+    const analysedBefore = Boolean(analysisMeta.analysedAt);
+    const currentCaptureAdded = derivePanelState().currentCaptureAdded;
+    if (bundleCount === 0) {
+      return { label: 'Add table', mode: 'add' };
+    }
+    if (!currentCaptureAdded) {
+      return { label: 'Add/update table', mode: 'add' };
+    }
+    if (!analysisFresh || currentAnalysis.stale || !currentAnalysis.success || !analysedBefore) {
+      return { label: 'Analyse', mode: 'analyse' };
+    }
+    if (workspaceConnection.token) {
+      return { label: 'Save to workspace', mode: 'save' };
+    }
+    return { label: 'Save to workspace', mode: 'prompt' };
   };
 
   const canonicalPlatformName = (platform) => {
@@ -894,7 +963,7 @@
         '',
         'Add a table first.',
         '',
-        'Visible rows only.',
+        'visible only.',
       ].join('\n');
     }
 
@@ -922,7 +991,7 @@
       ...(currentAnalysis.nextSteps || []).slice(0, 3).map((item, index) => `${index + 1}. ${item}`),
       '',
       '## Confidence & Limitations',
-      currentAnalysis.reviewConfidence || 'Visible rows only',
+      currentAnalysis.reviewConfidence || 'visible only',
       'This review only uses visible rows from the current session.',
       '',
       '## Expected Impact',
@@ -956,7 +1025,7 @@
       evidence,
       reviewLevel: analysis?.reviewLevel || (analysis?.mode === 'bundle' ? 'Cross-platform spot check' : 'One-page spot check'),
       platforms,
-      caveat: analysis?.reviewConfidence || 'Visible rows only',
+      caveat: analysis?.reviewConfidence || 'visible only',
     };
   };
 
@@ -978,6 +1047,7 @@
     const container = $('capturedList');
     const hint = $('captureHint');
     const addVisibleTableButton = $('addVisibleTable');
+    const primaryActionButton = $('primaryAction');
     const analyseNow = $('analyseNow');
     const detailsToggle = $('detailsToggle');
     const clearCapturedTablesButton = $('clearCapturedTables');
@@ -986,30 +1056,36 @@
 
     const orderedTables = sortCapturedTables(capturedTables);
     const panelState = derivePanelState();
+    const sourceState = getSourceProgressState(capturedTables.length);
+    const primaryActionState = derivePrimaryActionState();
 
     if (addVisibleTableButton) {
-      addVisibleTableButton.textContent = panelState.buttonLabel;
+      addVisibleTableButton.textContent = 'Add/update table';
       addVisibleTableButton.disabled = !panelState.canAddTable || Boolean(pendingRequestId);
     }
-    if (capturedCountInline) {
-      capturedCountInline.textContent = panelState.reviewCountText;
+    if (primaryActionButton) {
+      primaryActionButton.textContent = workspaceSaving ? 'Saving…' : primaryActionState.label;
+      primaryActionButton.disabled = Boolean(pendingRequestId) || workspaceSaving;
     }
-    analyseNow.textContent = currentAnalysis.success || currentAnalysis.stale ? 'Analyse again' : 'Analyse';
-    analyseNow.disabled = capturedTables.length === 0;
-    analyseNow.hidden = !capturedTables.length;
+    if (capturedCountInline) {
+      capturedCountInline.textContent = sourceState.label;
+    }
+    renderSourceProgress();
+    analyseNow.textContent = 'Analyse again';
+    analyseNow.hidden = !(currentAnalysis.success && !currentAnalysis.stale);
+    analyseNow.disabled = Boolean(pendingRequestId);
     if (detailsToggle) detailsToggle.disabled = capturedTables.length === 0;
     clearCapturedTablesButton.hidden = !capturedTables.length;
-    if (hint) hint.textContent = panelState.note;
+    if (hint) hint.textContent = sourceState.copy;
     if (captureContextLine) {
       const currentPlatform = currentPageDebug.currentPlatform || currentPageDebug.platform || 'Unknown platform';
       const currentStatus = panelState.currentCaptureAdded ? 'added' : 'not added';
-      captureContextLine.textContent = `Current: ${currentPlatform} · ${currentStatus}`;
+      captureContextLine.textContent = capturedTables.length ? `Current: ${currentPlatform} · ${currentStatus}` : 'Current: —';
     }
-    setStatus(panelState.reviewCountText);
+    setStatus(panelState.statusLine || sourceState.label);
 
     if (!orderedTables.length) {
-      container.innerHTML = '<div class="captured-item"><strong>No tables yet</strong><span>Add a table from Google Ads, Meta Ads, or LinkedIn Ads.</span></div>';
-      if (captureContextLine) captureContextLine.textContent = 'Current: —';
+      container.innerHTML = '<div class="captured-item"><strong>No sources yet</strong><span>Add a table.</span></div>';
       return;
     }
 
@@ -1130,13 +1206,13 @@
         meta.push(chipHTML(`Columns: ${formatNumber(currentAnalysis.columnsDetected || 0)}`, 'neutral'));
         if (Array.isArray(currentAnalysis.metricColumns) && currentAnalysis.metricColumns.length) meta.push(chipHTML(`Metrics: ${currentAnalysis.metricColumns.join(', ')}`, 'neutral'));
       }
-      meta.push(chipHTML(currentAnalysis.reviewConfidence || 'Visible rows only', confidenceVariant));
+      meta.push(chipHTML(currentAnalysis.reviewConfidence || 'visible only', confidenceVariant));
     } else if (currentAnalysis.stale) {
       meta.push(chipHTML('Needs analysis', 'warn'));
       meta.push(chipHTML(panelState.tableCountText, 'neutral'));
     } else {
       meta.push(chipHTML('Local only', 'neutral'));
-      meta.push(chipHTML('Visible rows only', 'info'));
+      meta.push(chipHTML('visible only', 'info'));
     }
     $('metaRow').innerHTML = meta.join('');
     focusCard.hidden = false;
@@ -1145,28 +1221,28 @@
     if (downloadButton) downloadButton.disabled = !currentAnalysis.success;
     if (reportSummary) {
       reportSummary.textContent = currentAnalysis.success
-        ? 'Open this for the fuller local note or download it as markdown.'
-        : (currentAnalysis.stale ? 'Analyse again to refresh the local report.' : 'Add a table to generate the local report.');
+        ? 'Open for the full note.'
+        : (currentAnalysis.stale ? 'Analyse to refresh.' : 'Add a table.');
     }
     if (reportText) {
-      reportText.textContent = currentAnalysis.success ? buildReportMarkdown() : (currentAnalysis.stale ? 'Tables changed — analyse again for an updated report.' : 'Add a table first.');
+      reportText.textContent = currentAnalysis.success ? buildReportMarkdown() : (currentAnalysis.stale ? 'Analyse to refresh.' : 'Add a table.');
     }
     if (currentAnalysis.success) {
       focusText.textContent = decision.fixFirst || currentAnalysis.focus || summary.executiveFinding || EMPTY_ANALYSIS.summary.executiveFinding;
       if (focusWhy) focusWhy.textContent = decision.why || 'It spends, but the result signal is weaker.';
-      setChipText(focusConfidence, decision.caveat || 'Visible rows only', confidenceVariant);
+      setChipText(focusConfidence, decision.caveat || 'visible only', confidenceVariant);
       $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 5), 'No visible signals found yet.');
       $('visiblePreview').innerHTML = renderPreview(currentAnalysis.previewRows);
       $('attentionList').innerHTML = renderLines(summary.attention.slice(0, 3), 'No attention notes yet.');
       nextStepsList.innerHTML = renderSteps([decision.nextBest].filter(Boolean), 'Add a table first.');
     } else if (currentAnalysis.stale) {
-      focusText.textContent = 'Analyse again to refresh the answer.';
-      if (focusWhy) focusWhy.textContent = 'The visible tables changed.';
+      focusText.textContent = 'Analyse to refresh the answer.';
+      if (focusWhy) focusWhy.textContent = 'The tables changed.';
       setChipText(focusConfidence, 'Needs analysis', 'warn');
       $('keySignals').innerHTML = '';
       $('visiblePreview').innerHTML = '';
       $('attentionList').innerHTML = '';
-      nextStepsList.innerHTML = renderSteps([], 'Analyse again');
+      nextStepsList.innerHTML = renderSteps([], 'Analyse');
     } else {
       focusText.textContent = 'Add a table to get a first answer.';
       if (focusWhy) focusWhy.textContent = 'Gnomeo only reviews the table you choose.';
@@ -1174,7 +1250,7 @@
       $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 5), 'No visible signals found yet.');
       $('visiblePreview').innerHTML = renderPreview(currentAnalysis.previewRows);
       $('attentionList').innerHTML = renderLines(summary.attention.slice(0, 3), 'No attention notes yet.');
-      nextStepsList.innerHTML = renderSteps([], 'Add a table first.');
+      nextStepsList.innerHTML = renderSteps([], 'Add a table.');
     }
     renderWorkspaceSection();
   };
@@ -1187,7 +1263,7 @@
     rowsDetected: payload.rowsDetected || 0,
     columnsDetected: payload.columnsDetected || 0,
     metricColumns: Array.isArray(payload.metricColumns) ? payload.metricColumns : [],
-    reviewConfidence: payload.reviewConfidence || 'Visible rows only',
+    reviewConfidence: payload.reviewConfidence || 'visible only',
     reviewLevel: payload.reviewLevel || 'One-page spot check',
     previewRows: Array.isArray(payload.previewRows) ? payload.previewRows.slice(0, 5) : [],
     summary: payload.summary || EMPTY_ANALYSIS.summary,
@@ -1207,11 +1283,11 @@
     const lowDataItem = (matrix.lowDataItems || [])[0] || null;
     const rowLabel = (row) => formatRowRef(row, false);
     const reviewLevel = capture.reviewLevel || matrix.reviewLevel || 'One-page spot check';
-    const reviewConfidence = capture.reviewConfidence || matrix.confidence || `${reviewLevel} · visible rows only`;
+    const reviewConfidence = capture.reviewConfidence || matrix.confidence || 'visible only';
 
     const focus = watchItem
       ? `Check ${rowLabel(watchItem)} before adding budget.`
-      : 'The visible rows are still too limited for a confident read.';
+      : 'The rows are still too limited.';
 
     const nextSteps = [
       watchItem ? `Check ${rowLabel(watchItem)} before adding budget.` : 'Check the highest-spend row before adding budget.',
@@ -1239,7 +1315,7 @@
     if (lowDataItem) {
       keySignals.push({ label: 'Low data', title: rowLabel(lowDataItem), details: lowDataItem.visibleDataNote });
     }
-    keySignals.push({ label: 'Review level', title: reviewLevel, details: 'Visible rows only' });
+    keySignals.push({ label: 'Review level', title: reviewLevel, details: 'visible only' });
 
     const attention = [
       watchItem ? `${rowLabel(watchItem)} is the main watch item.` : 'Check the highest-spend row first.',
@@ -1290,7 +1366,7 @@
     const platforms = sortPlatformNames(orderedCaptures.map((capture) => capture.platform));
     const multiPlatform = platforms.length > 1;
     const reviewLevel = multiPlatform ? 'Cross-platform spot check' : 'One-page spot check';
-    const reviewConfidence = `${reviewLevel} · visible rows only`;
+    const reviewConfidence = multiPlatform ? 'spot check' : 'visible only';
 
     const bySpend = [...allRows].filter((row) => Number.isFinite(row.spend)).sort((a, b) => (b.spend - a.spend) || ((b.resultValue || 0) - (a.resultValue || 0)));
     const byResult = [...allRows].filter((row) => Number.isFinite(row.resultValue) || Number.isFinite(row.revenue)).sort((a, b) => {
@@ -1319,11 +1395,11 @@
     if (efficientPerformer) keySignals.push({ label: 'Best efficiency signal', title: rowLabel(efficientPerformer), details: Number.isFinite(efficientPerformer.efficiencyScore) ? `${formatNumber(efficientPerformer.efficiencyScore, 2)} ${efficientPerformer.roas ? 'ROAS' : 'result per spend'}` : 'Best visible efficiency signal' });
     if (watchItem) keySignals.push({ label: 'Main watch item', title: rowLabel(watchItem), details: `${shortPlatformName(watchItem.platform)} · ${Number.isFinite(watchItem.spend) ? `${formatNumber(watchItem.spend, 2)} spent` : 'meaningful spend'}${Number.isFinite(watchItem.resultValue) ? ` · ${formatNumber(watchItem.resultValue)} ${watchItem.resultLabel}` : ' · weak results'}` });
     if (lowDataItem) keySignals.push({ label: 'Low data', title: rowLabel(lowDataItem), details: lowDataItem.visibleDataNote });
-    keySignals.push({ label: 'Review level', title: reviewLevel, details: 'Visible rows only' });
+    keySignals.push({ label: 'Review level', title: reviewLevel, details: 'visible only' });
 
     const topFinding = watchItem
       ? `Check ${rowLabel(watchItem)} first.${efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference ? ` ${rowLabel(efficientPerformer)} looks safer to protect.` : ''}`
-      : 'The visible rows are still too limited for a confident read.';
+      : 'The rows are still too limited.';
 
     const attention = [
       watchItem ? `Check ${rowLabel(watchItem)} before adding budget.` : 'Check the highest-spend row before adding budget.',
@@ -1491,12 +1567,12 @@
 
   const boot = async () => {
     const close = $('closePanel');
+    const primaryActionButton = $('primaryAction');
     const addButton = $('addVisibleTable');
     const analyseNowButton = $('analyseNow');
     const detailsToggleButton = $('detailsToggle');
     const clearCapturedTablesButton = $('clearCapturedTables');
     const downloadAnalysisButton = $('downloadAnalysis');
-    const workspacePrimaryButton = $('workspacePrimary');
     const workspaceConnectButton = $('workspaceConnect');
     const workspaceCancelConnectButton = $('workspaceCancelConnect');
     const workspaceChangeButton = $('workspaceChange');
@@ -1552,6 +1628,7 @@
       }
     });
 
+    primaryActionButton?.addEventListener('click', triggerPrimaryAction);
     addButton?.addEventListener('click', addVisibleTable);
     analyseNowButton?.addEventListener('click', analyseNow);
     detailsToggleButton?.addEventListener('click', () => {
@@ -1563,20 +1640,6 @@
     });
     clearCapturedTablesButton?.addEventListener('click', clearCapturedTables);
     downloadAnalysisButton?.addEventListener('click', downloadAnalysis);
-    workspacePrimaryButton?.addEventListener('click', () => {
-      if (workspaceConnection.token) {
-        saveReviewToWorkspace();
-        return;
-      }
-      workspacePromptOpen = true;
-      setWorkspaceError('');
-      renderWorkspaceSection();
-      const input = $('workspaceLinkInput');
-      if (input) {
-        input.focus();
-        input.select();
-      }
-    });
     workspaceConnectButton?.addEventListener('click', connectWorkspaceFromInput);
     workspaceCancelConnectButton?.addEventListener('click', () => {
       workspacePromptOpen = false;
