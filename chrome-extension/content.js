@@ -373,30 +373,30 @@
     const roasValue = roasRow?.metrics.roas?.value;
 
     const keySignals = [];
-    if (spendRow) keySignals.push({ label: 'Highest visible spend', title: spendRow.label, details: `${formatMoney(spendValue, spendCurrency)} spend` });
-    if (conversionRow) keySignals.push({ label: 'Strongest visible conversion signal', title: conversionRow.label, details: `${formatPlain(conversionValue)} ${conversionLabel}` });
-    if (roasRow) keySignals.push({ label: 'Best visible ROAS signal', title: roasRow.label, details: `ROAS ${formatPlain(roasValue, 2)}x` });
+    if (spendRow) keySignals.push({ label: 'Highest spend', title: spendRow.label, details: `${formatMoney(spendValue, spendCurrency)} spent` });
+    if (conversionRow) keySignals.push({ label: 'Best results', title: conversionRow.label, details: Number.isFinite(conversionValue) ? 'This one appears to be getting results more efficiently.' : 'This one appears to be getting the clearest results.' });
+    if (roasRow) keySignals.push({ label: 'Confidence', title: 'Visible rows only', details: 'Treat this as a spot check, not a full account decision.' });
     if (watchRow) {
       const watchConversions = watchRow.metrics.conversions?.value ?? watchRow.metrics.results?.value ?? null;
       const watchSpend = watchRow.metrics.spend?.value ?? null;
       keySignals.push({
-        label: 'Main visible watch item',
+        label: 'Main watch item',
         title: watchRow.label,
-        details: Number.isFinite(watchConversions) ? `${formatMoney(watchSpend, watchRow.metrics.spend?.currency || '')} spend · ${formatPlain(watchConversions)} results` : `${formatMoney(watchSpend, watchRow.metrics.spend?.currency || '')} spend · limited conversion signal`,
+        details: Number.isFinite(watchConversions) ? `${formatMoney(watchSpend, watchRow.metrics.spend?.currency || '')} spent · ${formatPlain(watchConversions)} results` : `${formatMoney(watchSpend, watchRow.metrics.spend?.currency || '')} spent · limited results`,
       });
     }
-    keySignals.push({ label: 'Review confidence', title: 'Limited — visible rows only', details: '' });
+    keySignals.push({ label: 'Review confidence', title: 'Visible rows only', details: 'Session-only spot check.' });
 
     const topFinding = spendRow && conversionRow && spendRow.label !== conversionRow.label
-      ? `From the visible rows, ${spendRow.label} appears to carry the highest spend, while ${conversionRow.label} shows the clearest conversion signal. Treat this as a visible-page spot check, not a full review.`
+      ? `From the visible rows, ${spendRow.label} appears to carry the highest spend, while ${conversionRow.label} appears to be getting the clearest results. Treat this as a visible-page spot check, not a full review.`
       : spendRow
-        ? `From the visible rows, ${spendRow.label} appears to carry the highest spend. Review this row first before changing budget.`
+        ? `From the visible rows, ${spendRow.label} appears to carry the highest spend. Check it first before changing budget.`
         : `Gnomeo found visible table rows on this page, but the metric columns are still too limited for a confident read.`;
 
     const attention = spendRow
       ? [
-          `Review ${spendRow.label} first.`,
-          conversionRow && conversionRow.label !== spendRow.label ? `Protect ${conversionRow.label} from accidental cuts.` : 'Protect efficient rows from accidental cuts.',
+          `Check ${spendRow.label} first. It is where mistakes cost the most.`,
+          conversionRow && conversionRow.label !== spendRow.label ? `Protect ${conversionRow.label}. Do not cut it just because another row is louder.` : 'Protect the row getting the clearest results.',
           'Treat this as a visible-page spot check, not a full account review.',
         ]
       : [

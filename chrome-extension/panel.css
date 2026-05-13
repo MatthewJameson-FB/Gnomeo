@@ -95,11 +95,34 @@ h1 {
   gap: 8px;
 }
 
+.next-steps-card {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
 .focus-text {
   margin: 0;
   font-size: 13px;
   line-height: 1.45;
   color: var(--text);
+}
+
+.step-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+}
+
+.step-list li {
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .button-row {

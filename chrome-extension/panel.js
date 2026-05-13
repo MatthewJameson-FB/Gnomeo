@@ -16,10 +16,10 @@
       keySignals: [],
       attention: [
         'Gnomeo only reviews visible tables you choose to add.',
-        'Nothing is captured in the background, sent, or stored yet.',
+        'Nothing is captured in the background, sent, or stored beyond this session.',
         'Try another campaign table if this page is not the right one.',
       ],
-      privacyNote: 'Gnomeo only reviews visible tables you choose to add. Nothing is captured in the background, sent, or stored in this prototype.',
+      privacyNote: 'Gnomeo only reviews visible tables you choose to add. Nothing is captured in the background, sent, or stored beyond this session.',
     },
     sources: [],
   };
@@ -27,6 +27,47 @@
   let pendingRequestId = null;
   let capturedTables = [];
   let currentAnalysis = EMPTY_ANALYSIS;
+  const STORAGE_KEY = 'gnomeo-captured-tables';
+  const sessionStorageApi = globalThis.chrome?.storage?.session || null;
+
+  const storageGet = async (key) => {
+    if (!sessionStorageApi) return null;
+    return await new Promise((resolve) => {
+      sessionStorageApi.get([key], (result) => resolve(result?.[key] ?? null));
+    });
+  };
+
+  const storageSet = async (key, value) => {
+    if (!sessionStorageApi) return;
+    await new Promise((resolve) => {
+      sessionStorageApi.set({ [key]: value }, () => resolve());
+    });
+  };
+
+  const storageRemove = async (key) => {
+    if (!sessionStorageApi) return;
+    await new Promise((resolve) => {
+      sessionStorageApi.remove(key, () => resolve());
+    });
+  };
+
+  const loadCapturedTables = async () => {
+    const stored = await storageGet(STORAGE_KEY);
+    capturedTables = Array.isArray(stored) ? stored.filter(Boolean) : [];
+  };
+
+  const persistCapturedTables = async () => {
+    await storageSet(STORAGE_KEY, capturedTables);
+  };
+
+  const upsertCapturedTable = (capture) => {
+    const index = capturedTables.findIndex((item) => item.platform === capture.platform);
+    if (index >= 0) {
+      capturedTables.splice(index, 1, capture);
+    } else {
+      capturedTables.push(capture);
+    }
+  };
 
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"]|'/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
@@ -55,6 +96,13 @@
       }
       return `<div class="${kind}-item"><strong>${escapeHtml(item.label || item.title || '')}</strong>${item.details ? `<span>${escapeHtml(item.details)}</span>` : ''}</div>`;
     }).join('');
+  };
+
+  const renderSteps = (items, emptyLabel) => {
+    if (!items || !items.length) {
+      return `<li>${escapeHtml(emptyLabel)}</li>`;
+    }
+    return items.slice(0, 3).map((item) => `<li>${escapeHtml(item)}</li>`).join('');
   };
 
   const renderPreview = (rows) => {
@@ -118,6 +166,8 @@
     const focusCard = $('focusCard');
     const focusText = $('focusText');
     const focusConfidence = $('focusConfidence');
+    const nextStepsCard = $('nextStepsCard');
+    const nextStepsList = $('nextStepsList');
     const capturedSummaryCard = $('capturedSummaryCard');
     const privacyHint = $('privacyHint');
 
@@ -145,6 +195,7 @@
     }
     $('metaRow').innerHTML = meta.join('');
     focusCard.hidden = !currentAnalysis.success;
+    nextStepsCard.hidden = !currentAnalysis.success;
     capturedSummaryCard.hidden = !currentAnalysis.success || !capturedTables.length;
     focusText.textContent = currentAnalysis.success
       ? (currentAnalysis.focus || summary.executiveFinding || EMPTY_ANALYSIS.summary.executiveFinding)
@@ -155,10 +206,13 @@
     $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 4), 'No visible signals found yet.');
     $('visiblePreview').innerHTML = renderPreview(currentAnalysis.previewRows);
     $('attentionList').innerHTML = renderLines(summary.attention.slice(0, 3), 'No attention notes yet.');
-    if (privacyHint) privacyHint.textContent = currentAnalysis.success ? 'Visible rows only.' : 'Nothing is captured in the background.';
+    nextStepsList.innerHTML = renderSteps(currentAnalysis.nextSteps || [], 'Add a visible table first.');
+    if (privacyHint) privacyHint.textContent = currentAnalysis.success
+      ? 'Gnomeo only reviews visible tables you choose to add. Nothing is captured in the background, sent, or stored beyond this session.'
+      : 'Gnomeo only reviews visible tables you choose to add. Nothing is captured in the background, sent, or stored beyond this session.';
     $('privacyNote').textContent = currentAnalysis.success
       ? (summary.privacyNote || EMPTY_ANALYSIS.summary.privacyNote)
-      : 'Nothing is captured in the background.';
+      : 'Gnomeo only reviews visible tables you choose to add. Nothing is captured in the background, sent, or stored beyond this session.';
   };
 
   const normaliseCapture = (payload) => ({
@@ -179,6 +233,30 @@
   const buildSingleReview = (capture) => {
     if (!capture) return EMPTY_ANALYSIS;
     const summary = capture.summary || EMPTY_ANALYSIS.summary;
+    const spendLabel = capture.snapshot?.spendLabel || capture.platform;
+    const conversionLabel = capture.snapshot?.conversionLabel || '';
+    const watchLabel = capture.snapshot?.watchLabel || spendLabel;
+    const spendValue = capture.snapshot?.spendValue;
+    const conversionValue = capture.snapshot?.conversionValue;
+    const watchSpend = capture.snapshot?.watchSpendValue;
+
+    const focus = capture.snapshot?.watchLabel
+      ? `${watchLabel} is the main watch item because it is spending money but showing fewer results.`
+      : conversionLabel && conversionLabel !== spendLabel
+        ? `${conversionLabel} appears to be producing the clearest results. ${spendLabel} is spending the most money, so check that it is doing something useful before you add more budget.`
+        : `${spendLabel} is spending the most money, so check that it is doing something useful before you add more budget.`;
+
+    const nextSteps = [
+      `Check ${spendLabel} first. It is where mistakes cost the most.`,
+    ];
+    if (conversionLabel && conversionLabel !== spendLabel) {
+      nextSteps.push(`Protect ${conversionLabel}. Do not cut it just because another campaign is louder.`);
+    }
+    if (capture.snapshot?.watchLabel) {
+      nextSteps.push(`Be cautious with ${watchLabel}. Review the page, audience, or search terms before adding budget.`);
+    }
+    nextSteps.push('Treat this as a visible-table spot check, not a full account decision.');
+
     return {
       mode: 'single',
       success: true,
@@ -189,14 +267,21 @@
       metricColumns: capture.metricColumns,
       reviewConfidence: capture.reviewConfidence,
       previewRows: capture.previewRows,
-      focus: capture.summary?.executiveFinding || `${capture.platform} is ready for a spot check.`,
+      focus,
+      nextSteps,
       summary: {
-        executiveFinding: capture.summary?.executiveFinding || `${capture.platform} is ready for a spot check.`,
+        executiveFinding: focus,
         keySignals: [
-          { label: 'Captured source', title: capture.platform, details: `${formatNumber(capture.rowsDetected || 0)} rows · ${formatNumber(capture.columnsDetected || 0)} columns` },
-          ...(summary.keySignals || []).slice(0, 3),
+          { label: 'Biggest spend', title: spendLabel, details: Number.isFinite(spendValue) ? `This campaign is spending ${formatNumber(spendValue, 2)}.` : 'This campaign is spending the most money.' },
+          conversionLabel ? { label: 'Best results', title: conversionLabel, details: Number.isFinite(conversionValue) ? 'This one appears to be getting results more efficiently.' : 'This one appears to be getting the clearest results.' } : null,
+          capture.snapshot?.watchLabel ? { label: 'Main watch item', title: watchLabel, details: Number.isFinite(watchSpend) ? `Spending ${formatNumber(watchSpend, 2)} with fewer results.` : 'Spending money but showing fewer results.' } : null,
+          { label: 'Confidence', title: 'Visible rows only', details: 'Treat this as a spot check, not a full account decision.' },
+        ].filter(Boolean),
+        attention: [
+          `Check ${spendLabel} first. It is where mistakes cost the most.`,
+          conversionLabel && conversionLabel !== spendLabel ? `Protect ${conversionLabel}. Do not cut it just because another campaign is louder.` : 'Protect the campaign getting the clearest results. Do not cut it just because another campaign is louder.',
+          capture.snapshot?.watchLabel ? `Be cautious with ${watchLabel}. Review the page, audience, or search terms before adding budget.` : 'Be cautious with the campaign spending money but showing fewer results.',
         ],
-        attention: summary.attention || ['Treat this as a visible-row spot check, not a full account review.'],
         privacyNote: summary.privacyNote || EMPTY_ANALYSIS.summary.privacyNote,
       },
       sources: [capture],
@@ -214,11 +299,6 @@
 
     const conversionCandidate = captures
       .map((capture) => ({ capture, value: getMetric(capture, 'conversionValue') }))
-      .filter((item) => Number.isFinite(item.value))
-      .sort((a, b) => b.value - a.value)[0] || null;
-
-    const roasCandidate = captures
-      .map((capture) => ({ capture, value: getMetric(capture, 'roasValue') }))
       .filter((item) => Number.isFinite(item.value))
       .sort((a, b) => b.value - a.value)[0] || null;
 
@@ -243,37 +323,37 @@
     const platforms = uniquePlatforms(captures.map((capture) => capture.platform));
     const previewRows = captures.flatMap((capture) => capture.previewRows.slice(0, 2).map((row) => ({ ...row, source: capture.platform }))).slice(0, 5);
 
+    const spendLabel = spendCandidate?.capture?.snapshot?.spendLabel || spendCandidate?.capture?.platform || '';
+    const conversionLabel = conversionCandidate?.capture?.snapshot?.conversionLabel || '';
+    const watchLabel = watchCandidate?.capture?.snapshot?.watchLabel || watchCandidate?.capture?.platform || '';
+
     const keySignals = [];
     if (spendCandidate) {
       keySignals.push({
-        label: 'Highest visible spend',
-        title: `${spendCandidate.capture.platform} — ${spendCandidate.capture.snapshot?.spendLabel || spendCandidate.capture.platform}`,
-        details: `${formatNumber(spendCandidate.value, 2)} visible spend`,
+        label: 'Biggest spend',
+        title: `${spendCandidate.capture.platform} — ${spendLabel}`,
+        details: `This campaign is spending ${formatNumber(spendCandidate.value, 2)}.`,
       });
     }
     if (conversionCandidate) {
       keySignals.push({
-        label: 'Strongest visible result signal',
-        title: `${conversionCandidate.capture.platform} — ${conversionCandidate.capture.snapshot?.conversionLabel || conversionCandidate.capture.platform}`,
-        details: `${formatNumber(conversionCandidate.value, 0)} visible results`,
-      });
-    }
-    if (roasCandidate) {
-      keySignals.push({
-        label: 'Best visible ROAS signal',
-        title: `${roasCandidate.capture.platform} — ${roasCandidate.capture.snapshot?.roasLabel || roasCandidate.capture.platform}`,
-        details: `ROAS ${formatNumber(roasCandidate.value, 2)}x`,
+        label: 'Best results',
+        title: `${conversionCandidate.capture.platform} — ${conversionLabel || conversionCandidate.capture.platform}`,
+        details: 'This one appears to be getting results more efficiently.',
       });
     }
     if (watchCandidate) {
-      const score = efficiencyScore(watchCandidate.capture);
-      const watchLabel = watchCandidate.capture.snapshot?.watchLabel || watchCandidate.capture.platform;
       keySignals.push({
-        label: 'Weakest visible efficiency',
+        label: 'Main watch item',
         title: `${watchCandidate.capture.platform} — ${watchLabel}`,
-        details: Number.isFinite(score) ? `Efficiency score ${formatNumber(score, 2)}` : 'Visible spend with limited efficiency signal',
+        details: 'This campaign is spending money but showing fewer results.',
       });
     }
+    keySignals.push({
+      label: 'Confidence',
+      title: 'Visible rows only',
+      details: 'Treat this as a spot check, not a full account decision.',
+    });
     keySignals.push({
       label: 'Captured platforms',
       title: platforms.join(' · '),
@@ -286,19 +366,25 @@
     });
 
     const focus = watchCandidate
-      ? `${watchCandidate.capture.platform} is the main watch item.`
+      ? `${watchCandidate.capture.platform} is the main watch item because it is spending money but showing fewer results.`
       : conversionCandidate
-        ? `${conversionCandidate.capture.platform} shows the strongest visible result signal.`
+        ? `${conversionCandidate.capture.platform} appears to be producing the clearest results.`
         : spendCandidate
-          ? `${spendCandidate.capture.platform} carries the highest visible spend.`
+          ? `${spendCandidate.capture.platform} is spending the most money.`
           : 'Treat this as a visible-table spot check.';
 
     const topFinding = focus;
 
     const attention = [
-      spendCandidate ? `Review ${spendCandidate.capture.platform} first.` : 'Review the highest-signal platform first.',
-      conversionCandidate ? `Protect ${conversionCandidate.capture.platform} from accidental cuts.` : 'Protect the strongest visible result signal from accidental cuts.',
-      'Treat this as a visible-row spot check, not a full account review.',
+      spendCandidate ? `Check ${spendCandidate.capture.platform} first. It is where mistakes cost the most.` : 'Check the highest-spend platform first. It is where mistakes cost the most.',
+      conversionCandidate ? `Protect ${conversionCandidate.capture.platform}. Do not cut it just because another campaign is louder.` : 'Protect the campaign getting the clearest results. Do not cut it just because another campaign is louder.',
+      watchCandidate ? `Be cautious with ${watchCandidate.capture.platform}. Review the page, audience, or search terms before adding budget.` : 'Be cautious with the campaign spending money but showing fewer results.',
+    ];
+
+    const nextSteps = [
+      spendCandidate ? `Check ${spendCandidate.capture.platform} first. It is where mistakes cost the most.` : 'Check the highest-spend campaign first. It is where mistakes cost the most.',
+      conversionCandidate ? `Protect ${conversionCandidate.capture.platform}. Do not cut it just because another campaign is louder.` : 'Protect the campaign getting the clearest results. Do not cut it just because another campaign is louder.',
+      watchCandidate ? `Be cautious with ${watchCandidate.capture.platform}. Review the page, audience, or search terms before adding budget.` : 'Treat this as a visible-table spot check, not a full account decision.',
     ];
 
     return {
@@ -312,6 +398,7 @@
       reviewConfidence: 'Visible rows only · session-only prototype',
       previewRows,
       focus,
+      nextSteps,
       summary: {
         executiveFinding: topFinding,
         keySignals,
@@ -349,10 +436,10 @@
 
   const addAnotherPlatform = () => {
     $('bundleHint').textContent = 'Open another ad platform campaign table, then click Add visible table again.';
-    setStatus('Open another table, then click Add visible table again.');
+    setStatus('Open another ad platform campaign table, then click Add visible table again.');
   };
 
-  const clearCapturedTables = () => {
+  const clearCapturedTables = async () => {
     pendingRequestId = null;
     capturedTables = [];
     setAnalysis(EMPTY_ANALYSIS);
@@ -360,9 +447,10 @@
     $('addVisibleTable').textContent = 'Add visible table';
     $('addVisibleTable').disabled = false;
     setStatus('Captured tables cleared. Start again with Add visible table.');
+    await storageRemove(STORAGE_KEY);
   };
 
-  const boot = () => {
+  const boot = async () => {
     const close = $('closePanel');
     const addButton = $('addVisibleTable');
     const analyseNowButton = $('analyseNow');
@@ -370,8 +458,13 @@
     const clearCapturedTablesButton = $('clearCapturedTables');
     const clearReviewButton = $('clearReview');
 
+    await loadCapturedTables();
     setAnalysis(EMPTY_ANALYSIS);
     renderCapturedTables();
+    if (capturedTables.length) {
+      setAnalysis(capturedTables.length === 1 ? buildSingleReview(capturedTables[0]) : buildBundleReview(capturedTables));
+      setStatus(`${capturedTables.length} table${capturedTables.length === 1 ? '' : 's'} captured.`);
+    }
 
     close?.addEventListener('click', () => {
       window.parent.postMessage({ type: 'gnomeo-close' }, '*');
@@ -409,16 +502,17 @@
       }
 
       const capture = normaliseCapture(payload);
-      capturedTables.push(capture);
+      upsertCapturedTable(capture);
       renderCapturedTables();
-      setAnalysis(buildSingleReview(capture));
+      setAnalysis(capturedTables.length === 1 ? buildSingleReview(capture) : buildBundleReview(capturedTables));
       setStatus(`${capturedTables.length} table${capturedTables.length === 1 ? '' : 's'} captured.`);
+      persistCapturedTables().catch(() => {});
     });
   };
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot, { once: true });
+    document.addEventListener('DOMContentLoaded', () => { boot().catch(() => {}); }, { once: true });
   } else {
-    boot();
+    boot().catch(() => {});
   }
 })();
