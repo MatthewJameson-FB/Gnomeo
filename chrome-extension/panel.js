@@ -499,6 +499,7 @@
     const analyseNow = $('analyseNow');
     const clearCapturedTablesButton = $('clearCapturedTables');
     const capturedSummaryCard = $('capturedSummaryCard');
+    const capturedCountInline = $('capturedCountInline');
 
     const orderedTables = sortCapturedTables(capturedTables);
     const panelState = derivePanelState();
@@ -507,6 +508,9 @@
     if (addVisibleTableButton) {
       addVisibleTableButton.textContent = panelState.buttonLabel;
       addVisibleTableButton.disabled = !panelState.canAddTable || Boolean(pendingRequestId);
+    }
+    if (capturedCountInline) {
+      capturedCountInline.textContent = panelState.tableCountText;
     }
     analyseNow.disabled = capturedTables.length === 0;
     analyseNow.hidden = !capturedTables.length;
