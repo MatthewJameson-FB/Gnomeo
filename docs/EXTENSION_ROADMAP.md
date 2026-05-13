@@ -24,7 +24,7 @@ Principles:
 3. Extension detects platform and extracts visible table text.
 4. Extension previews up to 5 rows.
 5. Extension shows concise analyst summary in a persistent side panel.
-6. Nothing is transmitted until a safe backend endpoint is explicitly designed later.
+6. User may optionally save the derived review to the private workspace via a token-scoped endpoint.
 
 ## Extraction principles
 - use DOM/table extraction, not screenshots
@@ -85,7 +85,7 @@ Columns like:
 ## Later additions
 - improve reliability across semantic table, ARIA grid, and div-based rows
 - refine extension panel UX
-- later add safe backend review storage
+- later expand safe backend review storage only if the token-scoped save flow needs more fields
 - later add platform APIs only if the product direction changes
 
 ## Current architecture
@@ -93,6 +93,8 @@ Columns like:
 - The content script is opener + extraction helper only.
 - A minimal service worker opens the side panel from opener clicks.
 - Session state lives in `chrome.storage.session`.
+- Optional workspace connection lives in `chrome.storage.local`.
+- Only the user-triggered save action sends a compact derived review to the private workspace.
 - No background capture.
 - No screenshots.
-- No backend calls yet.
+- No raw rows, raw HTML, or screenshots in saved workspace data.

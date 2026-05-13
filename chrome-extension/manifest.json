@@ -11,6 +11,8 @@
     "default_path": "panel.html"
   },
   "host_permissions": [
+    "https://www.gnomeo.nl/*",
+    "https://gnomeo.nl/*",
     "http://localhost/*",
     "http://127.0.0.1/*"
   ],

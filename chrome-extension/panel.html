@@ -54,6 +54,30 @@
         <p class="error-line" id="actionError" hidden></p>
       </section>
 
+      <section class="workspace-card">
+        <div class="card-head compact-head">
+          <span class="card-label">Workspace</span>
+          <span class="chip" id="workspaceConnectionChip">Not connected</span>
+        </div>
+        <div id="workspaceDisconnected" class="workspace-disconnected">
+          <input id="workspaceLinkInput" class="workspace-input" type="text" placeholder="Paste private workspace link" autocomplete="off" spellcheck="false" />
+          <div class="button-row workspace-row">
+            <button id="workspaceConnect" class="secondary-button" type="button">Connect</button>
+            <span class="workspace-helper">Your link stays in this browser.</span>
+          </div>
+        </div>
+        <div id="workspaceConnected" class="workspace-connected" hidden>
+          <p class="card-note" id="workspaceConnectedText">Workspace connected.</p>
+          <div class="button-row workspace-row">
+            <button id="saveReview" class="primary-button" type="button" disabled>Save review</button>
+            <button id="workspaceChange" class="secondary-button" type="button">Change</button>
+            <button id="workspaceDisconnect" class="text-button" type="button">Disconnect</button>
+          </div>
+          <a id="openWorkspaceLink" class="workspace-link" href="#" target="_blank" rel="noreferrer" hidden>Open workspace</a>
+        </div>
+        <p id="workspaceError" class="error-line" hidden></p>
+      </section>
+
       <main class="content" id="reviewContent">
         <section class="details-card">
           <details id="keySignalsDetails">

@@ -36,6 +36,7 @@ Internal developer note for the manual beta flow.
 - `top_recommendations`, `trend_snapshot`, `sources`, `top_priorities`, `recommendations`, `trend_notes`, `completed_at`, `error_message`, `metadata`
 - `comparison_summary`
 - Portal queries exclude soft-deleted report runs.
+- Token-scoped Chrome extension saves also land here as compact derived review history.
 
 ### usage_events
 - `id`, `workspace_id`, `event_type`, `plan`, `metadata`, `created_at`

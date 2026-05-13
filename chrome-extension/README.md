@@ -17,6 +17,7 @@ A local-loadable prototype for a calm ad-spend review layer.
   - What deserves attention
   - Review confidence
   - Privacy note
+- Can optionally save a compact derived review to a private workspace when you connect a token-scoped link.
 
 ## Supported pages
 
@@ -77,9 +78,11 @@ The debug section is collapsed by default and is intended for local fixture test
 - `chrome.storage.session` is used for the session bundle, so captured tables should survive tab/page changes but clear when the browser session ends.
 - The Chrome side panel is the only review UI and stays open across supported tabs in the same browser window.
 - The content script is opener + extraction helper only; a tiny service worker opens the side panel.
+- The panel can connect to a private workspace link and save a derived review only when you click **Save review**.
 - Campaign-level pages are the MVP default because they usually contain the clearest spend/result signals.
 - Extraction may be imperfect because ad-platform UIs change frequently.
-- Nothing is sent or stored yet.
+- No raw rows, screenshots, or browser page contents are saved.
+- Only user-triggered review saves are sent to the private workspace.
 
 ## Privacy
 
@@ -88,6 +91,7 @@ The debug section is collapsed by default and is intended for local fixture test
 - No admin endpoints are exposed.
 - No billing, auth, or automation flows are included.
 - The bundle stays in `chrome.storage.session` so it survives tab/page changes during the browser session.
+- A private workspace link can be stored locally in `chrome.storage.local` for the user’s own browser.
 - The design stays intentionally small and calm.
 
 ## Future direction

@@ -29,7 +29,9 @@
   let currentAnalysis = EMPTY_ANALYSIS;
   const STORAGE_KEY = 'gnomeo-captured-tables';
   const ANALYSIS_META_KEY = 'gnomeo-analysis-meta';
+  const WORKSPACE_KEY = 'gnomeo-workspace-connection';
   const sessionStorageApi = globalThis.chrome?.storage?.session || null;
+  const localStorageApi = globalThis.chrome?.storage?.local || null;
   const tabsApi = globalThis.chrome?.tabs || null;
   const sidePanelApi = globalThis.chrome?.sidePanel || null;
   const runtimeApi = globalThis.chrome?.runtime || null;
@@ -39,6 +41,14 @@
     lastAnalysedSignature: '',
     analysedAt: 0,
   };
+  let workspaceConnection = {
+    rawInput: '',
+    token: '',
+    origin: 'https://www.gnomeo.nl',
+    workspaceName: '',
+    portalUrl: '',
+  };
+  let workspaceSaving = false;
   let activeRefreshTimer = null;
 
   const currentPageDebug = {
@@ -119,6 +129,39 @@
     });
   };
 
+  const localGet = async (key) => {
+    if (!localStorageApi) return null;
+    return await new Promise((resolve) => {
+      localStorageApi.get([key], (result) => resolve(result?.[key] ?? null));
+    });
+  };
+
+  const localSet = async (key, value) => {
+    if (!localStorageApi) return;
+    await new Promise((resolve) => {
+      localStorageApi.set({ [key]: value }, () => {
+        if (runtimeApi?.lastError?.message) {
+          resolve({ ok: false, error: runtimeApi.lastError.message });
+          return;
+        }
+        resolve({ ok: true });
+      });
+    });
+  };
+
+  const localRemove = async (key) => {
+    if (!localStorageApi) return;
+    await new Promise((resolve) => {
+      localStorageApi.remove(key, () => {
+        if (runtimeApi?.lastError?.message) {
+          resolve({ ok: false, error: runtimeApi.lastError.message });
+          return;
+        }
+        resolve({ ok: true });
+      });
+    });
+  };
+
   const loadAnalysisMeta = async () => {
     const stored = await storageGet(ANALYSIS_META_KEY);
     if (stored && typeof stored === 'object') {
@@ -133,6 +176,245 @@
   const persistAnalysisMeta = async () => {
     const result = await storageSet(ANALYSIS_META_KEY, analysisMeta);
     if (result?.ok === false) throw new Error(result.error || 'Analysis metadata write failed');
+  };
+
+  const normalizeWorkspaceInput = (value = '') => String(value || '').trim();
+
+  const extractWorkspaceConnection = (input = '') => {
+    const rawInput = normalizeWorkspaceInput(input);
+    if (!rawInput) return { rawInput: '', token: '', origin: '', portalUrl: '' };
+
+    const defaultOrigin = 'https://www.gnomeo.nl';
+    const tokenPattern = /^[A-Za-z0-9_-]{16,}$/;
+    if (tokenPattern.test(rawInput) && !rawInput.includes('://')) {
+      return {
+        rawInput,
+        token: rawInput,
+        origin: defaultOrigin,
+        portalUrl: `${defaultOrigin.replace(/\/$/, '')}/portal.html?token=${encodeURIComponent(rawInput)}`,
+      };
+    }
+
+    try {
+      const parsed = new URL(rawInput);
+      const token = parsed.searchParams.get('token') || parsed.searchParams.get('portal_token') || parsed.pathname.split('/').filter(Boolean).pop() || '';
+      const cleanToken = tokenPattern.test(token) ? token.trim() : '';
+      const origin = `${parsed.protocol}//${parsed.host}`;
+      return {
+        rawInput,
+        token: cleanToken,
+        origin,
+        portalUrl: cleanToken ? `${origin.replace(/\/$/, '')}/portal.html?token=${encodeURIComponent(cleanToken)}` : rawInput,
+      };
+    } catch {
+      return { rawInput, token: '', origin: defaultOrigin, portalUrl: rawInput };
+    }
+  };
+
+  const normalizeWorkspaceState = (input = null) => {
+    const parsed = input && typeof input === 'object' ? input : {};
+    const rawInput = normalizeWorkspaceInput(parsed.rawInput || parsed.input || '');
+    const extracted = extractWorkspaceConnection(rawInput);
+    return {
+      rawInput,
+      token: normalizeWorkspaceInput(parsed.token || extracted.token || ''),
+      origin: normalizeWorkspaceInput(parsed.origin || extracted.origin || 'https://www.gnomeo.nl') || 'https://www.gnomeo.nl',
+      workspaceName: normalizeWorkspaceInput(parsed.workspaceName || parsed.workspace_name || ''),
+      portalUrl: normalizeWorkspaceInput(parsed.portalUrl || parsed.portal_url || extracted.portalUrl || ''),
+      saved: Boolean(parsed.saved),
+    };
+  };
+
+  const workspaceApiBase = () => normalizeWorkspaceState(workspaceConnection).origin || 'https://www.gnomeo.nl';
+
+  const workspaceApiUrl = (path) => {
+    const base = workspaceApiBase();
+    return new URL(path, base).toString();
+  };
+
+  const loadWorkspaceConnection = async () => {
+    const stored = await localGet(WORKSPACE_KEY);
+    workspaceConnection = normalizeWorkspaceState(stored);
+    return workspaceConnection;
+  };
+
+  const persistWorkspaceConnection = async () => {
+    const result = await localSet(WORKSPACE_KEY, workspaceConnection);
+    if (result?.ok === false) throw new Error(result.error || 'Workspace connection write failed');
+  };
+
+  const clearWorkspaceConnection = async () => {
+    workspaceConnection = normalizeWorkspaceState(null);
+    await localRemove(WORKSPACE_KEY);
+  };
+
+  const parseConnectedWorkspace = async (input) => {
+    const extracted = extractWorkspaceConnection(input);
+    if (!extracted.token) {
+      throw new Error('Paste a valid private workspace link or token.');
+    }
+    const verificationUrl = `${workspaceApiUrl('/api/portal/workspace')}?token=${encodeURIComponent(extracted.token)}`;
+    const response = await fetch(verificationUrl, { cache: 'no-store' });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data?.success || !data?.workspace) {
+      throw new Error(data?.error || 'That workspace link could not be verified.');
+    }
+    return {
+      rawInput: extracted.rawInput,
+      token: extracted.token,
+      origin: extracted.origin || 'https://www.gnomeo.nl',
+      workspaceName: data.workspace.workspace_name || '',
+      portalUrl: data.portal_url || extracted.portalUrl || '',
+    };
+  };
+
+  const setWorkspaceStatus = (message = '') => {
+    const el = $('workspaceConnectedText');
+    if (el) el.textContent = String(message || 'Workspace connected.');
+  };
+
+  const setWorkspaceError = (message = '') => {
+    const el = $('workspaceError');
+    if (!el) return;
+    const text = String(message || '').trim();
+    el.hidden = !text;
+    el.textContent = text;
+  };
+
+  const renderWorkspaceSection = () => {
+    const connected = Boolean(workspaceConnection?.token);
+    const disconnected = $('workspaceDisconnected');
+    const connectedPanel = $('workspaceConnected');
+    const chip = $('workspaceConnectionChip');
+    const saveButton = $('saveReview');
+    const openLink = $('openWorkspaceLink');
+    const input = $('workspaceLinkInput');
+
+    if (chip) chip.textContent = connected ? 'Connected' : 'Not connected';
+    if (disconnected) disconnected.hidden = connected;
+    if (connectedPanel) connectedPanel.hidden = !connected;
+    if (saveButton) saveButton.disabled = !connected || !currentAnalysis.success || workspaceSaving;
+    if (openLink) {
+      const href = workspaceConnection.portalUrl || workspaceConnection.rawInput || '';
+      const canOpen = Boolean(href && workspaceConnection.saved);
+      openLink.hidden = !connected || !canOpen;
+      if (canOpen) openLink.href = href;
+    }
+    if (input && !connected) {
+      input.value = workspaceConnection.rawInput || '';
+    }
+  };
+
+  const connectWorkspaceFromInput = async () => {
+    const input = $('workspaceLinkInput');
+    const value = input ? input.value : '';
+    setWorkspaceError('');
+    try {
+      const verified = await parseConnectedWorkspace(value);
+      workspaceConnection = normalizeWorkspaceState({
+        rawInput: verified.rawInput,
+        token: verified.token,
+        origin: verified.origin,
+        workspaceName: verified.workspaceName,
+        portalUrl: verified.portalUrl,
+        saved: false,
+      });
+      await persistWorkspaceConnection();
+      setWorkspaceStatus(verified.workspaceName ? `Workspace connected · ${verified.workspaceName}` : 'Workspace connected.');
+      renderWorkspaceSection();
+      setStatus('Workspace connected.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || 'Workspace connection failed');
+      setWorkspaceError(message);
+      setStatus(message);
+    }
+  };
+
+  const disconnectWorkspace = async () => {
+    await clearWorkspaceConnection();
+    setWorkspaceStatus('Workspace disconnected.');
+    setWorkspaceError('');
+    renderWorkspaceSection();
+    setStatus('Workspace disconnected.');
+  };
+
+  const buildExtensionReviewPayload = () => {
+    const level = currentAnalysis.mode === 'bundle' ? 'cross_platform_spot_check' : 'one_page_spot_check';
+    const summary = currentAnalysis.summary || EMPTY_ANALYSIS.summary;
+    const tables = Array.isArray(currentAnalysis.sources) ? currentAnalysis.sources : [];
+    return {
+      source: 'chrome_extension',
+      review_level: level,
+      platforms: Array.isArray(currentAnalysis.platforms) ? currentAnalysis.platforms.slice(0, 6) : [currentAnalysis.platform || 'Unknown'],
+      top_finding: currentAnalysis.focus || summary.executiveFinding || 'Visible rows only review saved from Chrome.',
+      next_steps: Array.isArray(currentAnalysis.nextSteps) ? currentAnalysis.nextSteps.slice(0, 3) : [],
+      key_signals: Array.isArray(summary.keySignals) ? summary.keySignals.slice(0, 5).map((item) => `${item.label}: ${item.title}${item.details ? ` — ${item.details}` : ''}`) : [],
+      table_summaries: tables.map((capture) => ({
+        platform: capture.platform || 'Unknown',
+        rows_detected: capture.rowsDetected || 0,
+        metric_columns: Array.isArray(capture.metricColumns) ? capture.metricColumns.slice(0, 10) : [],
+        captured_at: new Date(capture.capturedAt || Date.now()).toISOString(),
+        top_derived_signals: [
+          capture.decisionMatrix?.watchItem ? `${capture.decisionMatrix.watchItem.label || capture.decisionMatrix.watchItem.title || 'Watch item'}` : '',
+          capture.decisionMatrix?.highestSpend ? `${capture.decisionMatrix.highestSpend.label || capture.decisionMatrix.highestSpend.title || 'Highest spend'}` : '',
+          capture.decisionMatrix?.efficientPerformer ? `${capture.decisionMatrix.efficientPerformer.label || capture.decisionMatrix.efficientPerformer.title || 'Best efficiency'}` : '',
+          capture.decisionMatrix?.lowDataItems?.[0]?.visibleDataNote || '',
+        ].filter(Boolean).slice(0, 3),
+      })),
+      visible_rows_note: 'This review only uses the visible table(s) you chose to save.',
+      confidence_note: currentAnalysis.reviewConfidence || 'Visible rows only · user-triggered extension save',
+      expected_impact: currentAnalysis.focus || summary.executiveFinding || 'Keeps the workspace memory anchored to the review you chose to save.',
+      generated_at: new Date().toISOString(),
+      report_markdown: buildReportMarkdown(),
+    };
+  };
+
+  const saveReviewToWorkspace = async () => {
+    if (!currentAnalysis.success || !workspaceConnection.token || workspaceSaving) return;
+    workspaceSaving = true;
+    setWorkspaceError('');
+    renderWorkspaceSection();
+    setStatus('Saving review to workspace…');
+    try {
+      const response = await fetch(workspaceApiUrl('/api/portal?action=extension-review'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-portal-token': workspaceConnection.token,
+        },
+        body: JSON.stringify(buildExtensionReviewPayload()),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data?.success || !data?.saved) {
+        throw new Error(data?.error || 'Could not save this review right now.');
+      }
+      workspaceConnection = normalizeWorkspaceState({
+        ...workspaceConnection,
+        origin: workspaceConnection.origin || extractWorkspaceConnection(workspaceConnection.rawInput).origin,
+        workspaceName: data.workspace_name || data.workspace?.workspace_name || workspaceConnection.workspaceName || '',
+        portalUrl: data.portal_url || data.workspace_url || workspaceConnection.portalUrl || '',
+        saved: true,
+      });
+      await persistWorkspaceConnection();
+      renderWorkspaceSection();
+      setWorkspaceStatus(data.workspace_name ? `Saved to workspace · ${data.workspace_name}` : 'Saved to workspace.');
+      setStatus('Saved to workspace.');
+      setWorkspaceError('');
+      if (data.portal_url || data.workspace_url) {
+        const link = $('openWorkspaceLink');
+        if (link) {
+          link.href = data.portal_url || data.workspace_url;
+          link.hidden = false;
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || 'Could not save this review right now.');
+      setWorkspaceError(`Could not save. Download analysis instead. ${message}`.trim());
+      setStatus('Could not save. Download analysis instead.');
+    } finally {
+      workspaceSaving = false;
+      renderWorkspaceSection();
+    }
   };
 
   const queryActiveTab = async () => {
@@ -566,25 +848,32 @@
     const attention = Array.isArray(summary.attention) ? summary.attention.slice(0, 3) : [];
     const lines = [
       '# Gnomeo Review',
+      'Source file: Chrome extension',
       `Date: ${formatLocalDateTime(new Date())}`,
       `Review level: ${level}`,
       `Platforms included: ${platforms}`,
       '',
-      '## Top finding',
+      '## Executive Summary',
       currentAnalysis.focus || summary.executiveFinding || '—',
-      '',
-      '## What I’d do next',
-      ...(currentAnalysis.nextSteps || []).slice(0, 3).map((item) => `- ${item}`),
       '',
       '## Key signals',
       ...keySignals.map((item) => `- ${item.label}: ${item.title}${item.details ? ` — ${item.details}` : ''}`),
       '',
-      '## Platform notes',
-      ...attention.map((item) => `- ${item}`),
+      '## Key Decisions',
+      ...(currentAnalysis.nextSteps || []).slice(0, 3).map((item, index) => `${index + 1}. ${item}`),
       '',
-      '## Caveat',
+      '## Confidence & Limitations',
       currentAnalysis.reviewConfidence || 'Visible rows only',
       'This review only uses visible rows from the current session.',
+      '',
+      '## Expected Impact',
+      currentAnalysis.focus || summary.executiveFinding || 'Keeps the workspace memory anchored to the review you chose to save.',
+      '',
+      '## How to read this report',
+      'This is a compact saved review from the Chrome extension. It only reflects visible rows, not background capture.',
+      '',
+      '## Platform notes',
+      ...attention.map((item) => `- ${item}`),
     ];
     return lines.join('\n');
   };
@@ -789,6 +1078,7 @@
       $('attentionList').innerHTML = renderLines(summary.attention.slice(0, 3), 'No attention notes yet.');
       nextStepsList.innerHTML = renderSteps(currentAnalysis.nextSteps || [], 'Add a table first.');
     }
+    renderWorkspaceSection();
   };
 
   const normaliseCapture = (payload) => ({
@@ -1102,9 +1392,31 @@
     const analyseNowButton = $('analyseNow');
     const clearCapturedTablesButton = $('clearCapturedTables');
     const downloadAnalysisButton = $('downloadAnalysis');
+    const workspaceConnectButton = $('workspaceConnect');
+    const workspaceSaveButton = $('saveReview');
+    const workspaceChangeButton = $('workspaceChange');
+    const workspaceDisconnectButton = $('workspaceDisconnect');
 
     await loadCapturedTables();
     await loadAnalysisMeta();
+    await loadWorkspaceConnection();
+    if (workspaceConnection.token) {
+      try {
+        const verified = await parseConnectedWorkspace(workspaceConnection.rawInput || workspaceConnection.portalUrl || workspaceConnection.token);
+        workspaceConnection = normalizeWorkspaceState({
+          ...workspaceConnection,
+          rawInput: verified.rawInput,
+          token: verified.token,
+          origin: verified.origin,
+          workspaceName: verified.workspaceName,
+          portalUrl: verified.portalUrl,
+          saved: Boolean(workspaceConnection.saved),
+        });
+        await persistWorkspaceConnection();
+      } catch {
+        await clearWorkspaceConnection();
+      }
+    }
     renderCapturedTables();
     if (capturedTables.length && buildBundleSignature(capturedTables) === analysisMeta.lastAnalysedSignature) {
       setAnalysis(capturedTables.length === 1 ? buildSingleReview(capturedTables[0]) : buildBundleReview(capturedTables));
@@ -1116,6 +1428,7 @@
       setAnalysis(EMPTY_ANALYSIS);
       refreshBundleDebugState();
     }
+    renderWorkspaceSection();
     await refreshActiveContext();
 
     if (tabsApi?.onActivated?.addListener) {
@@ -1139,6 +1452,28 @@
     analyseNowButton?.addEventListener('click', analyseNow);
     clearCapturedTablesButton?.addEventListener('click', clearCapturedTables);
     downloadAnalysisButton?.addEventListener('click', downloadAnalysis);
+    workspaceConnectButton?.addEventListener('click', connectWorkspaceFromInput);
+    workspaceSaveButton?.addEventListener('click', saveReviewToWorkspace);
+    workspaceChangeButton?.addEventListener('click', async () => {
+      workspaceConnection = normalizeWorkspaceState({
+        rawInput: workspaceConnection.rawInput || workspaceConnection.portalUrl || '',
+        token: '',
+        origin: workspaceConnection.origin || 'https://www.gnomeo.nl',
+        workspaceName: '',
+        portalUrl: '',
+        saved: false,
+      });
+      setWorkspaceError('');
+      renderWorkspaceSection();
+      const input = $('workspaceLinkInput');
+      if (input) {
+        input.value = workspaceConnection.rawInput || '';
+        input.focus();
+        input.select();
+      }
+      setStatus('Paste your private workspace link again if you want to change it.');
+    });
+    workspaceDisconnectButton?.addEventListener('click', disconnectWorkspace);
 
     renderDebugState();
   };

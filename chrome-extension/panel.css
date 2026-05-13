@@ -111,6 +111,63 @@ h1 {
   gap: 8px;
 }
 
+.workspace-card {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.workspace-disconnected,
+.workspace-connected {
+  display: grid;
+  gap: 8px;
+}
+
+.workspace-input {
+  width: 100%;
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  padding: 0 10px;
+  outline: none;
+}
+
+.workspace-input:focus {
+  border-color: rgba(29, 78, 216, 0.28);
+  box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.08);
+}
+
+.workspace-row {
+  align-items: center;
+}
+
+.workspace-helper {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.workspace-link {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.workspace-link:hover {
+  text-decoration: underline;
+}
+
 .focus-card {
   border: 1px solid var(--line);
   background: #fff;

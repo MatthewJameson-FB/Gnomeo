@@ -45,6 +45,7 @@ Keep it framed as:
 - recurring memory
 - deeper CSV paste/upload
 - comparison against previous reviews
+- token-scoped saves from the Chrome extension
 
 ## Extension posture
 - primary future surface
@@ -54,6 +55,7 @@ Keep it framed as:
 - no OCR
 - no OAuth yet
 - no platform API integration yet
+- optional private workspace save after user review
 
 ## Validation habits
 When updating product docs:

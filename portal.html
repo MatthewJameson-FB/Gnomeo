@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="referrer" content="no-referrer" />
   <title>Private Gnomeo review file</title>
-  <meta name="description" content="Private Gnomeo review file for the latest review, top actions, report history, and workspace memory." />
+  <meta name="description" content="Private Gnomeo review file for saved Chrome reviews, top actions, report history, and workspace memory." />
   <link rel="canonical" href="https://www.gnomeo.nl/portal.html" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="Private Gnomeo review file" />
-  <meta property="og:description" content="Private review file for the latest review, top actions, history, and memory." />
+  <meta property="og:description" content="Private review file for saved Chrome reviews, top actions, history, and memory." />
   <meta property="og:url" content="https://www.gnomeo.nl/portal.html" />
   <meta property="og:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Private Gnomeo review file" />
-  <meta name="twitter:description" content="Private review file for the latest review, top actions, history, and memory." />
+  <meta name="twitter:description" content="Private review file for saved Chrome reviews, top actions, history, and memory." />
   <meta name="twitter:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
   <link rel="stylesheet" href="/content-pages.css" />
   <style>
@@ -139,7 +139,7 @@
       <section class="hero">
         <div class="eyebrow">Private workspace</div>
         <h1 id="workspaceTitle">Gnomeo Workspace</h1>
-        <p class="subhead" id="workspaceSubtitle">Private ad-spend review history. Open your private link to see the latest review, saved reviews, recurring memory, and comparison against previous reviews.</p>
+        <p class="subhead" id="workspaceSubtitle">Review in Chrome, save useful spot checks here, and compare what changes next time.</p>
         <div class="pill-row" id="workspacePills"></div>
         <div id="accessCallout" class="card" style="margin-top: 18px; display: none;">
           <h2>Request access</h2>
@@ -151,6 +151,16 @@
       </section>
 
       <section class="portal-stack">
+        <article class="card">
+          <div class="muted-kicker">Connect the Chrome extension</div>
+          <h2>Save useful spot checks here</h2>
+          <p class="compact-note">Use the extension to review visible campaign tables while you work. Save only the reviews you want to keep, and Gnomeo will compare them next time.</p>
+          <div class="form-actions" style="margin-top: 14px;">
+            <button id="copyWorkspaceLink" class="button secondary" type="button">Copy private workspace link</button>
+          </div>
+          <div id="workspaceLinkStatus" class="helper-note" style="margin-top: 10px;">Only reviews you choose to save are sent to this workspace.</div>
+        </article>
+
         <article class="card">
           <div class="muted-kicker">Latest review</div>
           <h2>Here is what Gnomeo found</h2>
@@ -298,6 +308,8 @@
       reportHistory: document.getElementById('reportHistory'),
       portalReviewQueue: document.getElementById('portalReviewQueue'),
       nextReviewFocus: document.getElementById('nextReviewFocus'),
+      copyWorkspaceLink: document.getElementById('copyWorkspaceLink'),
+      workspaceLinkStatus: document.getElementById('workspaceLinkStatus'),
       csvFiles: document.getElementById('csvFiles'),
       uploadForm: document.getElementById('uploadForm'),
       runButton: document.getElementById('runButton'),
@@ -561,12 +573,16 @@
       els.formMessage.innerHTML = `${escapeHtml(text || '')}${support}`;
     };
 
+    const setWorkspaceLinkStatus = (text) => {
+      if (els.workspaceLinkStatus) els.workspaceLinkStatus.textContent = String(text || 'Only reviews you choose to save are sent to this workspace.');
+    };
+
     const setLoading = (loading) => {
       state.loading = loading;
       els.title.textContent = loading ? 'Loading workspace…' : (state.workspace?.workspace_name || 'Gnomeo Workspace');
       els.subtitle.textContent = loading
-        ? 'Checking your private portal link.'
-        : (state.workspace ? 'Your private workspace for saved ad-spend reviews, memory, and history.' : 'Request access to get a private portal link.');
+        ? 'Checking your private workspace link.'
+        : (state.workspace ? 'Your private workspace for saved ad-spend reviews, memory, and history.' : 'Request access to get a private workspace link.');
       if (els.accessCallout) {
         const shouldHide = Boolean(state.workspace || loading);
         els.accessCallout.style.display = shouldHide ? 'none' : 'block';
@@ -609,6 +625,7 @@
 
       els.title.textContent = hasWorkspace ? (workspace?.workspace_name || 'Private review file') : stateLabel;
       els.subtitle.textContent = stateCopy;
+      setWorkspaceLinkStatus(hasToken ? 'Only reviews you choose to save are sent to this workspace.' : 'Open a private workspace link to copy it here.');
 
       els.pills.innerHTML = hasWorkspace
         ? [
@@ -740,7 +757,7 @@
           : `
             <div>
               <h3>Request access to start your first review</h3>
-              <p>Use the extension for quick visible-table review, then upload Google Ads, Meta Ads, or LinkedIn CSV exports for deeper review history.</p>
+              <p>Use the extension for quick visible-table review, save useful spot checks to this workspace, then upload Google Ads, Meta Ads, or LinkedIn CSV exports for deeper review history.</p>
             </div>
           `;
 
@@ -810,6 +827,19 @@
       if (els.nextReviewFocus) els.nextReviewFocus.innerHTML = '';
     };
 
+    const copyWorkspaceLink = async () => {
+      if (!state.token) {
+        setWorkspaceLinkStatus('Open a private workspace link first, then copy it here.');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        setWorkspaceLinkStatus('Private workspace link copied.');
+      } catch {
+        setWorkspaceLinkStatus('Could not copy automatically. Copy the URL from the address bar.');
+      }
+    };
+
     const fetchWorkspace = async ({ silent = false } = {}) => {
       if (!state.token) {
         state.workspace = null;
@@ -827,7 +857,7 @@
         state.nextReviewFocus = [];
         state.uploadLimits = null;
         renderWorkspace();
-        if (!silent) setMessage('Request access to get a private portal link.', 'note');
+        if (!silent) setMessage('Request access to get a private workspace link.', 'note');
         setLoading(false);
         return;
       }
@@ -943,6 +973,7 @@
 
     els.uploadForm.addEventListener('submit', submitReport);
     els.refreshButton.addEventListener('click', fetchWorkspace);
+    els.copyWorkspaceLink?.addEventListener('click', copyWorkspaceLink);
     document.addEventListener('click', (event) => {
       const button = event.target.closest?.('[data-remove-review]');
       if (!button) return;

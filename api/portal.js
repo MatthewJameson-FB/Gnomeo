@@ -297,11 +297,82 @@ const buildComparisonMarkdown = (comparison = {}) => {
   return lines.join('\n');
 };
 
+const clampText = (value, max = 240) => normalize(value).slice(0, max);
+
+const normalizeStringArray = (values, { limit = 5, max = 120 } = {}) => {
+  const seen = new Set();
+  const output = [];
+  for (const value of Array.isArray(values) ? values : []) {
+    const text = clampText(value, max);
+    if (!text) continue;
+    const key = text.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    output.push(text);
+    if (output.length >= limit) break;
+  }
+  return output;
+};
+
+const buildExtensionReviewMarkdown = ({ payload = {}, tables = [] } = {}) => {
+  const reviewLevel = clampText(payload.review_level || payload.reviewLevel || 'one_page_spot_check', 64);
+  const prettyLevel = reviewLevel === 'cross_platform_spot_check' ? 'Cross-platform spot check' : 'One-page spot check';
+  const platforms = normalizeStringArray(payload.platforms || [], { limit: 6, max: 64 });
+  const signals = normalizeStringArray(payload.key_signals || payload.keySignals || [], { limit: 5, max: 180 });
+  const nextSteps = normalizeStringArray(payload.next_steps || payload.nextSteps || [], { limit: 3, max: 180 });
+  const finding = clampText(payload.top_finding || payload.topFinding || 'Visible rows only review saved from Chrome.', 500) || 'Visible rows only review saved from Chrome.';
+  const visibleNote = clampText(payload.visible_rows_note || payload.visibleRowsNote || 'This review only uses visible rows you chose to save.', 240);
+  const confidence = clampText(payload.confidence_note || payload.confidenceNote || 'Visible rows only · user-triggered extension save', 240);
+  const date = clampText(payload.generated_at || payload.generatedAt || new Date().toISOString(), 64);
+
+  const tableSections = tables.map((table, index) => {
+    const heading = clampText(table.platform || `Table ${index + 1}`, 64);
+    const rows = Number.isFinite(Number(table.rows_detected)) ? Number(table.rows_detected) : 0;
+    const columns = Array.isArray(table.metric_columns) ? table.metric_columns : [];
+    const topSignals = normalizeStringArray(table.top_derived_signals || [], { limit: 3, max: 160 });
+    return [
+      `${index + 1}. ${heading}`,
+      `   - Rows detected: ${rows}`,
+      `   - Metric columns: ${columns.length ? columns.join(', ') : '—'}`,
+      `   - Captured at: ${clampText(table.captured_at || '', 32) || '—'}`,
+      ...topSignals.map((signal) => `   - ${signal}`),
+    ].join('\n');
+  });
+
+  return [
+    '# Gnomeo Review',
+    'Source file: Chrome extension',
+    `Date: ${date}`,
+    `Review level: ${prettyLevel}`,
+    `Platforms included: ${platforms.join(', ') || '—'}`,
+    '',
+    '## Executive Summary',
+    finding,
+    '',
+    '## Key Insights',
+    ...(signals.length ? signals.map((item) => `- ${item}`) : ['- Visible rows only review saved from Chrome.']),
+    '',
+    '## Key Decisions',
+    ...(nextSteps.length ? nextSteps.map((item, index) => `${index + 1}. ${item}`) : ['1. Review the visible rows you chose to save.']),
+    '',
+    '## Confidence & Limitations',
+    `- ${confidence}`,
+    `- ${visibleNote}`,
+    '',
+    '## Expected Impact',
+    clampText(payload.expected_impact || payload.expectedImpact || 'Keeps the workspace memory anchored to the review you chose to save.', 280),
+    '',
+    '## How to read this report',
+    'This is a compact saved review from the Chrome extension. It only reflects visible rows, not background capture.',
+    ...(tableSections.length ? ['', '## Table summaries', ...tableSections] : []),
+  ].join('\n');
+};
+
 module.exports = async (req, res) => {
   const endpoint = normalize(req.query?.endpoint || req.query?.action || '');
   const method = String(req.method || '').toUpperCase();
 
-  if (endpoint !== 'workspace' && endpoint !== 'run-report' && endpoint !== 'remove-review') {
+  if (endpoint !== 'workspace' && endpoint !== 'run-report' && endpoint !== 'remove-review' && endpoint !== 'extension-review') {
     return respond(res, 404, { success: false, error: 'Unknown portal endpoint' });
   }
 
@@ -414,6 +485,194 @@ module.exports = async (req, res) => {
       });
     }
     return respond(res, 404, { success: false, error: 'Workspace not found' });
+  }
+
+  if (endpoint === 'extension-review') {
+    if (method !== 'POST') {
+      res.setHeader('Allow', 'POST');
+      return respond(res, 405, { success: false, error: 'Method not allowed' });
+    }
+
+    const extensionPayload = body && typeof body === 'object' ? body : {};
+    const reviewLevel = normalize(extensionPayload.review_level || extensionPayload.reviewLevel || 'one_page_spot_check');
+    const prettyLevel = reviewLevel === 'cross_platform_spot_check' ? 'Cross-platform spot check' : 'One-page spot check';
+    const platformList = normalizeStringArray(extensionPayload.platforms || [], { limit: 6, max: 64 });
+    const nextSteps = normalizeStringArray(extensionPayload.next_steps || extensionPayload.nextSteps || [], { limit: 3, max: 180 });
+    const keySignals = normalizeStringArray(extensionPayload.key_signals || extensionPayload.keySignals || [], { limit: 5, max: 180 });
+    const tableSummaries = Array.isArray(extensionPayload.table_summaries) ? extensionPayload.table_summaries.slice(0, 6).map((table, index) => ({
+      platform: clampText(table?.platform || `Table ${index + 1}`, 64),
+      rows_detected: Number.isFinite(Number(table?.rows_detected)) ? Number(table.rows_detected) : 0,
+      metric_columns: normalizeStringArray(table?.metric_columns || [], { limit: 10, max: 64 }),
+      captured_at: clampText(table?.captured_at || '', 32) || new Date().toISOString(),
+      top_derived_signals: normalizeStringArray(table?.top_derived_signals || [], { limit: 3, max: 160 }),
+    })) : [];
+
+    const currentSummary = {
+      title: 'Gnomeo Review',
+      key_decisions: nextSteps.map((item, index) => ({ title: item, details: index === 0 ? 'Saved from Chrome extension.' : '' })),
+      key_insights: keySignals,
+      confidence_and_limitations: normalizeStringArray(extensionPayload.confidence_notes || extensionPayload.confidenceNotes || [], { limit: 3, max: 220 }),
+      metrics: {
+        campaign_names: platformList,
+      },
+    };
+
+    const previousRuns = await listReportRuns(workspace.id, 20);
+    const previousRun = previousRuns[0] || null;
+    const comparisonSummary = buildComparisonSummary({
+      current: { metrics: { campaign_names: platformList } },
+      previous: previousRun,
+      currentSummary,
+      currentTopSegments: tableSummaries.map((table) => ({
+        campaign_name: table.platform,
+        segment_label: table.platform,
+        title: table.top_derived_signals[0] || table.platform,
+      })),
+      currentPlatformSummaries: tableSummaries.map((table) => ({
+        platform: table.platform,
+        rows: table.rows_detected,
+      })),
+    });
+
+    const reportMarkdown = buildExtensionReviewMarkdown({
+      payload: {
+        ...extensionPayload,
+        review_level: reviewLevel,
+        generated_at: new Date().toISOString(),
+        expected_impact: extensionPayload.expected_impact || 'Keeps the workspace memory anchored to the review you chose to save.',
+        confidence_note: extensionPayload.confidence_note || 'Visible rows only · user-triggered extension save',
+      },
+      tables: tableSummaries,
+    });
+    const parsedReport = parseReportMarkdown(reportMarkdown);
+    const reportRunId = generateId();
+    const now = new Date().toISOString();
+
+    let savedRun = null;
+    try {
+      const [row] = await restInsert('report_runs', {
+        id: reportRunId,
+        workspace_id: workspace.id,
+        status: 'completed',
+        report_title: parsedReport.title || 'Gnomeo Review',
+        report_markdown: reportMarkdown,
+        report_content: reportMarkdown,
+        source_count: tableSummaries.length || 1,
+        source_platforms: platformList,
+        platforms: platformList,
+        source_filenames: ['chrome-extension'],
+        sources: tableSummaries.map((table) => ({
+          platform: table.platform,
+          rows_detected: table.rows_detected,
+          metric_columns: table.metric_columns,
+          captured_at: table.captured_at,
+          top_derived_signals: table.top_derived_signals,
+        })),
+        row_count: tableSummaries.reduce((sum, table) => sum + (Number(table.rows_detected) || 0), 0),
+        input_bytes: Number(extensionPayload.input_bytes || 0) || null,
+        summary: {
+          title: parsedReport.title || 'Gnomeo Review',
+          review_source: 'chrome_extension',
+          review_level: prettyLevel,
+          platforms: platformList,
+          metrics: {
+            campaign_names: platformList,
+          },
+          key_decisions: parsedReport.key_decisions || currentSummary.key_decisions,
+          key_insights: parsedReport.key_insights || currentSummary.key_insights,
+          confidence_and_limitations: parsedReport.confidence_and_limitations || currentSummary.confidence_and_limitations,
+          next_review_focus: parsedReport.next_review_focus || nextSteps,
+        },
+        comparison_summary: comparisonSummary,
+        top_priorities: parsedReport.key_decisions || currentSummary.key_decisions,
+        top_recommendations: parsedReport.key_decisions || currentSummary.key_decisions,
+        recommendations: parsedReport.key_decisions || currentSummary.key_decisions,
+        trend_snapshot: parsedReport.key_insights || keySignals,
+        trend_notes: (parsedReport.key_insights || keySignals).join(' · '),
+        completed_at: now,
+        error_message: null,
+        metadata: {
+          generated_by: 'chrome_extension',
+          review_level: reviewLevel,
+          source_count: tableSummaries.length || 1,
+          platform_count: platformList.length,
+          visible_rows_only: true,
+        },
+        created_at: now,
+      });
+      savedRun = row || null;
+    } catch (error) {
+      return respond(res, 500, {
+        success: false,
+        error: 'Could not save this review right now.',
+        code: 'extension_review_save_failed',
+        operation: 'portal.extension_review',
+        detail: 'report_insert_failed',
+        supabase: null,
+      });
+    }
+
+    let updatedWorkspace = workspace;
+    try {
+      const [savedWorkspace] = await updateWorkspaceById(workspace.id, {
+        ...buildWorkspaceMemoryUpdate({
+          workspace,
+          parsedReport,
+          detectedPlatforms: platformList,
+          sourceFilenames: ['chrome-extension'],
+          reportRun: savedRun || { created_at: now, report_title: parsedReport.title || 'Gnomeo Review', row_count: tableSummaries.reduce((sum, table) => sum + (Number(table.rows_detected) || 0), 0) },
+          currentMemory: workspace,
+          comparison: comparisonSummary,
+        }),
+        changed_since_last_review: comparisonSummary.changed_since_last_review || [],
+        still_unresolved: comparisonSummary.still_unresolved || [],
+        likely_actioned_or_improved: comparisonSummary.likely_actioned_or_improved || [],
+        new_this_time: comparisonSummary.new_this_time || [],
+        top_actions_now: comparisonSummary.top_actions_now || [],
+        previous_recommendations_status: comparisonSummary.previous_recommendations_status || [],
+        comparison_note: comparisonSummary.comparison_note || null,
+      });
+      if (savedWorkspace) updatedWorkspace = savedWorkspace;
+    } catch (error) {
+      console.warn('[gnomeo portal] extension review workspace update failed (non-blocking):', String(error?.message || error || '').slice(0, 200));
+    }
+
+    await logUsageEvent({
+      workspace_id: workspace.id,
+      event_type: 'portal_extension_review_saved',
+      plan: workspace.plan,
+      metadata: {
+        workspace_name: workspace.workspace_name,
+        review_level: reviewLevel,
+        platform_count: platformList.length,
+        source_count: tableSummaries.length || 1,
+      },
+    });
+    await updatePortalTokenUse(workspace.id);
+
+    const refreshedState = await buildVisiblePortalState(updatedWorkspace);
+    const refreshedPublicWorkspace = toPublicWorkspace(updatedWorkspace);
+    const portalUrl = buildPortalUrl(req, token);
+    return respond(res, 200, {
+      success: true,
+      saved: true,
+      status: 'saved',
+      workspace: refreshedPublicWorkspace,
+      workspace_name: refreshedPublicWorkspace.workspace_name || workspace.workspace_name || null,
+      portal_url: portalUrl,
+      workspace_url: portalUrl,
+      report_run: { ...toSafeReportRun(refreshedState.latestReport || savedRun, parsedReport), comparison_summary: comparisonSummary },
+      latest_report: { ...toSafeReportRun(refreshedState.latestReport || savedRun, parsedReport), comparison_summary: comparisonSummary },
+      report_history: refreshedState.reportHistory,
+      workspace_memory: refreshedState.workspace_memory,
+      changed_since_last_review: updatedWorkspace.changed_since_last_review || [],
+      still_unresolved: updatedWorkspace.still_unresolved || [],
+      likely_actioned_or_improved: updatedWorkspace.likely_actioned_or_improved || [],
+      new_this_time: updatedWorkspace.new_this_time || [],
+      top_actions_now: updatedWorkspace.top_actions_now || [],
+      previous_recommendations_status: updatedWorkspace.previous_recommendations_status || [],
+      comparison_note: updatedWorkspace.comparison_note || null,
+    });
   }
 
   if (endpoint === 'remove-review') {

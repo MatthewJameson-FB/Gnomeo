@@ -46,6 +46,7 @@ Primary future surface.
 - no background monitoring
 - no platform APIs yet
 - no OAuth yet
+- save useful spot checks to the private workspace when the user chooses
 
 ### Portal
 Secondary but important.
@@ -55,6 +56,7 @@ Secondary but important.
 - recurring memory
 - deeper CSV paste/upload
 - comparison against previous reviews
+- receives token-scoped extension saves for the same workspace
 
 ### Public site
 - explains the product
@@ -75,3 +77,4 @@ Compete on:
 - recurring memory
 - calm "what deserves attention" summaries
 - less confusion, not more data
+- a simple loop: Review in Chrome → Save to workspace → Compare over time
