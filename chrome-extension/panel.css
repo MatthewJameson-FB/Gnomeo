@@ -1,13 +1,18 @@
 :root {
   color-scheme: light;
-  --bg: #f8fafc;
-  --panel: rgba(255, 255, 255, 0.96);
-  --text: #0f172a;
-  --muted: #64748b;
-  --line: rgba(15, 23, 42, 0.10);
+  --bg: #f4f7fb;
+  --panel: rgba(255, 255, 255, 0.97);
+  --text: #102033;
+  --muted: #66758a;
+  --line: rgba(16, 32, 51, 0.10);
   --soft: rgba(148, 163, 184, 0.12);
-  --accent: #334155;
-  --shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
+  --soft-blue: rgba(96, 165, 250, 0.14);
+  --soft-amber: rgba(245, 158, 11, 0.16);
+  --soft-green: rgba(34, 197, 94, 0.14);
+  --soft-red: rgba(239, 68, 68, 0.12);
+  --accent: #14263f;
+  --accent-strong: #0f1f35;
+  --shadow: 0 14px 36px rgba(16, 32, 51, 0.10);
 }
 
 * { box-sizing: border-box; }
@@ -21,7 +26,7 @@ body { overflow: hidden; }
   flex-direction: column;
   gap: 8px;
   padding: 8px;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #eef4fa 100%);
   overflow: hidden;
 }
 
@@ -59,16 +64,15 @@ body { overflow: hidden; }
 }
 
 .brand-name {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
+  letter-spacing: 0.04em;
+  color: var(--text);
 }
 
 h1 {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.2;
   letter-spacing: -0.03em;
 }
@@ -79,7 +83,7 @@ h1 {
   line-height: 1.4;
 }
 
-.lede { margin-top: 4px; max-width: 30ch; font-size: 12px; }
+.lede { margin-top: 4px; max-width: 28ch; font-size: 11px; }
 
 .icon-button, .primary-button, .text-button, .file-button {
   border: 1px solid var(--line);
@@ -118,13 +122,25 @@ h1 {
   box-shadow: var(--shadow);
   padding: 8px;
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
+.workspace-closed,
 .workspace-disconnected,
 .workspace-connected {
   display: grid;
-  gap: 8px;
+  gap: 6px;
+}
+
+.workspace-closed {
+  align-items: start;
+}
+
+.workspace-status {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.35;
 }
 
 .workspace-input {
@@ -141,8 +157,8 @@ h1 {
 }
 
 .workspace-input:focus {
-  border-color: rgba(29, 78, 216, 0.28);
-  box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.08);
+  border-color: rgba(20, 38, 63, 0.28);
+  box-shadow: 0 0 0 4px rgba(20, 38, 63, 0.08);
 }
 
 .workspace-row {
@@ -217,9 +233,9 @@ h1 {
 .field-label, .card-label {
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text);
 }
 
 .primary-button, .secondary-button, .text-button {
@@ -231,9 +247,9 @@ h1 {
 }
 
 .primary-button {
-  background: var(--text);
+  background: var(--accent-strong);
   color: #fff;
-  border-color: var(--text);
+  border-color: var(--accent-strong);
 }
 
 .secondary-button {
@@ -267,7 +283,7 @@ h1 {
 
 .error-line {
   margin: 0;
-  color: #991b1b;
+  color: #b42318;
   font-size: 12px;
   line-height: 1.45;
 }
@@ -335,7 +351,7 @@ h1 {
 }
 
 .debug-error strong {
-  color: #991b1b;
+  color: #b42318;
 }
 
 .details-card details {
@@ -389,11 +405,17 @@ h1 {
   align-items: center;
   padding: 4px 8px;
   border-radius: 999px;
-  background: var(--soft);
+  background: var(--soft-blue);
   color: var(--accent);
   font-size: 11px;
   font-weight: 600;
 }
+
+.chip--info { background: var(--soft-blue); color: var(--accent); }
+.chip--warn { background: var(--soft-amber); color: #8a5a00; }
+.chip--success { background: var(--soft-green); color: #0f6b2d; }
+.chip--neutral { background: var(--soft); color: var(--muted); }
+.chip--error { background: var(--soft-red); color: #b42318; }
 
 .finding {
   color: var(--text);
@@ -417,7 +439,7 @@ h1 {
   align-items: center;
   padding: 4px 8px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.12);
+  background: var(--soft-blue);
   color: var(--accent);
   font-size: 11px;
   font-weight: 600;
@@ -482,7 +504,7 @@ h1 {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.12);
+  background: var(--soft-blue);
   color: var(--accent);
   padding: 3px 7px;
   font-size: 10px;

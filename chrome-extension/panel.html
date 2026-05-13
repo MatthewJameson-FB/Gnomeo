@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Gnomeo Review</title>
+    <title>Gnomeo</title>
     <link rel="stylesheet" href="panel.css" />
     <script src="panel.js" defer></script>
   </head>
@@ -15,15 +15,15 @@
             <span class="brand-mark" aria-hidden="true">G</span>
             <span class="brand-name">Gnomeo</span>
           </div>
-          <h1>Review this page</h1>
-          <p class="lede">What should I fix first?</p>
+          <h1>What needs attention?</h1>
+          <p class="lede">Ad spend review</p>
         </div>
         <button class="icon-button" id="closePanel" type="button" aria-label="Close panel">×</button>
       </header>
 
       <section class="focus-card" id="focusCard" hidden>
         <div class="card-head compact-head">
-          <span class="card-label">Fix first</span>
+          <span class="card-label">Start here</span>
           <span class="chip" id="focusConfidence">Visible rows only</span>
         </div>
         <p class="focus-text" id="focusText">Add a table to see the focus.</p>
@@ -32,7 +32,7 @@
 
       <section class="next-steps-card" id="nextStepsCard" hidden>
         <div class="card-head compact-head">
-          <span class="card-label">Next best</span>
+          <span class="card-label">Also protect</span>
         </div>
         <ul class="step-list" id="nextStepsList"></ul>
       </section>
@@ -52,19 +52,17 @@
       <section class="workspace-card">
         <div class="card-head compact-head">
           <span class="card-label">Workspace</span>
-          <span class="chip" id="workspaceConnectionChip">Not connected</span>
+          <span class="chip" id="workspaceConnectionChip" hidden>Connected</span>
         </div>
-        <div class="button-row workspace-row">
-          <button id="workspacePrimary" class="primary-button" type="button">Connect workspace</button>
-          <button id="workspaceChange" class="secondary-button" type="button" hidden>Change</button>
-          <button id="workspaceDisconnect" class="text-button" type="button" hidden>Disconnect</button>
+        <div class="workspace-closed" id="workspaceClosed">
+          <button id="workspacePrimary" class="primary-button" type="button">Save to workspace</button>
+          <p class="workspace-status" id="workspaceStatusLine">Connect first</p>
         </div>
         <div id="workspaceDisconnected" class="workspace-disconnected" hidden>
           <input id="workspaceLinkInput" class="workspace-input" type="text" placeholder="Paste private workspace link or token" autocomplete="off" spellcheck="false" />
           <div class="button-row workspace-row">
-            <button id="workspaceConnect" class="secondary-button" type="button">Connect</button>
+            <button id="workspaceConnect" class="secondary-button" type="button">Connect workspace</button>
             <button id="workspaceCancelConnect" class="text-button" type="button">Cancel</button>
-            <span class="workspace-helper">Your link stays in this browser.</span>
           </div>
         </div>
         <div id="workspaceConnected" class="workspace-connected" hidden>
@@ -73,6 +71,8 @@
             <button id="saveReview" class="primary-button" type="button" disabled>Save to workspace</button>
           </div>
           <a id="openWorkspaceLink" class="workspace-link" href="#" target="_blank" rel="noreferrer" hidden>Open workspace</a>
+          <button id="workspaceChange" class="text-button" type="button" hidden>Change</button>
+          <button id="workspaceDisconnect" class="text-button" type="button" hidden>Disconnect</button>
         </div>
         <p id="workspaceError" class="error-line" hidden></p>
       </section>

@@ -64,16 +64,16 @@
 
   const button = shadow.querySelector('.button');
   const openSidePanel = async () => {
-    if (!runtimeApi?.sendMessage) return { ok: false, error: { stage: 'runtime-message', message: 'chrome.runtime.sendMessage is unavailable', userMessage: 'Open a supported campaign table, then click Add table.' } };
+    if (!runtimeApi?.sendMessage) return { ok: false, error: { stage: 'runtime-message', message: 'chrome.runtime.sendMessage is unavailable', userMessage: 'Open Google Ads, Meta Ads, or LinkedIn.' } };
     return await new Promise((resolve) => {
       runtimeApi.sendMessage({ type: 'GNOMEO_OPEN_SIDE_PANEL' }, (response) => {
         const message = runtimeApi?.lastError?.message || '';
         if (message) {
-          resolve({ ok: false, error: { stage: 'runtime-message', message, userMessage: 'Open a supported campaign table, then click Add table.' } });
+          resolve({ ok: false, error: { stage: 'runtime-message', message, userMessage: 'Open Google Ads, Meta Ads, or LinkedIn.' } });
           return;
         }
         if (!response?.ok) {
-          resolve({ ok: false, error: { stage: 'runtime-message', message: response?.error || 'Open side panel failed', userMessage: 'Open a supported campaign table, then click Add table.' } });
+          resolve({ ok: false, error: { stage: 'runtime-message', message: response?.error || 'Open side panel failed', userMessage: 'Open Google Ads, Meta Ads, or LinkedIn.' } });
           return;
         }
         resolve({ ok: true, response });
