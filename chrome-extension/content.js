@@ -2,6 +2,11 @@
   if (window.__gnomeoReviewLayerInjected) return;
   window.__gnomeoReviewLayerInjected = true;
 
+  const isLocalTestHost = ['localhost', '127.0.0.1'].includes(location.hostname.toLowerCase());
+  const debug = (...args) => {
+    if (isLocalTestHost) console.debug('[Gnomeo]', ...args);
+  };
+
   const host = document.createElement('div');
   host.id = 'gnomeo-review-layer-host';
   host.setAttribute('aria-live', 'polite');
@@ -83,11 +88,13 @@
     </div>
   `;
 
-  document.documentElement.appendChild(host);
+  (document.documentElement || document.body || document.head).appendChild(host);
 
   const button = shadow.querySelector('.button');
   const panel = shadow.querySelector('.panel-shell');
   const frame = shadow.querySelector('iframe');
+
+  frame.addEventListener('load', () => debug('panel loaded', location.href));
 
   const setOpen = (open) => {
     panel.dataset.open = open ? 'true' : 'false';
@@ -96,6 +103,7 @@
   };
 
   button.addEventListener('click', () => {
+    debug('toggle panel', panel.dataset.open !== 'true' ? 'open' : 'close');
     setOpen(panel.dataset.open !== 'true');
   });
 
@@ -475,11 +483,21 @@
     if (event.source !== frame.contentWindow) return;
     const data = event.data || {};
     if (data.type !== 'gnomeo-review-visible-table-request') return;
+    debug('review requested');
     const response = extractVisibleTableReview();
+    debug('review response', {
+      success: response.success,
+      platform: response.platform,
+      rowsDetected: response.rowsDetected,
+      columnsDetected: response.columnsDetected,
+      tableKind: response.tableKind,
+    });
     frame.contentWindow?.postMessage({
       type: 'gnomeo-visible-table-result',
       requestId: data.requestId || '',
       payload: response,
     }, '*');
   });
+
+  debug('injected', location.href);
 })();

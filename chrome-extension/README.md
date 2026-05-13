@@ -42,6 +42,8 @@ Recommended test method:
 4. Load the unpacked extension in Chrome and click **Review with Gnomeo**
 5. Click **Review visible table** on a campaign page
 
+If you need to verify injection, open DevTools on the test page and look for local-only `[Gnomeo]` debug messages in the console.
+
 ## How to load it in Chrome
 
 1. Open `chrome://extensions`
