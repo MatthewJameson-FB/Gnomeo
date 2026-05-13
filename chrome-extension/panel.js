@@ -1204,7 +1204,6 @@
     const addVisibleTableButton = $('addVisibleTable');
     const primaryActionButton = $('primaryAction');
     const analyseNow = $('analyseNow');
-    const detailsToggle = $('detailsToggle');
     const clearCapturedTablesButton = $('clearCapturedTables');
     const capturedCountInline = $('capturedCountInline');
     const captureContextLine = $('captureContextLine');
@@ -1230,10 +1229,6 @@
     analyseNow.textContent = 'Analyse again';
     analyseNow.hidden = !(currentAnalysis.success && !currentAnalysis.stale);
     analyseNow.disabled = Boolean(pendingRequestId);
-    if (detailsToggle) {
-      detailsToggle.disabled = capturedTables.length === 0;
-      detailsToggle.hidden = capturedTables.length === 0;
-    }
     clearCapturedTablesButton.hidden = !capturedTables.length;
     if (hint) hint.textContent = sourceState.copy;
     if (hint) hint.hidden = true;
@@ -1348,7 +1343,7 @@
     const focusWhy = $('focusWhy');
     const focusConfidence = $('focusConfidence');
     const nextStepsCard = $('nextStepsCard');
-    const nextStepsList = $('nextStepsList');
+    const nextStepsText = $('nextStepsText');
     const reviewContent = $('reviewContent');
     const panelState = derivePanelState();
     const reportText = $('fullReportText');
@@ -1416,7 +1411,7 @@
       $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 5), 'No visible signals found yet.');
       $('visiblePreview').innerHTML = renderPreview(currentAnalysis.previewRows);
       $('attentionList').innerHTML = renderLines(summary.attention.slice(0, 3), 'No attention notes yet.');
-      nextStepsList.innerHTML = renderSteps([decision.nextBest].filter(Boolean), 'Add a table first.');
+      if (nextStepsText) nextStepsText.textContent = `Next: ${decision.nextBest || 'Keep the clearer performer protected.'}`;
     } else if (currentAnalysis.stale) {
       focusText.textContent = 'Analyse to find the first fix.';
       if (focusWhy) focusWhy.textContent = 'The tables changed.';
@@ -1424,7 +1419,7 @@
       $('keySignals').innerHTML = '';
       $('visiblePreview').innerHTML = '';
       $('attentionList').innerHTML = '';
-      nextStepsList.innerHTML = renderSteps([], 'Analyse');
+      if (nextStepsText) nextStepsText.textContent = 'Analyse to refresh the next step.';
     } else {
       focusText.textContent = 'Feed me a campaign table to start.';
       if (focusWhy) focusWhy.textContent = 'Then I’ll tell you the first fix.';
@@ -1432,7 +1427,7 @@
       $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 5), 'No visible signals found yet.');
       $('visiblePreview').innerHTML = renderPreview(currentAnalysis.previewRows);
       $('attentionList').innerHTML = renderLines(summary.attention.slice(0, 3), 'No attention notes yet.');
-      nextStepsList.innerHTML = renderSteps([], 'Add a table.');
+      if (nextStepsText) nextStepsText.textContent = 'Add a table first.';
     }
     renderWorkspaceSection();
   };
@@ -1753,7 +1748,6 @@
     const primaryActionButton = $('primaryAction');
     const addButton = $('addVisibleTable');
     const analyseNowButton = $('analyseNow');
-    const detailsToggleButton = $('detailsToggle');
     const clearCapturedTablesButton = $('clearCapturedTables');
     const downloadAnalysisButton = $('downloadAnalysis');
     const workspaceConnectButton = $('workspaceConnect');
@@ -1816,13 +1810,6 @@
     primaryActionButton?.addEventListener('click', triggerPrimaryAction);
     addButton?.addEventListener('click', addVisibleTable);
     analyseNowButton?.addEventListener('click', analyseNow);
-    detailsToggleButton?.addEventListener('click', () => {
-      const details = $('detailsCard');
-      const review = $('reviewContent');
-      if (review && review.hidden) return;
-      if (details) details.open = true;
-      details?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    });
     clearCapturedTablesButton?.addEventListener('click', clearCapturedTables);
     downloadAnalysisButton?.addEventListener('click', downloadAnalysis);
     workspaceConnectButton?.addEventListener('click', connectWorkspaceFromInput);
