@@ -97,6 +97,11 @@
     if (metaPlatform) return metaPlatform;
     const hostName = location.hostname.toLowerCase();
     const path = location.pathname.toLowerCase();
+    if (path.includes('google-ads-campaigns')) return 'Google Ads';
+    if (path.includes('meta-ads-campaigns')) return 'Meta Ads';
+    if (path.includes('linkedin-ads-campaigns')) return 'LinkedIn Campaign Manager';
+    if (path.includes('no-table')) return 'No table';
+    if (path.includes('/test-pages/') || path.endsWith('/test-pages/')) return 'Local test page';
     if (hostName.includes('google.com') && path.includes('/')) return 'Google Ads';
     if (hostName.includes('facebook.com') || hostName.includes('meta.com')) return 'Meta Ads';
     if (hostName.includes('linkedin.com') && path.includes('/campaignmanager')) return 'LinkedIn Campaign Manager';

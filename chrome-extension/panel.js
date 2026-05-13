@@ -45,6 +45,7 @@
     host: '',
     path: '',
     url: '',
+    supportedPage: false,
     activeTabId: null,
     activeUrl: '',
     currentPlatform: '',
@@ -207,6 +208,11 @@
       const parsed = new URL(url);
       const hostName = parsed.hostname.toLowerCase();
       const path = parsed.pathname.toLowerCase();
+      if (path.includes('google-ads-campaigns')) return 'Google Ads';
+      if (path.includes('meta-ads-campaigns')) return 'Meta Ads';
+      if (path.includes('linkedin-ads-campaigns')) return 'LinkedIn Campaign Manager';
+      if (path.includes('no-table')) return 'No table';
+      if (path.includes('/test-pages/') || path.endsWith('/test-pages/')) return 'Local test page';
       if (hostName.includes('google.com') && path.includes('/')) return 'Google Ads';
       if (hostName.includes('facebook.com') || hostName.includes('meta.com')) return 'Meta Ads';
       if (hostName.includes('linkedin.com') && path.includes('/campaignmanager')) return 'LinkedIn Campaign Manager';
@@ -231,6 +237,7 @@
       currentPageDebug.platform = response.state.platform || inferPlatformFromUrl(tab?.url || currentPageDebug.url);
       currentPageDebug.currentPlatform = currentPageDebug.platform;
       currentPageDebug.currentCaptureKey = captureKeyFromPlatform(currentPageDebug.currentPlatform);
+      currentPageDebug.supportedPage = isSupportedPlatform(currentPageDebug.currentPlatform);
       currentPageDebug.contentScriptLoaded = true;
       currentPageDebug.lastExtractionStatus = response.state.lastExtractionStatus || currentPageDebug.lastExtractionStatus;
       currentPageDebug.lastError = response.state.lastError || '';
@@ -242,6 +249,7 @@
       currentPageDebug.platform = inferPlatformFromUrl(tab?.url || currentPageDebug.url);
       currentPageDebug.currentPlatform = currentPageDebug.platform;
       currentPageDebug.currentCaptureKey = captureKeyFromPlatform(currentPageDebug.currentPlatform);
+      currentPageDebug.supportedPage = isSupportedPlatform(currentPageDebug.currentPlatform);
       currentPageDebug.contentScriptLoaded = Boolean(response.contentScriptLoaded);
       currentPageDebug.lastExtractionStatus = response.error?.userMessage || 'Open a supported campaign table, then click Add table.';
       currentPageDebug.lastError = response.error?.message || response.error?.userMessage || 'No content script response on this page.';
@@ -350,10 +358,17 @@
 
   const platformLabelFromState = () => currentPageDebug.currentPlatform || currentPageDebug.platform || 'Unknown platform';
 
+  const isSupportedPlatform = (platform) => {
+    const value = String(platform || '').trim();
+    return /^google ads$/i.test(value)
+      || /^meta ads$/i.test(value)
+      || /^linkedin campaign manager$/i.test(value);
+  };
+
   const derivePanelState = () => {
     const bundleCount = capturedTables.length;
     const currentPlatform = platformLabelFromState();
-    const supported = Boolean(currentPageDebug.contentScriptLoaded && currentPlatform && !/^unknown platform$/i.test(currentPlatform));
+    const supported = isSupportedPlatform(currentPlatform);
     const currentCaptureKey = currentPlatform ? captureKeyFromPlatform(currentPlatform) : '';
     const currentCaptureAdded = supported && capturedTables.some((item) => captureKeyFromPlatform(item.platform) === currentCaptureKey);
     const analysisFresh = captureAnalysisFreshness();
@@ -541,6 +556,7 @@
     $('debugActiveTab').textContent = Number.isFinite(currentPageDebug.activeTabId) ? String(currentPageDebug.activeTabId) : 'Waiting…';
     $('debugActiveUrl').textContent = currentPageDebug.activeUrl || 'Waiting…';
     $('debugPlatform').textContent = currentPageDebug.platform || 'Waiting…';
+    $('debugSupportedPage').textContent = currentPageDebug.supportedPage ? 'Yes' : 'No';
     $('debugCurrentCapture').textContent = currentPageDebug.currentCaptureKey || '—';
     $('debugContentScript').textContent = currentPageDebug.contentScriptLoaded ? 'Yes' : 'No';
     $('debugStorage').textContent = currentPageDebug.storageAvailable ? 'Yes' : 'No';
@@ -568,6 +584,7 @@
     currentPageDebug.columnsDetected = Number.isFinite(state.columnsDetected) ? state.columnsDetected : currentPageDebug.columnsDetected;
     currentPageDebug.metricColumns = Array.isArray(state.metricColumns) ? state.metricColumns : currentPageDebug.metricColumns;
     currentPageDebug.lastError = state.lastError || '';
+    currentPageDebug.supportedPage = isSupportedPlatform(currentPageDebug.platform || currentPageDebug.currentPlatform || inferPlatformFromUrl(currentPageDebug.url));
     renderDebugState();
   };
 
