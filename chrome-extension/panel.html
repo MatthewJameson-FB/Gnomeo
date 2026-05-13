@@ -36,7 +36,7 @@
 
       <section class="focus-card" id="focusCard" hidden>
         <div class="card-head compact-head">
-          <span class="card-label">First fix</span>
+          <span class="card-label">Gnomeo’s first fix</span>
           <span class="chip chip--neutral" id="focusConfidence">visible only</span>
         </div>
         <p class="focus-text" id="focusText">Feed me a campaign table to start.</p>
@@ -51,16 +51,16 @@
       </section>
 
       <section class="composer">
-        <div class="button-row">
+        <div class="button-row action-row">
           <button id="primaryAction" class="primary-button" type="button">Add table</button>
           <button id="addVisibleTable" class="text-button" type="button">Add/update</button>
           <button id="analyseNow" class="text-button" type="button" hidden>Analyse again</button>
-          <button id="detailsToggle" class="text-button" type="button">Burrow deeper ▾</button>
+          <button id="detailsToggle" class="text-button" type="button">Burrow</button>
           <button id="workspaceAction" class="text-button" type="button" hidden>Workspace</button>
           <button id="clearCapturedTables" class="text-button danger" type="button">Clear</button>
         </div>
-        <p class="status-line" id="captureStatus">0 sources · hungry</p>
-        <p class="hint" id="captureHint">Add a table to start.</p>
+        <p class="status-line" id="captureStatus" hidden>0 sources · hungry</p>
+        <p class="hint" id="captureHint" hidden>Add a table to start.</p>
         <p class="error-line" id="actionError" hidden></p>
       </section>
 
@@ -129,7 +129,7 @@
                 <pre id="fullReportText">Add a table.</pre>
               </div>
               <div class="report-actions">
-                <button id="downloadAnalysis" class="secondary-button" type="button" disabled>Download</button>
+                <button id="downloadAnalysis" class="secondary-button" type="button" disabled>Print / PDF</button>
               </div>
               <details class="debug-card" id="debugCard" hidden>
                 <summary>

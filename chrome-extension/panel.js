@@ -99,7 +99,7 @@
 
   const getSourceProgressState = (count = 0) => {
     if (count <= 0) {
-      return { label: '0 sources · hungry', copy: 'Add a table.', filled: 0, tone: 'neutral' };
+      return { label: '0 sources · hungry', copy: 'Ready for a table.', filled: 0, tone: 'neutral' };
     }
     if (count === 1) {
       return { label: '1 source · nibble', copy: 'Need one more.', filled: 1, tone: 'info' };
@@ -107,7 +107,7 @@
     if (count === 2) {
       return { label: '2 sources · getting fed', copy: 'Almost there.', filled: 2, tone: 'success' };
     }
-    return { label: '3+ sources · well fed', copy: 'Well fed.', filled: 3, tone: 'success' };
+    return { label: '3+ sources · well fed', copy: 'Good to go.', filled: 3, tone: 'success' };
   };
 
   const renderSourceProgress = () => {
@@ -1094,16 +1094,108 @@
 
   const downloadAnalysis = () => {
     if (!currentAnalysis || !currentAnalysis.success) return;
-    const markdown = buildReportMarkdown();
-    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+    const html = buildPrintableReportHtml();
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `gnomeo-review-${formatLocalDateStamp(new Date())}.md`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const win = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!win) {
+      setActionError('Pop-up blocked. Allow it to print / save as PDF.');
+    }
+    window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+  };
+
+  const buildPrintableReportHtml = () => {
+    if (!currentAnalysis || !currentAnalysis.success) return '';
+    const summary = currentAnalysis.summary || EMPTY_ANALYSIS.summary;
+    const decision = deriveDecisionCard(currentAnalysis);
+    const platforms = Array.isArray(currentAnalysis.platforms) && currentAnalysis.platforms.length
+      ? currentAnalysis.platforms.join(', ')
+      : (currentAnalysis.platform || '—');
+    const keySignals = Array.isArray(summary.keySignals) ? summary.keySignals.slice(0, 5) : [];
+    const nextBest = decision.nextBest || currentAnalysis.nextBest || (currentAnalysis.nextSteps || [])[1] || (currentAnalysis.nextSteps || [])[0] || '—';
+    const workspaceState = workspaceConnection.saved ? 'saved' : (workspaceConnection.token ? 'connected' : 'not connected');
+    const title = `gnomeo-review-${formatLocalDateStamp(new Date())}`;
+    return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(title)}</title>
+  <style>
+    @page { size: A4; margin: 14mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, Arial, sans-serif; color: #102033; background: #fff; }
+    .page { max-width: 760px; margin: 0 auto; padding: 0; }
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    h2 { margin: 18px 0 6px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; color: #526477; }
+    .meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
+    .chip { display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 999px; font-size: 11px; background: #eef4fb; color: #23364d; }
+    .answer { margin-top: 10px; padding: 14px; border-radius: 14px; border-left: 4px solid #1f3b61; background: linear-gradient(180deg, #f8fbff 0%, #edf5ef 100%); }
+    .answer p { margin: 0; font-size: 16px; line-height: 1.4; font-weight: 700; }
+    .why { margin-top: 6px; color: #526477; font-size: 12px; }
+    .section { margin-top: 16px; padding-top: 12px; border-top: 1px solid #d9e4ef; }
+    ul, ol { margin: 8px 0 0 18px; padding: 0; }
+    li { margin: 0 0 6px; font-size: 12px; line-height: 1.45; }
+    .fine { margin-top: 18px; color: #6b7b8d; font-size: 11px; }
+    .kv { display: grid; gap: 6px; font-size: 12px; }
+    .kv div { display: flex; gap: 8px; }
+    .kv span { color: #6b7b8d; min-width: 110px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>Gnomeo Review</h1>
+    <div class="meta">
+      <span class="chip">${escapeHtml(formatLocalDateTime(new Date()))}</span>
+      <span class="chip">${escapeHtml(currentAnalysis.reviewLevel || (currentAnalysis.mode === 'bundle' ? 'spot check' : 'visible only'))}</span>
+      <span class="chip">${escapeHtml(platforms)}</span>
+    </div>
+
+    <div class="answer">
+      <p>${escapeHtml(currentAnalysis.focus || summary.executiveFinding || '—')}</p>
+      <div class="why">Why: ${escapeHtml(currentAnalysis.why || summary.attention?.[0] || '—')}</div>
+    </div>
+
+    <div class="section">
+      <h2>Also protect</h2>
+      <p style="margin:0;font-size:12px;line-height:1.45;">${escapeHtml(nextBest)}</p>
+    </div>
+
+    <div class="section">
+      <h2>Key signals</h2>
+      <ul>
+        ${keySignals.map((item) => `<li>${escapeHtml(item.label)}: ${escapeHtml(item.title)}${item.details ? ` — ${escapeHtml(item.details)}` : ''}</li>`).join('')}
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Sources</h2>
+      <div class="kv">
+        <div><span>Platforms</span><strong>${escapeHtml(platforms)}</strong></div>
+        <div><span>Review level</span><strong>${escapeHtml(currentAnalysis.reviewLevel || (currentAnalysis.mode === 'bundle' ? 'spot check' : 'visible only'))}</strong></div>
+        <div><span>Workspace</span><strong>${escapeHtml(workspaceState)}</strong></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Next</h2>
+      <ol>
+        ${(currentAnalysis.nextSteps || []).slice(0, 3).map((item) => `<li>${escapeHtml(item)}</li>`).join('')}
+      </ol>
+    </div>
+
+    <div class="section">
+      <h2>Caveat</h2>
+      <p style="margin:0;font-size:12px;line-height:1.45;">${escapeHtml(currentAnalysis.reviewConfidence || 'visible only')} · visible tables only.</p>
+    </div>
+
+    <div class="fine">No raw rows, screenshots, or private workspace token.</div>
+  </div>
+  <script>
+    window.addEventListener('load', () => setTimeout(() => window.print(), 150));
+  </script>
+</body>
+</html>`;
   };
 
   const renderCapturedTables = () => {
@@ -1144,12 +1236,17 @@
     }
     clearCapturedTablesButton.hidden = !capturedTables.length;
     if (hint) hint.textContent = sourceState.copy;
+    if (hint) hint.hidden = true;
     if (captureContextLine) {
       const currentPlatform = currentPageDebug.currentPlatform || currentPageDebug.platform || 'Unknown platform';
       const currentStatus = panelState.currentCaptureAdded ? 'added' : 'not added';
       captureContextLine.textContent = capturedTables.length ? `Current: ${currentPlatform} · ${currentStatus}` : 'Current: —';
     }
-    setStatus(panelState.statusLine || sourceState.label);
+    const showStatus = panelState.state === 'unsupported';
+    if ($('captureStatus')) {
+      $('captureStatus').hidden = !showStatus;
+      if (showStatus) $('captureStatus').textContent = panelState.statusLine || sourceState.label;
+    }
 
     if (!orderedTables.length) {
       container.innerHTML = '<div class="captured-item"><strong>No sources yet</strong><span>Add a table.</span></div>';
