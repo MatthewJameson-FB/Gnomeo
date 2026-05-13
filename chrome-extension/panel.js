@@ -453,14 +453,52 @@
     return [...new Set(names)].sort((a, b) => platformRank(a) - platformRank(b));
   };
 
-  const platformAdvice = (platform) => {
-    const name = displayPlatformName(platform);
-    if (name === 'Google Ads') return 'For Google, check the landing page or keywords if this is a Search campaign.';
-    if (name === 'Meta Ads') return 'For Meta, check the audience, creative, placement, or landing page.';
-    if (name === 'LinkedIn Campaign Manager') return 'For LinkedIn, check the audience, offer, lead form, or landing page.';
-    if (name === 'Local test page') return 'For local fixtures, compare the visible rows and try another supported page if needed.';
-    return 'Check why this is spending money without enough visible results.';
+  const shortPlatformName = (platform) => {
+    const value = displayPlatformName(platform);
+    if (value === 'Google Ads') return 'Google';
+    if (value === 'Meta Ads') return 'Meta';
+    if (value === 'LinkedIn Campaign Manager') return 'LinkedIn';
+    return value;
   };
+
+  const rowReference = (row, multiPlatform = false) => {
+    const label = String(row?.label || row?.title || row?.platform || '').trim();
+    if (!label) return 'Row';
+    if (!multiPlatform || !row?.platform) return label;
+    return `${shortPlatformName(row.platform)} ${label}`;
+  };
+
+  const platformActionHint = (platform, label = '') => {
+    const name = displayPlatformName(platform);
+    const value = String(label || '').toLowerCase();
+    const googleSearch = /search|brand search|generic search|competitor|keyword/.test(value);
+    const googleShopping = /shopping|pmax|performance max|feed|product/.test(value);
+    const metaRetargeting = /retarget|remarket|existing customer/.test(value);
+    const metaProspecting = /prospecting|broad audience|lookalike|advantage\+/.test(value);
+    const linkedInLeadGen = /lead gen|lead generation|lead form|company|job|abm/.test(value);
+    const linkedInAwareness = /brand awareness|awareness|traffic/.test(value);
+
+    if (name === 'Google Ads') {
+      if (googleShopping) return 'For Google Shopping/PMax, check product/feed quality and value tracking.';
+      if (googleSearch) return 'For Google Search, check search terms, keywords, and the landing page.';
+      return 'For Google, check the query, landing page, and value tracking.';
+    }
+    if (name === 'Meta Ads') {
+      if (metaRetargeting) return 'For Meta retargeting, check the audience, creative, offer, and landing page.';
+      if (metaProspecting) return 'For Meta prospecting, check the audience, creative, offer, and landing page.';
+      return 'For Meta, check the audience, creative, offer, and landing page.';
+    }
+    if (name === 'LinkedIn Campaign Manager') {
+      if (linkedInLeadGen || linkedInAwareness) return 'For LinkedIn, check the audience, offer, lead form, and landing page.';
+      return 'For LinkedIn, check the audience, offer, lead form, and landing page.';
+    }
+    if (name === 'Local test page') return 'For local fixtures, compare the visible rows and try another supported page if needed.';
+    return 'Check the audience, offer, landing page, and tracking.';
+  };
+
+  const formatRowRef = (row, multiPlatform = false) => rowReference(row, multiPlatform);
+
+  const platformAdvice = (platform, label = '') => platformActionHint(platform, label);
 
   const getMetric = (capture, key) => Number.isFinite(capture?.snapshot?.[key]) ? capture.snapshot[key] : null;
 
@@ -657,7 +695,7 @@
     if (currentAnalysis.success) {
       focusText.textContent = currentAnalysis.focus || summary.executiveFinding || EMPTY_ANALYSIS.summary.executiveFinding;
       focusConfidence.textContent = currentAnalysis.reviewConfidence || 'Visible rows only';
-      $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 4), 'No visible signals found yet.');
+      $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 5), 'No visible signals found yet.');
       $('visiblePreview').innerHTML = renderPreview(currentAnalysis.previewRows);
       $('attentionList').innerHTML = renderLines(summary.attention.slice(0, 3), 'No attention notes yet.');
       nextStepsList.innerHTML = renderSteps(currentAnalysis.nextSteps || [], 'Add a table first.');
@@ -671,7 +709,7 @@
     } else {
       focusText.textContent = 'Add a table to see the focus.';
       focusConfidence.textContent = 'Visible rows only';
-      $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 4), 'No visible signals found yet.');
+      $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 5), 'No visible signals found yet.');
       $('visiblePreview').innerHTML = renderPreview(currentAnalysis.previewRows);
       $('attentionList').innerHTML = renderLines(summary.attention.slice(0, 3), 'No attention notes yet.');
       nextStepsList.innerHTML = renderSteps(currentAnalysis.nextSteps || [], 'Add a table first.');
@@ -687,35 +725,72 @@
     columnsDetected: payload.columnsDetected || 0,
     metricColumns: Array.isArray(payload.metricColumns) ? payload.metricColumns : [],
     reviewConfidence: payload.reviewConfidence || 'Visible rows only · session-only prototype',
+    reviewLevel: payload.reviewLevel || 'One-page spot check',
     previewRows: Array.isArray(payload.previewRows) ? payload.previewRows.slice(0, 5) : [],
     summary: payload.summary || EMPTY_ANALYSIS.summary,
     snapshot: payload.snapshot || null,
+    decisionMatrix: payload.decisionMatrix || null,
     capturedAt: Date.now(),
   });
 
   const buildSingleReview = (capture) => {
     if (!capture) return EMPTY_ANALYSIS;
     const summary = capture.summary || EMPTY_ANALYSIS.summary;
-    const spendLabel = capture.snapshot?.spendLabel || capture.platform;
-    const conversionLabel = capture.snapshot?.conversionLabel || '';
-    const watchLabel = capture.snapshot?.watchLabel || spendLabel;
-    const spendValue = capture.snapshot?.spendValue;
-    const conversionValue = capture.snapshot?.conversionValue;
-    const watchSpend = capture.snapshot?.watchSpendValue;
+    const matrix = capture.decisionMatrix || {};
+    const highestSpend = matrix.highestSpend || null;
+    const strongestResult = matrix.strongestResult || null;
+    const efficientPerformer = matrix.efficientPerformer || null;
+    const watchItem = matrix.watchItem || highestSpend || efficientPerformer || null;
+    const lowDataItem = (matrix.lowDataItems || [])[0] || null;
+    const rowLabel = (row) => formatRowRef(row, false);
+    const reviewLevel = capture.reviewLevel || matrix.reviewLevel || 'One-page spot check';
+    const reviewConfidence = capture.reviewConfidence || matrix.confidence || `${reviewLevel} · visible rows only`;
 
-    const focus = capture.snapshot?.watchLabel
-      ? `${watchLabel} is the main watch item because it is spending money but showing fewer results.`
-      : conversionLabel && conversionLabel !== spendLabel
-        ? `${conversionLabel} appears to be producing the clearest results. ${spendLabel} is spending the most money, so check that it is doing something useful before you add more budget.`
-        : `${spendLabel} is spending the most money, so check that it is doing something useful before you add more budget.`;
+    const focus = watchItem
+      ? `On this page, ${rowLabel(watchItem)} is the main watch item because it is spending money with weaker visible results.${watchItem.visibleDataNote && watchItem.visibleDataNote.startsWith('Low data') ? ' The visible volume is still low, so do not overreact yet.' : ''}${efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference ? ` ${rowLabel(efficientPerformer)} looks safer to protect.` : ''}${highestSpend && highestSpend.rowReference !== watchItem.rowReference ? ` ${rowLabel(highestSpend)} is where mistakes cost the most.` : ''}`
+      : 'On this page, the visible rows are still too limited for a confident read.';
 
     const nextSteps = [
-      `Check ${spendLabel} first. It is where mistakes cost the most.`,
+      watchItem ? `Check ${rowLabel(watchItem)} first. It is where mistakes would hurt most.` : 'Check the highest-spend row first. It is where mistakes would hurt most.',
+      efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
+        ? `Keep ${rowLabel(efficientPerformer)} protected for now. It appears to be producing results more efficiently.`
+        : 'Keep the clearer performer protected for now.',
+      platformAdvice(capture.platform, watchItem?.label || highestSpend?.label || ''),
     ];
-    if (conversionLabel && conversionLabel !== spendLabel) {
-      nextSteps.push(`Protect ${conversionLabel} if it keeps producing results efficiently.`);
+
+    const keySignals = [];
+    if (highestSpend) {
+      keySignals.push({ label: 'Highest spend', title: rowLabel(highestSpend), details: Number.isFinite(highestSpend.spend) ? `${formatNumber(highestSpend.spend, 2)} spent` : 'Highest spend' });
     }
-    nextSteps.push(platformAdvice(capture.platform));
+    if (strongestResult) {
+      keySignals.push({ label: 'Strongest result signal', title: rowLabel(strongestResult), details: Number.isFinite(strongestResult.resultValue) ? `${formatNumber(strongestResult.resultValue)} ${strongestResult.resultLabel}` : 'Strongest visible result signal' });
+    }
+    if (efficientPerformer) {
+      keySignals.push({ label: 'Best efficiency signal', title: rowLabel(efficientPerformer), details: Number.isFinite(efficientPerformer.efficiencyScore) ? `${formatNumber(efficientPerformer.efficiencyScore, 2)} ${efficientPerformer.roas ? 'ROAS' : 'result per spend'}` : 'Best visible efficiency signal' });
+    }
+    if (watchItem) {
+      keySignals.push({ label: 'Main watch item', title: rowLabel(watchItem), details: Number.isFinite(watchItem.spend)
+        ? `${formatNumber(watchItem.spend, 2)} spent · ${Number.isFinite(watchItem.resultValue) ? `${formatNumber(watchItem.resultValue)} ${watchItem.resultLabel}` : 'weak visible results'}`
+        : 'Meaningful spend with weak visible results' });
+    }
+    if (lowDataItem) {
+      keySignals.push({ label: 'Low data', title: rowLabel(lowDataItem), details: lowDataItem.visibleDataNote });
+    }
+    keySignals.push({ label: 'Review level', title: reviewLevel, details: 'Visible rows only' });
+
+    const attention = [
+      watchItem && watchItem.visibleDataNote && watchItem.visibleDataNote.startsWith('Low data')
+        ? `${rowLabel(watchItem)} has spend, but the visible volume is still low. Do not overreact yet.`
+        : (watchItem ? `${rowLabel(watchItem)} is the main watch item because it is spending money with weaker visible results.` : 'Check the highest-spend row first. It is where mistakes cost the most.'),
+      lowDataItem && lowDataItem.rowReference !== watchItem?.rowReference
+        ? `Treat ${rowLabel(lowDataItem)} as low confidence. Do not overreact until the visible volume improves.`
+        : (efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference ? `Keep ${rowLabel(efficientPerformer)} protected for now. It looks like the safer performer.` : 'Keep the clearer performer protected for now.'),
+      platformAdvice(capture.platform, watchItem?.label || highestSpend?.label || ''),
+    ];
+
+    const comparison = lowDataItem
+      ? ['This is a visible-page spot check.', `${rowLabel(lowDataItem)} should be treated as low confidence.`]
+      : ['This is a visible-page spot check.'];
 
     return {
       mode: 'single',
@@ -725,23 +800,16 @@
       rowsDetected: capture.rowsDetected,
       columnsDetected: capture.columnsDetected,
       metricColumns: capture.metricColumns,
-      reviewConfidence: capture.reviewConfidence,
+      reviewConfidence,
+      reviewLevel,
       previewRows: capture.previewRows,
       focus,
       nextSteps,
       summary: {
         executiveFinding: focus,
-        keySignals: [
-          { label: 'Biggest spend', title: spendLabel, details: Number.isFinite(spendValue) ? `This is spending ${formatNumber(spendValue, 2)}.` : 'This is spending the most money.' },
-          conversionLabel ? { label: 'Best results', title: conversionLabel, details: Number.isFinite(conversionValue) ? 'This appears to be getting results more efficiently.' : 'This appears to be getting the clearest results.' } : null,
-          capture.snapshot?.watchLabel ? { label: 'Main watch item', title: watchLabel, details: Number.isFinite(watchSpend) ? `${capture.platform} · spending ${formatNumber(watchSpend, 2)} with fewer results.` : `${capture.platform} · spending money but showing fewer results.` } : null,
-          { label: 'Confidence', title: 'Visible rows only', details: 'Spot check only.' },
-        ].filter(Boolean),
-        attention: [
-          `Check ${spendLabel} first. It is where mistakes cost the most.`,
-          conversionLabel && conversionLabel !== spendLabel ? `Protect ${conversionLabel} if it keeps producing results efficiently.` : 'Do not increase budget until another review confirms the pattern.',
-          platformAdvice(capture.platform),
-        ],
+        keySignals,
+        attention,
+        comparison,
         privacyNote: summary.privacyNote || EMPTY_ANALYSIS.summary.privacyNote,
       },
       sources: [capture],
@@ -752,101 +820,71 @@
   const buildBundleReview = (captures) => {
     if (!captures.length) return EMPTY_ANALYSIS;
     const orderedCaptures = sortCapturedTables(captures);
-
-    const spendCandidate = orderedCaptures
-      .map((capture) => ({ capture, value: getMetric(capture, 'spendValue') }))
-      .filter((item) => Number.isFinite(item.value))
-      .sort((a, b) => b.value - a.value)[0] || null;
-
-    const conversionCandidate = orderedCaptures
-      .map((capture) => ({ capture, value: getMetric(capture, 'conversionValue') }))
-      .filter((item) => Number.isFinite(item.value))
-      .sort((a, b) => b.value - a.value)[0] || null;
-
-    const efficiencyScore = (capture) => {
-      const roas = getMetric(capture, 'roasValue');
-      if (Number.isFinite(roas)) return roas;
-      const spend = getMetric(capture, 'spendValue');
-      const conversions = getMetric(capture, 'conversionValue');
-      if (Number.isFinite(spend) && spend > 0 && Number.isFinite(conversions)) return conversions / spend;
-      const watchSpend = getMetric(capture, 'watchSpendValue');
-      const watchConversions = getMetric(capture, 'watchConversionValue');
-      if (Number.isFinite(watchSpend) && watchSpend > 0 && Number.isFinite(watchConversions)) return watchConversions / watchSpend;
-      return null;
-    };
-
-    const watchCandidate = orderedCaptures
-      .map((capture) => ({ capture, score: efficiencyScore(capture) }))
-      .filter((item) => Number.isFinite(item.score))
-      .sort((a, b) => a.score - b.score)[0]
-      || spendCandidate;
-
+    const allRows = orderedCaptures.flatMap((capture) => (capture.decisionMatrix?.rows || []).map((row) => ({ ...row, platform: capture.platform })));
     const platforms = sortPlatformNames(orderedCaptures.map((capture) => capture.platform));
-    const previewRows = orderedCaptures.flatMap((capture) => capture.previewRows.slice(0, 2).map((row) => ({ ...row, source: capture.platform }))).slice(0, 5);
+    const multiPlatform = platforms.length > 1;
+    const reviewLevel = multiPlatform ? 'Cross-platform spot check' : 'One-page spot check';
+    const reviewConfidence = `${reviewLevel} · visible rows only`;
 
-    const spendLabel = spendCandidate?.capture?.snapshot?.spendLabel || spendCandidate?.capture?.platform || '';
-    const conversionLabel = conversionCandidate?.capture?.snapshot?.conversionLabel || '';
-    const watchLabel = watchCandidate?.capture?.snapshot?.watchLabel || watchCandidate?.capture?.platform || '';
+    const bySpend = [...allRows].filter((row) => Number.isFinite(row.spend)).sort((a, b) => (b.spend - a.spend) || ((b.resultValue || 0) - (a.resultValue || 0)));
+    const byResult = [...allRows].filter((row) => Number.isFinite(row.resultValue) || Number.isFinite(row.revenue)).sort((a, b) => {
+      const aValue = Number.isFinite(a.resultValue) ? a.resultValue : (Number.isFinite(a.revenue) ? a.revenue : -1);
+      const bValue = Number.isFinite(b.resultValue) ? b.resultValue : (Number.isFinite(b.revenue) ? b.revenue : -1);
+      return (bValue - aValue) || ((a.spend || 0) - (b.spend || 0));
+    });
+    const byEfficiency = [...allRows].filter((row) => Number.isFinite(row.efficiencyScore) && row.efficiencyScore > 0).sort((a, b) => (b.efficiencyScore - a.efficiencyScore) || ((a.spend || 0) - (b.spend || 0)));
+    const byWatch = [...allRows].filter((row) => Number.isFinite(row.spend) && row.spend > 0).map((row) => {
+      const weakSignal = Number.isFinite(row.resultValue) ? row.resultValue : 0;
+      const efficiencyPenalty = Number.isFinite(row.efficiencyScore) ? row.efficiencyScore : 0;
+      const lowDataPenalty = row.visibleDataNote?.startsWith('Low data') ? 2 : 0;
+      return { ...row, watchScore: (row.spend || 0) - (weakSignal * 10) - (efficiencyPenalty * 1000) - (lowDataPenalty * 500) };
+    }).sort((a, b) => (b.watchScore - a.watchScore) || (b.spend - a.spend));
+
+    const highestSpend = bySpend[0] || null;
+    const strongestResult = byResult[0] || null;
+    const efficientPerformer = byEfficiency[0] || strongestResult || highestSpend || null;
+    const watchItem = byWatch[0] || highestSpend || efficientPerformer || null;
+    const lowDataItem = [...allRows].filter((row) => row.visibleDataNote?.startsWith('Low data'))[0] || null;
+    const rowLabel = (row) => formatRowRef(row, multiPlatform);
 
     const keySignals = [];
-    if (spendCandidate) {
-      keySignals.push({
-        label: 'Biggest spend',
-        title: spendLabel,
-        details: `${spendCandidate.capture.platform} · spending ${formatNumber(spendCandidate.value, 2)}.`,
-      });
-    }
-    if (conversionCandidate) {
-      keySignals.push({
-        label: 'Best results',
-        title: conversionLabel || conversionCandidate.capture.platform,
-        details: `${conversionCandidate.capture.platform} · this appears to be getting results more efficiently.`,
-      });
-    }
-    if (watchCandidate) {
-      keySignals.push({
-        label: 'Main watch item',
-        title: watchLabel,
-        details: `${watchCandidate.capture.platform} · spending money but showing fewer results.`,
-      });
-    }
-    keySignals.push({
-      label: 'Confidence',
-      title: 'Visible rows only',
-      details: 'Spot check only.',
-    });
-    keySignals.push({
-      label: 'Platforms',
-      title: platforms.join(' · '),
-      details: `${orderedCaptures.length} tables in this session`,
-    });
-    keySignals.push({
-      label: 'Review confidence',
-      title: 'Visible rows only',
-      details: 'Session-only prototype',
-    });
+    if (highestSpend) keySignals.push({ label: 'Highest spend', title: rowLabel(highestSpend), details: `${shortPlatformName(highestSpend.platform)} · ${formatNumber(highestSpend.spend, 2)} spent` });
+    if (strongestResult) keySignals.push({ label: 'Strongest result signal', title: rowLabel(strongestResult), details: Number.isFinite(strongestResult.resultValue) ? `${formatNumber(strongestResult.resultValue)} ${strongestResult.resultLabel}` : 'Strongest visible result signal' });
+    if (efficientPerformer) keySignals.push({ label: 'Best efficiency signal', title: rowLabel(efficientPerformer), details: Number.isFinite(efficientPerformer.efficiencyScore) ? `${formatNumber(efficientPerformer.efficiencyScore, 2)} ${efficientPerformer.roas ? 'ROAS' : 'result per spend'}` : 'Best visible efficiency signal' });
+    if (watchItem) keySignals.push({ label: 'Main watch item', title: rowLabel(watchItem), details: `${shortPlatformName(watchItem.platform)} · ${Number.isFinite(watchItem.spend) ? `${formatNumber(watchItem.spend, 2)} spent` : 'meaningful spend'}${Number.isFinite(watchItem.resultValue) ? ` · ${formatNumber(watchItem.resultValue)} ${watchItem.resultLabel}` : ' · weak visible results'}` });
+    if (lowDataItem) keySignals.push({ label: 'Low data', title: rowLabel(lowDataItem), details: lowDataItem.visibleDataNote });
+    keySignals.push({ label: 'Review level', title: reviewLevel, details: 'Visible rows only' });
 
-    const focus = watchCandidate
-      ? `${watchLabel} is the main watch item because it is spending money but showing fewer results.`
-      : conversionCandidate
-        ? `${conversionLabel || conversionCandidate.capture.platform} appears to be producing the clearest results.`
-        : spendCandidate
-          ? `${spendLabel} is spending the most money.`
-          : 'Treat this as a visible-table spot check.';
-
-    const topFinding = focus;
+    const topFinding = watchItem
+      ? `${multiPlatform ? 'Across the visible tables' : 'On this page'}, ${rowLabel(watchItem)} is the main watch item because it is spending money with weaker visible results.${watchItem.visibleDataNote && watchItem.visibleDataNote.startsWith('Low data') ? ' The visible volume is still low, so do not overreact yet.' : ''}${efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference ? ` ${rowLabel(efficientPerformer)} looks safer to protect.` : ''}${highestSpend && highestSpend.rowReference !== watchItem.rowReference ? ` ${rowLabel(highestSpend)} is where mistakes cost the most.` : ''}`
+      : `${multiPlatform ? 'Across the visible tables' : 'On this page'}, the visible rows are still too limited for a confident read.`;
 
     const attention = [
-      spendCandidate ? `Check ${spendLabel} first. It is where mistakes cost the most.` : 'Check the highest-spend item first. It is where mistakes cost the most.',
-      conversionCandidate ? `Protect ${conversionLabel || 'the best-performing item'} if it keeps producing results efficiently.` : 'Do not increase budget until another review confirms the pattern.',
-      platformAdvice(watchCandidate?.capture?.platform),
+      watchItem && watchItem.visibleDataNote && watchItem.visibleDataNote.startsWith('Low data')
+        ? `${rowLabel(watchItem)} has spend, but the visible volume is still low. Do not overreact yet.`
+        : (watchItem ? `Check ${rowLabel(watchItem)} first. It is where mistakes would hurt most.` : 'Check the highest-spend row first. It is where mistakes would hurt most.'),
+      efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
+        ? `Keep ${rowLabel(efficientPerformer)} protected for now. It looks like the safer performer.`
+        : 'Keep the clearer performer protected for now.',
+      platformActionHint(watchItem?.platform || highestSpend?.platform || efficientPerformer?.platform, watchItem?.label || highestSpend?.label || efficientPerformer?.label || ''),
     ];
 
+    if (lowDataItem && lowDataItem.rowReference !== watchItem?.rowReference) {
+      attention.splice(1, 0, `Treat ${rowLabel(lowDataItem)} as low confidence. Do not overreact until the visible volume improves.`);
+    }
+
     const nextSteps = [
-      spendCandidate ? `Check ${spendLabel} first. It is where mistakes cost the most.` : 'Check the highest-spend item first. It is where mistakes cost the most.',
-      conversionCandidate ? `Protect ${conversionLabel || 'the best-performing item'} if it keeps producing results efficiently.` : 'Do not increase budget until another review confirms the pattern.',
-      platformAdvice(watchCandidate?.capture?.platform),
+      watchItem ? `Check ${rowLabel(watchItem)} first. It is where mistakes would hurt most.` : 'Check the highest-spend row first. It is where mistakes would hurt most.',
+      efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
+        ? `Keep ${rowLabel(efficientPerformer)} protected for now. It appears to be producing results more efficiently.`
+        : 'Keep the clearer performer protected for now.',
+      platformActionHint(watchItem?.platform || highestSpend?.platform || efficientPerformer?.platform, watchItem?.label || highestSpend?.label || efficientPerformer?.label || ''),
     ];
+
+    const previewRows = orderedCaptures.flatMap((capture) => capture.previewRows.slice(0, 2).map((row) => ({ ...row, source: capture.platform }))).slice(0, 5);
+    const comparison = lowDataItem
+      ? ['This is a visible-page spot check.', `${rowLabel(lowDataItem)} should be treated as low confidence.`]
+      : ['This is a visible-page spot check.'];
 
     return {
       mode: 'bundle',
@@ -856,14 +894,16 @@
       rowsDetected: orderedCaptures.reduce((sum, capture) => sum + (capture.rowsDetected || 0), 0),
       columnsDetected: orderedCaptures.reduce((sum, capture) => sum + (capture.columnsDetected || 0), 0),
       metricColumns: uniquePlatforms(orderedCaptures.flatMap((capture) => capture.metricColumns || [])),
-      reviewConfidence: 'Visible rows only · session-only prototype',
+      reviewConfidence,
+      reviewLevel,
       previewRows,
-      focus,
+      focus: topFinding,
       nextSteps,
       summary: {
         executiveFinding: topFinding,
         keySignals,
         attention,
+        comparison,
         privacyNote: EMPTY_ANALYSIS.summary.privacyNote,
       },
       sources: orderedCaptures,
