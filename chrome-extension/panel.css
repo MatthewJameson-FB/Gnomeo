@@ -152,9 +152,9 @@ h1 {
 }
 
 .composer {
-  padding: 6px;
+  padding: 5px;
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .workspace-card {
@@ -342,15 +342,13 @@ h1 {
 }
 
 .action-row {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  gap: 3px;
-  padding-bottom: 1px;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  overflow: visible;
+  gap: 4px;
+  padding-bottom: 0;
 }
-
-.action-row::-webkit-scrollbar { display: none; }
 
 .field-label, .card-label {
   font-size: 12px;
@@ -395,6 +393,10 @@ h1 {
 }
 
 .action-row .text-button {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  min-width: 0;
   min-height: 24px;
   padding: 0 8px;
   border-radius: 999px;
@@ -402,12 +404,27 @@ h1 {
   background: rgba(16, 32, 51, 0.04);
   color: #41536b;
   font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .action-row .primary-button {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  min-width: 0;
+  white-space: nowrap;
   min-height: 27px;
   padding: 0 10px;
   font-size: 11px;
+}
+
+.action-row .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .action-row .text-button:hover {
@@ -711,7 +728,8 @@ h1 {
 
 @media (max-width: 640px) {
   .panel { padding: 8px; }
-  .primary-button { width: 100%; }
+  .primary-button { width: auto; }
   .secondary-button { width: auto; }
-  .button-row { display: grid; }
+  .button-row { display: flex; }
+  .action-row { flex-wrap: wrap; }
 }
