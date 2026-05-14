@@ -120,6 +120,16 @@ h1 {
   gap: 2px;
 }
 
+.source-strip.is-unsupported {
+  background: linear-gradient(180deg, rgba(255,255,255,0.78) 0%, rgba(241,245,249,0.72) 100%);
+  border-left-color: rgba(96, 165, 250, 0.28);
+}
+
+.source-strip.is-unsupported .source-copy,
+.source-strip.is-unsupported .chip {
+  opacity: 0.78;
+}
+
 .source-strip-head {
   display: flex;
   align-items: center;
@@ -264,6 +274,8 @@ h1 {
   display: grid;
   gap: 6px;
   border-left: 3px solid var(--accent-strong);
+  position: relative;
+  overflow: hidden;
 }
 
 .focus-card.is-ready {
@@ -289,6 +301,61 @@ h1 {
 
 .focus-card.is-empty {
   background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(242,246,250,0.96) 100%);
+}
+
+.focus-card.is-unsupported {
+  background: linear-gradient(180deg, rgba(255,255,255,0.74) 0%, rgba(241,245,249,0.68) 100%);
+  border-left-color: rgba(96, 165, 250, 0.28);
+}
+
+.focus-card.is-unsupported .focus-text,
+.focus-card.is-unsupported .card-note {
+  opacity: 0.22;
+}
+
+.focus-card.is-unsupported .unsupported-guidance {
+  display: grid;
+}
+
+.unsupported-guidance {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  padding: 12px;
+  background: rgba(248, 251, 255, 0.66);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border-radius: inherit;
+}
+
+.unsupported-kicker {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(96, 165, 250, 0.12);
+  color: #27507a;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.unsupported-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.unsupported-copy {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .focus-card.is-ready .card-label,

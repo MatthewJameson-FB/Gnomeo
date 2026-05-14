@@ -89,6 +89,8 @@
     el.textContent = text;
   };
 
+  const isUnsupportedGuidanceMessage = (message = '') => /open a campaign table to unleash gnomeo/i.test(String(message || ''));
+
   const CHIP_VARIANTS = ['chip--info', 'chip--warn', 'chip--success', 'chip--neutral', 'chip--error'];
 
   const setChipText = (el, text, variant = 'info', hidden = false) => {
@@ -332,6 +334,7 @@
 
   const renderWorkspaceSection = () => {
     const flags = getVisibilityFlags();
+    const panelState = derivePanelState();
     const connected = Boolean(workspaceConnection?.token);
     const promptOpen = Boolean(workspacePromptOpen && flags.hasFreshAnalysis && !connected);
     const visible = promptOpen;
@@ -353,12 +356,13 @@
     const statusLine = $('workspaceStatusLine');
     const actionComplete = $('actionComplete');
     const checklistComplete = Boolean(actionComplete && !actionComplete.hidden);
+    const supported = panelState.supported;
 
     if (!flags.hasFreshAnalysis && workspacePromptOpen) workspacePromptOpen = false;
 
     if (workspaceCard) workspaceCard.hidden = !visible;
     if (workspaceMiniRow) workspaceMiniRow.hidden = !miniVisible;
-    if (!flags.hasSources || !flags.hasFreshAnalysis) {
+    if (!supported || !flags.hasSources || !flags.hasFreshAnalysis) {
       if (workspaceCard) workspaceCard.hidden = true;
       if (workspaceMiniRow) workspaceMiniRow.hidden = true;
       if (workspaceAction) workspaceAction.hidden = true;
@@ -386,7 +390,7 @@
       statusLine.hidden = !promptOpen;
     }
     if (workspaceAction) {
-      workspaceAction.hidden = !flags.canShowWorkspace || promptOpen || connected || checklistComplete;
+      workspaceAction.hidden = !flags.canShowWorkspace || promptOpen || connected || checklistComplete || !supported;
       workspaceAction.textContent = 'Save to workspace';
       workspaceAction.disabled = workspaceSaving;
     }
@@ -590,17 +594,17 @@
 
   const queryActiveTab = async () => {
     if (!tabsApi?.query) {
-      return { ok: false, error: { stage: 'active-tab', message: 'chrome.tabs.query is unavailable', userMessage: 'Open Google Ads, Meta Ads, or LinkedIn.' } };
+      return { ok: false, error: { stage: 'active-tab', message: 'chrome.tabs.query is unavailable', userMessage: 'Open a campaign table to unleash Gnomeo.' } };
     }
     return await new Promise((resolve) => {
       tabsApi.query({ active: true, currentWindow: true }, (tabs) => {
         const message = runtimeApi?.lastError?.message || '';
         if (message) {
-          resolve({ ok: false, error: { stage: 'active-tab', message, userMessage: 'Open Google Ads, Meta Ads, or LinkedIn.' } });
+          resolve({ ok: false, error: { stage: 'active-tab', message, userMessage: 'Open a campaign table to unleash Gnomeo.' } });
           return;
         }
         if (!Array.isArray(tabs) || !tabs.length || !tabs[0]?.id) {
-          resolve({ ok: false, error: { stage: 'active-tab', message: 'No active tab found', userMessage: 'Open Google Ads, Meta Ads, or LinkedIn.' } });
+          resolve({ ok: false, error: { stage: 'active-tab', message: 'No active tab found', userMessage: 'Open a campaign table to unleash Gnomeo.' } });
           return;
         }
         resolve({ ok: true, tab: tabs[0] });
@@ -610,13 +614,13 @@
 
   const sendMessageToTab = async (tabId, message) => {
     if (!tabsApi?.sendMessage) {
-      return { ok: false, error: { stage: 'message-send', message: 'chrome.tabs.sendMessage is unavailable', userMessage: 'Open Google Ads, Meta Ads, or LinkedIn.' } };
+      return { ok: false, error: { stage: 'message-send', message: 'chrome.tabs.sendMessage is unavailable', userMessage: 'Open a campaign table to unleash Gnomeo.' } };
     }
     return await new Promise((resolve) => {
       tabsApi.sendMessage(tabId, message, (response) => {
         const messageText = runtimeApi?.lastError?.message || '';
         if (messageText) {
-          resolve({ ok: false, error: { stage: 'message-send', message: messageText, userMessage: 'Open Google Ads, Meta Ads, or LinkedIn.' } });
+          resolve({ ok: false, error: { stage: 'message-send', message: messageText, userMessage: 'Open a campaign table to unleash Gnomeo.' } });
           return;
         }
         resolve({ ok: true, response });
@@ -704,7 +708,7 @@
       currentPageDebug.currentCaptureKey = captureKeyFromPlatform(currentPageDebug.currentPlatform);
       currentPageDebug.supportedPage = isSupportedPlatform(currentPageDebug.currentPlatform);
       currentPageDebug.contentScriptLoaded = Boolean(response.contentScriptLoaded);
-      currentPageDebug.lastExtractionStatus = response.error?.userMessage || 'Open Google Ads, Meta Ads, or LinkedIn.';
+      currentPageDebug.lastExtractionStatus = response.error?.userMessage || 'Open a campaign table to unleash Gnomeo.';
       currentPageDebug.lastError = response.error?.message || response.error?.userMessage || 'No content script response on this page.';
     }
 
@@ -846,7 +850,7 @@
     const addedText = addedPlatforms.length ? addedPlatforms.join(', ') : 'None yet';
     let note = '';
     if (!supported) {
-      note = 'Open Google Ads, Meta Ads, or LinkedIn.';
+      note = 'Open a campaign table to unleash Gnomeo.';
     } else if (state === 'empty') {
       note = 'Add a table.';
     } else if (state === 'current-added') {
@@ -869,14 +873,14 @@
       canAddTable: supported,
       buttonLabel: bundleCount > 0 && currentCaptureAdded ? 'Update table' : 'Add table',
       statusLine: !supported
-        ? 'Open Google Ads, Meta Ads, or LinkedIn.'
+        ? 'Open a campaign table to unleash Gnomeo.'
       : bundleCount === 0
           ? '0 sources · hungry'
           : state === 'current-added'
             ? (analysisFresh ? 'This table is already added.' : 'Analyse.')
             : state === 'current-missing'
               ? (analysisFresh ? 'Current ad page not added yet.' : 'Analyse.')
-              : 'Open Google Ads, Meta Ads, or LinkedIn.',
+              : 'Open a campaign table to unleash Gnomeo.',
       summaryChip: analysisFresh ? 'Analysis ready' : (bundleCount ? 'Needs analysis' : 'No analysis yet'),
     };
   };
@@ -886,6 +890,9 @@
     const analysisFresh = captureAnalysisFreshness();
     const analysedBefore = Boolean(analysisMeta.analysedAt);
     const currentCaptureAdded = derivePanelState().currentCaptureAdded;
+    if (!derivePanelState().supported) {
+      return { label: 'Open a campaign table', mode: 'unsupported' };
+    }
     if (bundleCount === 0) {
       return { label: 'Add table', mode: 'add' };
     }
@@ -1096,6 +1103,7 @@
 
   const currentActionSignature = () => [
     buildBundleSignature(capturedTables),
+    derivePanelState().supported ? '1' : '0',
     currentAnalysis?.mode || '',
     currentAnalysis?.success ? '1' : '0',
     currentAnalysis?.stale ? '1' : '0',
@@ -1149,7 +1157,10 @@
     const nextStepsCard = $('nextStepsCard');
     if (!checklist || !completion || !badge || !nextStepsCard) return;
 
-    const ready = Boolean(currentAnalysis?.success && !currentAnalysis?.stale);
+    const panelState = derivePanelState();
+    const unsupported = !panelState.supported;
+
+    const ready = Boolean(currentAnalysis?.success && !currentAnalysis?.stale && !unsupported);
     nextStepsCard.hidden = !ready;
     if (!ready) {
       checklist.innerHTML = '';
@@ -1339,21 +1350,21 @@
 
     if (addVisibleTableButton) {
       addVisibleTableButton.textContent = 'Update table';
-      addVisibleTableButton.hidden = capturedTables.length === 0;
-      addVisibleTableButton.disabled = !panelState.canAddTable || Boolean(pendingRequestId);
+      addVisibleTableButton.hidden = capturedTables.length === 0 || !panelState.supported;
+      addVisibleTableButton.disabled = !panelState.canAddTable || Boolean(pendingRequestId) || !panelState.supported;
     }
     if (primaryActionButton) {
       primaryActionButton.textContent = workspaceSaving ? 'Saving…' : primaryActionState.label;
-      primaryActionButton.disabled = Boolean(pendingRequestId) || workspaceSaving;
+      primaryActionButton.disabled = Boolean(pendingRequestId) || workspaceSaving || primaryActionState.mode === 'unsupported';
     }
     if (capturedCountInline) {
       capturedCountInline.textContent = sourceState.label;
     }
     renderSourceProgress();
     analyseNow.textContent = 'Analyse again';
-    analyseNow.hidden = !(currentAnalysis.success && !currentAnalysis.stale);
+    analyseNow.hidden = !(currentAnalysis.success && !currentAnalysis.stale && panelState.supported);
     analyseNow.disabled = Boolean(pendingRequestId);
-    clearCapturedTablesButton.hidden = !capturedTables.length;
+    clearCapturedTablesButton.hidden = !capturedTables.length || !panelState.supported;
     if (hint) hint.textContent = sourceState.copy;
     if (hint) hint.hidden = true;
     if (captureContextLine) {
@@ -1426,6 +1437,7 @@
     currentPageDebug.lastError = state.lastError || '';
     currentPageDebug.supportedPage = isSupportedPlatform(currentPageDebug.platform || currentPageDebug.currentPlatform || inferPlatformFromUrl(currentPageDebug.url));
     renderDebugState();
+    setAnalysis(currentAnalysis);
   };
 
   const requestDebugState = () => {
@@ -1438,11 +1450,12 @@
         return;
       }
       const error = response.error || {};
+      const guidance = error.userMessage || 'Open a campaign table to unleash Gnomeo.';
       currentPageDebug.contentScriptLoaded = Boolean(response.contentScriptLoaded);
-      currentPageDebug.lastExtractionStatus = error.userMessage || 'Open Google Ads, Meta Ads, or LinkedIn.';
+      currentPageDebug.lastExtractionStatus = guidance;
       currentPageDebug.lastError = error.message || error.userMessage || 'No content script response on this page.';
-      setStatus(error.userMessage || 'Open Google Ads, Meta Ads, or LinkedIn.');
-      setActionError(error.userMessage || error.message || '');
+      setStatus(guidance);
+      setActionError(isUnsupportedGuidanceMessage(guidance) ? '' : (error.userMessage || error.message || ''));
       renderDebugState();
     }, 0);
   };
@@ -1462,10 +1475,12 @@
   const setAnalysis = (analysis) => {
     currentAnalysis = analysis || EMPTY_ANALYSIS;
     const summary = currentAnalysis.summary || EMPTY_ANALYSIS.summary;
+    const sourceStrip = $('sourceStrip');
     const focusCard = $('focusCard');
     const focusText = $('focusText');
     const focusWhy = $('focusWhy');
     const focusConfidence = $('focusConfidence');
+    const unsupportedGuidance = $('unsupportedGuidance');
     const reviewContent = $('reviewContent');
     const panelState = derivePanelState();
     const reportText = $('fullReportText');
@@ -1475,7 +1490,8 @@
     const decision = deriveDecisionCard(currentAnalysis);
     const confidenceVariant = currentAnalysis.stale ? 'warn' : (currentAnalysis.success ? 'success' : 'neutral');
     const flags = getVisibilityFlags();
-    const ready = flags.hasFreshAnalysis;
+    const ready = flags.hasFreshAnalysis && panelState.supported;
+    const unsupported = !panelState.supported;
 
     if (analyseNowButton) {
       analyseNowButton.textContent = currentAnalysis.success && !currentAnalysis.stale ? 'Analyse again' : 'Analyse';
@@ -1511,12 +1527,15 @@
       meta.push(chipHTML('visible only', 'info'));
     }
     $('metaRow').innerHTML = meta.join('');
+    if (sourceStrip) sourceStrip.classList.toggle('is-unsupported', unsupported);
     focusCard.classList.toggle('is-ready', ready);
     focusCard.classList.toggle('is-stale', currentAnalysis.stale);
     focusCard.classList.toggle('is-empty', !ready && !currentAnalysis.stale);
+    focusCard.classList.toggle('is-unsupported', unsupported);
+    if (unsupportedGuidance) unsupportedGuidance.hidden = !unsupported;
     focusCard.hidden = false;
     renderActionChecklist();
-    reviewContent.hidden = !currentAnalysis.success && !currentAnalysis.stale;
+    reviewContent.hidden = unsupported || (!currentAnalysis.success && !currentAnalysis.stale);
     if (downloadButton) downloadButton.disabled = !currentAnalysis.success;
     if (reportSummary) {
       reportSummary.textContent = currentAnalysis.success
@@ -1526,7 +1545,14 @@
     if (reportText) {
       reportText.textContent = currentAnalysis.success ? buildReportMarkdown() : (currentAnalysis.stale ? 'Analyse to refresh.' : 'Add a table.');
     }
-    if (currentAnalysis.success) {
+    if (unsupported) {
+      focusText.textContent = 'Open a campaign table to unleash Gnomeo.';
+      if (focusWhy) focusWhy.textContent = 'Go to Google Ads, Meta Ads, or LinkedIn Campaign Manager. Use the Campaigns table, then click Add table.';
+      setChipText(focusConfidence, 'Open a supported page', 'neutral');
+      $('keySignals').innerHTML = '';
+      $('visiblePreview').innerHTML = '';
+      $('attentionList').innerHTML = '';
+    } else if (currentAnalysis.success) {
       focusText.textContent = decision.fixFirst || currentAnalysis.focus || summary.executiveFinding || EMPTY_ANALYSIS.summary.executiveFinding;
       if (focusWhy) focusWhy.textContent = `Why: ${decision.why || 'It is spending money, but not showing enough results yet.'}`;
       setChipText(focusConfidence, decision.caveat || 'visible only', confidenceVariant);
@@ -1541,9 +1567,11 @@
       $('visiblePreview').innerHTML = '';
       $('attentionList').innerHTML = '';
     } else {
-      focusText.textContent = 'Feed me a campaign table to start.';
-      if (focusWhy) focusWhy.textContent = 'Then I’ll explain why.';
-      setChipText(focusConfidence, 'hungry', 'neutral');
+      focusText.textContent = unsupported ? 'Open a campaign table to unleash Gnomeo.' : 'Feed me a campaign table to start.';
+      if (focusWhy) focusWhy.textContent = unsupported
+        ? 'Go to Google Ads, Meta Ads, or LinkedIn Campaign Manager. Use the Campaigns table, then click Add table.'
+        : 'Then I’ll explain why.';
+      setChipText(focusConfidence, unsupported ? 'Open a supported page' : 'hungry', 'neutral');
       $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 5), 'No visible signals found yet.');
       $('visiblePreview').innerHTML = renderPreview(currentAnalysis.previewRows);
       $('attentionList').innerHTML = renderLines(summary.attention.slice(0, 3), 'No attention notes yet.');
@@ -1792,7 +1820,7 @@
       currentPageDebug.lastExtractionStatus = message;
       currentPageDebug.lastError = error.message || message;
       setStatus(message);
-      setActionError(message);
+      setActionError(isUnsupportedGuidanceMessage(message) ? '' : message);
       renderDebugState();
       return;
     }
@@ -1818,7 +1846,7 @@
     if (!payload.success) {
       const message = payload.summary?.executiveFinding || 'Couldn’t find a visible campaign table on this page.';
       setStatus(message);
-      setActionError(message);
+      setActionError(isUnsupportedGuidanceMessage(message) ? '' : message);
       if (!capturedTables.length) {
         setAnalysis({
           ...EMPTY_ANALYSIS,
