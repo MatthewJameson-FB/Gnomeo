@@ -40,7 +40,11 @@
           <span class="chip chip--neutral" id="focusConfidence">visible only</span>
         </div>
         <p class="focus-text" id="focusText">Feed me a campaign table to start.</p>
-        <p class="card-note" id="focusWhy">Then I’ll explain why.</p>
+        <div class="focus-actions">
+          <button class="secondary-button" id="focusDone" type="button">Done</button>
+          <button class="text-button" id="focusWhyToggle" type="button">Why?</button>
+        </div>
+        <p class="card-note" id="focusWhy" hidden></p>
         <p class="focus-better" id="focusBetter" hidden></p>
         <p class="focus-caveat" id="focusCaveat" hidden></p>
         <div class="unsupported-guidance" id="unsupportedGuidance" hidden>
@@ -136,6 +140,11 @@
               </div>
               <div class="preview-list" id="visiblePreview"></div>
               <div class="bullet-list" id="attentionList"></div>
+              <div class="card-head compact-head">
+                <span class="card-label">Action queue</span>
+                <span class="chip">Burrow deeper</span>
+              </div>
+              <div class="action-burrow" id="actionBurrow"></div>
               <div class="card-head compact-head">
                 <span class="card-label">Report</span>
                 <span class="chip">Local</span>

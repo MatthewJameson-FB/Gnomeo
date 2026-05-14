@@ -54,6 +54,7 @@
   let actionChecklistState = {
     signature: '',
     doneIds: new Set(),
+    whyOpen: false,
   };
 
   const currentPageDebug = {
@@ -1107,10 +1108,15 @@
     currentAnalysis?.mode || '',
     currentAnalysis?.success ? '1' : '0',
     currentAnalysis?.stale ? '1' : '0',
+    currentAnalysis?.reviewLevel || '',
+    currentAnalysis?.reviewConfidence || '',
     currentAnalysis?.focus || '',
     currentAnalysis?.why || '',
     currentAnalysis?.nextBest || '',
     ...(Array.isArray(currentAnalysis?.nextSteps) ? currentAnalysis.nextSteps : []),
+    ...(Array.isArray(currentAnalysis?.actions)
+      ? currentAnalysis.actions.flatMap((item) => [item.id || '', item.label || '', item.text || '', item.help || ''])
+      : []),
   ].join('||');
 
   const syncActionChecklistState = () => {
@@ -1119,8 +1125,22 @@
       actionChecklistState = {
         signature,
         doneIds: new Set(),
+        whyOpen: false,
       };
     }
+  };
+
+  const getActionQueueState = () => {
+    const items = getActionItems();
+    const active = items.filter((item) => !actionChecklistState.doneIds.has(item.id));
+    const done = items.filter((item) => actionChecklistState.doneIds.has(item.id));
+    return {
+      items,
+      active,
+      done,
+      current: active[0] || null,
+      upNext: active[1] || null,
+    };
   };
 
   const getActionItems = () => {
@@ -1155,6 +1175,14 @@
     const completion = $('actionComplete');
     const badge = $('actionListBadge');
     const nextStepsCard = $('nextStepsCard');
+    const burrow = $('actionBurrow');
+    const focusText = $('focusText');
+    const focusWhy = $('focusWhy');
+    const focusConfidence = $('focusConfidence');
+    const focusBetter = $('focusBetter');
+    const focusCaveat = $('focusCaveat');
+    const focusDone = $('focusDone');
+    const focusWhyToggle = $('focusWhyToggle');
     if (!checklist || !completion || !badge || !nextStepsCard) return;
 
     const panelState = derivePanelState();
@@ -1164,15 +1192,46 @@
     nextStepsCard.hidden = !ready;
     if (!ready) {
       checklist.innerHTML = '';
+      if (burrow) burrow.innerHTML = '';
+      checklist.hidden = true;
       completion.hidden = true;
       badge.hidden = true;
+      if (focusDone) focusDone.hidden = true;
+      if (focusWhyToggle) focusWhyToggle.hidden = true;
       return;
     }
 
     syncActionChecklistState();
-    const items = getActionItems();
-    const active = items.filter((item) => !actionChecklistState.doneIds.has(item.id));
-    const done = items.filter((item) => actionChecklistState.doneIds.has(item.id));
+    const { items, active, done, current, upNext } = getActionQueueState();
+
+    if (focusText) focusText.textContent = current ? current.text : 'You’re done for now.';
+    if (focusWhy) {
+      const whyText = current?.help || current?.text || 'It is the clearest next step from the visible rows.';
+      focusWhy.hidden = !(actionChecklistState.whyOpen && Boolean(current));
+      focusWhy.textContent = whyText.startsWith('Why:') ? whyText : `Why: ${whyText}`;
+    }
+    if (focusBetter) {
+      focusBetter.hidden = !upNext;
+      if (upNext) focusBetter.textContent = `Up next: ${upNext.text}`;
+    }
+    if (focusCaveat) {
+      focusCaveat.hidden = !current;
+      if (current) focusCaveat.textContent = currentAnalysis.reviewLevel === 'spot check'
+        ? 'Based on visible rows, not a full account audit.'
+        : 'Based on visible rows, not a full account audit.';
+    }
+    if (focusConfidence) {
+      focusConfidence.textContent = current ? (currentAnalysis.reviewConfidence || 'visible only') : 'Complete';
+    }
+    if (focusDone) {
+      focusDone.hidden = !current;
+      focusDone.disabled = !current;
+      focusDone.textContent = 'Done';
+    }
+    if (focusWhyToggle) {
+      focusWhyToggle.hidden = !current;
+      focusWhyToggle.textContent = actionChecklistState.whyOpen ? 'Hide why' : 'Why?';
+    }
 
     const renderItem = (item, completed = false) => `
       <div class="action-item${completed ? ' is-done' : ''}" data-action-id="${escapeHtml(item.id)}">
@@ -1187,16 +1246,22 @@
       </div>`;
 
     const groups = [];
-    if (active.length) {
-      groups.push(`<div class="action-group">${active.map((item) => renderItem(item, false)).join('')}</div>`);
-    }
     if (done.length) {
       groups.push(`<div class="action-group">${done.map((item) => renderItem(item, true)).join('')}</div>`);
     }
-    checklist.innerHTML = groups.join('') || '<div class="action-item"><div><p class="action-text">No more actions.</p></div></div>';
+    checklist.innerHTML = groups.join('');
+    if (burrow) {
+      burrow.innerHTML = items.map((item) => `
+        <div class="action-burrow-item${actionChecklistState.doneIds.has(item.id) ? ' is-done' : ''}">
+          <strong>${escapeHtml(actionChecklistState.doneIds.has(item.id) ? `✓ Done: ${item.label}` : item.label)}</strong>
+          <p>${escapeHtml(item.text)}${item.help ? ` — ${escapeHtml(item.help)}` : ''}</p>
+        </div>
+      `).join('');
+    }
+    checklist.hidden = done.length === 0;
     completion.hidden = active.length !== 0;
     badge.hidden = false;
-    badge.textContent = active.length ? 'Ready' : 'Complete';
+    badge.textContent = active.length ? `${active.length} left` : 'Complete';
   };
 
   const toggleActionDone = (id) => {
@@ -1205,9 +1270,16 @@
       actionChecklistState.doneIds.delete(id);
     } else {
       actionChecklistState.doneIds.add(id);
+      actionChecklistState.whyOpen = false;
     }
     renderActionChecklist();
     renderWorkspaceSection();
+  };
+
+  const toggleCurrentWhy = () => {
+    syncActionChecklistState();
+    actionChecklistState.whyOpen = !actionChecklistState.whyOpen;
+    renderActionChecklist();
   };
 
   const openFullReport = () => {
@@ -1539,6 +1611,7 @@
     focusCard.classList.toggle('is-unsupported', unsupported);
     if (unsupportedGuidance) unsupportedGuidance.hidden = !unsupported;
     focusCard.hidden = false;
+    if (focusWhy) focusWhy.hidden = true;
     renderActionChecklist();
     reviewContent.hidden = unsupported || (!currentAnalysis.success && !currentAnalysis.stale);
     if (downloadButton) downloadButton.disabled = !currentAnalysis.success;
@@ -1635,7 +1708,7 @@
     const focus = watchItem
       ? (efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
         ? `Test moving a small amount of budget away from ${rowLabel(watchItem)} before spending more there.`
-        : `Hold budget on ${rowLabel(watchItem)} for now.`)
+        : `Do not add more budget to ${rowLabel(watchItem)} yet.`)
       : 'The rows are still too limited.';
 
     const why = watchItem
@@ -1760,7 +1833,7 @@
     const topFinding = watchItem
       ? (efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference
         ? `Test moving a small amount of budget away from ${rowLabel(watchItem)} before spending more there.${efficientPerformer ? ` ${rowLabel(efficientPerformer)} looks safer to keep running.` : ''}`
-        : `Hold budget on ${rowLabel(watchItem)} for now.`)
+        : `Do not add more budget to ${rowLabel(watchItem)} yet.`)
       : 'The rows are still too limited.';
 
     const why = watchItem
@@ -1949,6 +2022,8 @@
     const printPdfFromDoneButton = $('printPdfFromDone');
     const saveToWorkspaceFromDoneButton = $('saveToWorkspaceFromDone');
     const actionChecklist = $('actionChecklist');
+    const focusDoneButton = $('focusDone');
+    const focusWhyToggleButton = $('focusWhyToggle');
     const workspaceConnectButton = $('workspaceConnect');
     const workspaceCancelConnectButton = $('workspaceCancelConnect');
     const workspaceChangeButton = $('workspaceChange');
@@ -2015,6 +2090,11 @@
     readFullReportButton?.addEventListener('click', openFullReport);
     printPdfFromDoneButton?.addEventListener('click', downloadAnalysis);
     saveToWorkspaceFromDoneButton?.addEventListener('click', saveFromCompletion);
+    focusDoneButton?.addEventListener('click', () => {
+      const { current } = getActionQueueState();
+      if (current) toggleActionDone(current.id);
+    });
+    focusWhyToggleButton?.addEventListener('click', toggleCurrentWhy);
     actionChecklist?.addEventListener('click', (event) => {
       const button = event.target.closest?.('[data-action-done]');
       if (!button) return;
