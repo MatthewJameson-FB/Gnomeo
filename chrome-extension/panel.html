@@ -76,12 +76,17 @@
           <button id="primaryAction" class="primary-button" type="button">Add table</button>
           <button id="addVisibleTable" class="text-button" type="button" hidden>Update table</button>
           <button id="analyseNow" class="text-button" type="button" hidden>Analyse again</button>
-          <button id="workspaceAction" class="text-button" type="button" hidden>Workspace</button>
           <button id="clearCapturedTables" class="text-button danger" type="button">Clear</button>
         </div>
         <p class="status-line" id="captureStatus" hidden>0 sources · hungry</p>
         <p class="hint" id="captureHint" hidden>Add a table to start.</p>
         <p class="error-line" id="actionError" hidden></p>
+      </section>
+
+      <section class="analysis-actions" id="analysisActions" hidden>
+        <button id="readFullReportReport" class="secondary-button" type="button" disabled>Read report</button>
+        <button id="downloadAnalysis" class="secondary-button" type="button" disabled>Print / save PDF</button>
+        <button id="workspaceAction" class="text-button" type="button" hidden>Save for memory</button>
       </section>
 
       <section class="workspace-mini" id="workspaceMiniRow" hidden>
@@ -119,7 +124,7 @@
         <section class="details-card">
           <details id="detailsCard">
             <summary>
-              <span class="card-label">Burrow deeper</span>
+              <span class="card-label">Evidence</span>
               <span class="chip">Why</span>
             </summary>
             <div class="detail-body">
@@ -142,7 +147,7 @@
               <div class="bullet-list" id="attentionList"></div>
               <div class="card-head compact-head">
                 <span class="card-label">Action queue</span>
-                <span class="chip">Burrow deeper</span>
+                <span class="chip">Evidence</span>
               </div>
               <div class="action-burrow" id="actionBurrow"></div>
               <div class="card-head compact-head">
@@ -152,11 +157,6 @@
               <p class="report-copy" id="reportSummary">Open for the full note.</p>
               <div class="report-box">
                 <pre id="fullReportText">Add a table.</pre>
-              </div>
-              <div class="report-actions">
-                <button id="readFullReportReport" class="secondary-button" type="button" disabled>Read full report</button>
-                <button id="downloadAnalysis" class="secondary-button" type="button" disabled>Print / save PDF</button>
-                <button id="createWorkspaceReport" class="secondary-button" type="button" disabled>Create workspace report</button>
               </div>
               <p class="helper-note">Uses only the visible rows you added.</p>
               <details class="debug-card" id="debugCard" hidden>

@@ -167,6 +167,21 @@ h1 {
   gap: 4px;
 }
 
+.analysis-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 0 5px;
+}
+
+.analysis-actions .secondary-button,
+.analysis-actions .text-button {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
 .workspace-card {
   border: 1px solid var(--line);
   background: var(--panel);

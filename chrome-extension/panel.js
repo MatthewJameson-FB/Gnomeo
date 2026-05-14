@@ -393,8 +393,8 @@
       statusLine.hidden = !promptOpen;
     }
     if (workspaceAction) {
-      workspaceAction.hidden = !flags.canShowWorkspace || promptOpen || connected || checklistComplete || !supported;
-      workspaceAction.textContent = 'Save to workspace';
+      workspaceAction.hidden = !flags.canShowWorkspace || promptOpen || !supported;
+      workspaceAction.textContent = 'Save for memory';
       workspaceAction.disabled = workspaceSaving;
     }
     if (workspaceMiniStatus) {
@@ -468,6 +468,16 @@
 
   const buildExtensionReviewPayload = () => {
     const decision = deriveDecisionCard(currentAnalysis);
+    const model = currentAnalysis.reportModel || decision.reportModel || buildReportModel({
+      focus: decision.fixFirst || currentAnalysis.focus || currentAnalysis.summary?.executiveFinding || 'Visible only.',
+      why: decision.why || currentAnalysis.why || currentAnalysis.summary?.attention?.[0] || 'Visible only.',
+      nextBest: decision.nextBest || currentAnalysis.nextBest || currentAnalysis.nextSteps?.[1] || currentAnalysis.nextSteps?.[0] || '',
+      nextSteps: currentAnalysis.nextSteps || [],
+      keySignals: Array.isArray(currentAnalysis.summary?.keySignals) ? currentAnalysis.summary.keySignals : [],
+      sourcesReviewed: Array.isArray(currentAnalysis.platforms) ? currentAnalysis.platforms : [currentAnalysis.platform || 'Unknown'],
+      caveat: currentAnalysis.reviewConfidence || 'visible only',
+      reportLevel: currentAnalysis.reviewLevel || (currentAnalysis.mode === 'bundle' ? 'spot check' : 'visible only'),
+    });
     const level = currentAnalysis.mode === 'bundle' ? 'cross_platform_spot_check' : 'one_page_spot_check';
     const summary = currentAnalysis.summary || EMPTY_ANALYSIS.summary;
     const tables = Array.isArray(currentAnalysis.sources) ? currentAnalysis.sources : [];
@@ -500,23 +510,23 @@
       source: 'chrome_extension',
       report_mode: 'save_spot_check',
       review_level: level,
-      platforms: Array.isArray(decision.platforms) ? decision.platforms.slice(0, 6) : [currentAnalysis.platform || 'Unknown'],
-      top_finding: decision.fixFirst || currentAnalysis.focus || summary.executiveFinding || 'Visible only.',
-      next_steps: [decision.nextBest].filter(Boolean),
+      platforms: Array.isArray(model.sourcesReviewed) ? model.sourcesReviewed.slice(0, 6) : [currentAnalysis.platform || 'Unknown'],
+      top_finding: model.firstAction || decision.fixFirst || currentAnalysis.focus || summary.executiveFinding || 'Visible only.',
+      next_steps: [model.upNext || decision.nextBest].filter(Boolean),
       fix_first: {
-        label: decision.fixFirst,
-        reason: decision.why,
-        platform: Array.isArray(decision.platforms) ? decision.platforms[0] || currentAnalysis.platform || 'Unknown' : currentAnalysis.platform || 'Unknown',
-        action: decision.nextBest,
+        label: model.firstAction || decision.fixFirst,
+        reason: model.why || decision.why,
+        platform: Array.isArray(model.sourcesReviewed) ? model.sourcesReviewed[0] || currentAnalysis.platform || 'Unknown' : currentAnalysis.platform || 'Unknown',
+        action: model.upNext || decision.nextBest,
       },
-      why: decision.why,
+      why: model.why || decision.why,
       next_best: {
-        label: decision.nextBest,
-        action: decision.nextBest,
-        platform: Array.isArray(decision.platforms) ? decision.platforms[0] || currentAnalysis.platform || 'Unknown' : currentAnalysis.platform || 'Unknown',
+        label: model.upNext || decision.nextBest,
+        action: model.upNext || decision.nextBest,
+        platform: Array.isArray(model.sourcesReviewed) ? model.sourcesReviewed[0] || currentAnalysis.platform || 'Unknown' : currentAnalysis.platform || 'Unknown',
       },
       evidence: decision.evidence,
-      key_signals: Array.isArray(summary.keySignals) ? summary.keySignals.slice(0, 5).map((item) => `${item.label}: ${item.title}${item.details ? ` — ${item.details}` : ''}`) : [],
+      key_signals: Array.isArray(model.keySignals) ? model.keySignals.slice(0, 5).map((item) => `${item.label}: ${item.title}${item.details ? ` — ${item.details}` : ''}`) : [],
       table_summaries: tables.map((capture) => ({
         platform: capture.platform || 'Unknown',
         rows_detected: capture.rowsDetected || 0,
@@ -530,8 +540,8 @@
         ].filter(Boolean).slice(0, 3),
       })),
       visible_rows_note: 'This review only uses the visible table(s) you chose to save.',
-      confidence_note: decision.caveat || currentAnalysis.reviewConfidence || 'visible only · user-triggered extension save',
-      expected_impact: decision.fixFirst || summary.executiveFinding || 'Keeps the memory useful.',
+      confidence_note: model.caveat || decision.caveat || currentAnalysis.reviewConfidence || 'visible only · user-triggered extension save',
+      expected_impact: model.firstAction || decision.fixFirst || summary.executiveFinding || 'Keeps the memory useful.',
       generated_at: new Date().toISOString(),
       report_markdown: buildReportMarkdown(),
       visible_tables: visibleTables,
@@ -635,22 +645,7 @@
   };
 
   const triggerWorkspaceMiniAction = async () => {
-    const analysisReady = Boolean(currentAnalysis.success && !currentAnalysis.stale);
-    if (!analysisReady) return;
-    if (workspaceConnection.token) {
-      const href = workspaceConnection.portalUrl || workspaceConnection.rawInput || '';
-      if (href) window.open(href, '_blank', 'noreferrer');
-      return;
-    }
-    workspacePromptOpen = true;
-    workspacePendingSaveMode = '';
-    setWorkspaceError('');
-    renderWorkspaceSection();
-    const input = $('workspaceLinkInput');
-    if (input) {
-      input.focus();
-      input.select();
-    }
+    await createVisibleTableReport();
   };
 
   const queryActiveTab = async () => {
@@ -984,7 +979,6 @@
   const derivePrimaryActionState = () => {
     const bundleCount = capturedTables.length;
     const analysisFresh = captureAnalysisFreshness();
-    const analysedBefore = Boolean(analysisMeta.analysedAt);
     const currentCaptureAdded = derivePanelState().currentCaptureAdded;
     if (!derivePanelState().supported) {
       return { label: 'Open a campaign table', mode: 'unsupported' };
@@ -995,13 +989,10 @@
     if (!currentCaptureAdded) {
       return { label: 'Add table', mode: 'add' };
     }
-    if (!analysisFresh || currentAnalysis.stale || !currentAnalysis.success || !analysedBefore) {
+    if (!analysisFresh || currentAnalysis.stale || !currentAnalysis.success) {
       return { label: 'Analyse', mode: 'analyse' };
     }
-    if (workspaceConnection.token) {
-      return { label: 'Save to workspace', mode: 'save' };
-    }
-    return { label: 'Save to workspace', mode: 'prompt' };
+    return { label: 'Analyse again', mode: 'analyse' };
   };
 
   const canonicalPlatformName = (platform) => {
@@ -1076,6 +1067,39 @@
 
   const platformAdvice = (platform, label = '') => platformActionHint(platform, label);
 
+  const roundToNearest = (value, step = 100) => Math.round(Number(value) / step) * step;
+
+  const budgetTestSuggestion = ({ from, to, multiPlatform = false } = {}) => {
+    const spend = Number(from?.spend || 0);
+    if (!Number.isFinite(spend) || spend <= 0) return null;
+    let low = null;
+    let high = null;
+    if (spend >= 10000) { low = 500; high = 1000; }
+    else if (spend >= 5000) { low = 400; high = 800; }
+    else if (spend >= 2000) { low = 250; high = 500; }
+    else if (spend >= 1000) { low = 100; high = 250; }
+    if (low === null || high === null) return null;
+    const fromLabel = formatRowRef(from, multiPlatform);
+    const toLabel = formatRowRef(to, multiPlatform);
+    return {
+      text: `Test €${low.toLocaleString('en-GB')}-€${high.toLocaleString('en-GB')} from ${fromLabel} into ${toLabel}.`,
+      note: `I used the visible spend on ${fromLabel} and kept the test small.`,
+    };
+  };
+
+  const buildReportModel = ({ focus, why, nextBest, nextSteps = [], keySignals = [], sourcesReviewed = [], caveat = 'Visible rows only.', budgetTest = null, reportLevel = 'visible only' } = {}) => ({
+    title: 'Gnomeo Report',
+    firstAction: focus,
+    why,
+    upNext: nextBest,
+    actionQueue: [focus, nextBest, ...nextSteps.slice(2)].filter(Boolean).slice(0, 3),
+    keySignals,
+    sourcesReviewed,
+    caveat,
+    budgetTest,
+    reportLevel,
+  });
+
   const getMetric = (capture, key) => Number.isFinite(capture?.snapshot?.[key]) ? capture.snapshot[key] : null;
 
   const renderLines = (items, emptyLabel, kind = 'bullet') => {
@@ -1134,55 +1158,71 @@
     }
 
     const summary = currentAnalysis.summary || EMPTY_ANALYSIS.summary;
-    const level = currentAnalysis.reviewLevel || (currentAnalysis.mode === 'bundle' ? 'spot check' : 'visible only');
-    const platforms = Array.isArray(currentAnalysis.platforms) && currentAnalysis.platforms.length
-      ? currentAnalysis.platforms.join(', ')
-      : (currentAnalysis.platform || '—');
-    const keySignals = Array.isArray(summary.keySignals) ? summary.keySignals.slice(0, 5) : [];
-    const attention = Array.isArray(summary.attention) ? summary.attention.slice(0, 3) : [];
+    const reportModel = currentAnalysis.reportModel || buildReportModel({
+      focus: currentAnalysis.focus || summary.executiveFinding || '—',
+      why: currentAnalysis.why || summary.attention?.[0] || '—',
+      nextBest: currentAnalysis.nextBest || currentAnalysis.nextSteps?.[1] || currentAnalysis.nextSteps?.[0] || '',
+      nextSteps: currentAnalysis.nextSteps || [],
+      keySignals: Array.isArray(summary.keySignals) ? summary.keySignals : [],
+      sourcesReviewed: Array.isArray(currentAnalysis.platforms) ? currentAnalysis.platforms : [currentAnalysis.platform || '—'],
+      caveat: currentAnalysis.reviewConfidence || 'visible only',
+      reportLevel: currentAnalysis.reviewLevel || (currentAnalysis.mode === 'bundle' ? 'spot check' : 'visible only'),
+    });
+    const platforms = reportModel.sourcesReviewed.length ? reportModel.sourcesReviewed.join(', ') : (currentAnalysis.platform || '—');
+    const keySignals = Array.isArray(reportModel.keySignals) ? reportModel.keySignals.slice(0, 5) : [];
     const workspaceState = workspaceConnection.saved ? 'saved' : (workspaceConnection.token ? 'connected' : 'not connected');
-    const alsoProtect = currentAnalysis.nextBest || currentAnalysis.nextSteps?.[1] || currentAnalysis.nextSteps?.[0] || '';
     const lines = [
       '# Gnomeo',
-      `Do this now: ${currentAnalysis.focus || summary.executiveFinding || '—'}`,
-      `Why: ${currentAnalysis.why || summary.attention?.[0] || '—'}`,
-      ...(alsoProtect ? [`Also protect: ${alsoProtect}`] : []),
+      `Do this now: ${reportModel.firstAction || '—'}`,
+      `Why: ${reportModel.why || '—'}`,
+      ...(reportModel.upNext ? [`Up next: ${reportModel.upNext}`] : []),
       '',
       '## Signals',
       ...keySignals.map((item) => `- ${item.label}: ${item.title}${item.details ? ` — ${item.details}` : ''}`),
       '',
       '## Sources',
       `- ${platforms}`,
-      `- Review level: ${level}`,
+      `- Review level: ${reportModel.reportLevel}`,
       '',
       '## Next',
-      ...(currentAnalysis.nextSteps || []).slice(0, 3).map((item, index) => `${index + 1}. ${item}`),
+      ...(reportModel.actionQueue || []).slice(0, 3).map((item, index) => `${index + 1}. ${item}`),
       '',
       '## Caveat',
-      currentAnalysis.reviewConfidence || 'visible only',
+      reportModel.caveat || 'visible only',
       'Visible tables only.',
+      ...(reportModel.budgetTest?.note ? [reportModel.budgetTest.note] : []),
       '',
       '## Workspace',
       `- ${workspaceState}`,
       '',
       '## Notes',
-      ...attention.map((item) => `- ${item}`),
+      ...(Array.isArray(summary.attention) ? summary.attention.slice(0, 3).map((item) => `- ${item}`) : []),
     ];
     return lines.join('\n');
   };
 
   const deriveDecisionCard = (analysis = currentAnalysis) => {
     const summary = analysis?.summary || EMPTY_ANALYSIS.summary;
+    const model = analysis?.reportModel || buildReportModel({
+      focus: analysis?.focus || summary.executiveFinding || 'Add a table to get your first answer.',
+      why: analysis?.why || (Array.isArray(summary.attention) && summary.attention[0]) || 'It carries spend but shows weaker results than the other reviewed tables.',
+      nextBest: analysis?.nextBest || (Array.isArray(analysis?.nextSteps) && analysis.nextSteps[1]) || (Array.isArray(analysis?.nextSteps) && analysis.nextSteps[0]) || 'Keep the clearer performer running for now.',
+      nextSteps: analysis?.nextSteps || [],
+      keySignals: Array.isArray(summary.keySignals) ? summary.keySignals : [],
+      sourcesReviewed: Array.isArray(analysis?.platforms) ? analysis.platforms : [analysis?.platform || 'Local only'],
+      caveat: analysis?.reviewConfidence || 'visible only',
+      reportLevel: analysis?.reviewLevel || (analysis?.mode === 'bundle' ? 'spot check' : 'visible only'),
+    });
     const compact = (value) => String(value || '').replace(/\s+/g, ' ').trim();
     const firstSentence = (value) => compact(String(value || '').split(/(?<=[.!?])\s+/)[0] || value);
-    const firstCandidate = analysis?.fixFirst || (Array.isArray(analysis?.nextSteps) && analysis.nextSteps[0]) || analysis?.focus || summary.executiveFinding || 'Add a table to get your first answer.';
+    const firstCandidate = analysis?.fixFirst || model.firstAction || (Array.isArray(analysis?.nextSteps) && analysis.nextSteps[0]) || analysis?.focus || summary.executiveFinding || 'Add a table to get your first answer.';
     const fixFirst = compact(firstCandidate).replace(/^Start with\s+/i, '').replace(/^Check\s+/i, 'Check ').replace(/^Review\s+/i, 'Review ');
-    const whySource = analysis?.why || (Array.isArray(summary.attention) && summary.attention[0]) || (Array.isArray(summary.comparison) && summary.comparison[0]) || (Array.isArray(summary.keySignals) && summary.keySignals[0]?.details) || '';
+    const whySource = analysis?.why || model.why || (Array.isArray(summary.attention) && summary.attention[0]) || (Array.isArray(summary.comparison) && summary.comparison[0]) || (Array.isArray(summary.keySignals) && summary.keySignals[0]?.details) || '';
     const why = firstSentence(whySource || 'It carries spend but shows weaker results than the other reviewed tables.');
-    const nextBestRaw = analysis?.nextBest || (Array.isArray(analysis?.nextSteps) && analysis.nextSteps[1]) || (Array.isArray(analysis?.nextSteps) && analysis.nextSteps[0]) || 'Keep the clearest performer running for now.';
+    const nextBestRaw = analysis?.nextBest || model.upNext || (Array.isArray(analysis?.nextSteps) && analysis.nextSteps[1]) || (Array.isArray(analysis?.nextSteps) && analysis.nextSteps[0]) || 'Keep the clearer performer running for now.';
     const nextBest = firstSentence(nextBestRaw).replace(/^Keep\s+/i, 'Keep ');
-    const evidence = Array.isArray(summary.keySignals) ? summary.keySignals.slice(0, 3).map((item) => compact([item.label, item.title, item.details].filter(Boolean).join(' — '))) : [];
-    const platforms = Array.isArray(analysis?.platforms) ? analysis.platforms : [analysis?.platform || 'Local only'];
+    const evidence = Array.isArray(model.keySignals) ? model.keySignals.slice(0, 3).map((item) => compact([item.label, item.title, item.details].filter(Boolean).join(' — '))) : [];
+    const platforms = Array.isArray(model.sourcesReviewed) ? model.sourcesReviewed : [analysis?.platform || 'Local only'];
     const caveat = analysis?.stale
       ? 'Needs analysis'
       : (analysis?.reviewLevel === 'spot check' ? 'Spot check' : 'Ready');
@@ -1194,6 +1234,7 @@
       reviewLevel: analysis?.reviewLevel || (analysis?.mode === 'bundle' ? 'spot check' : 'visible only'),
       platforms,
       caveat,
+      reportModel: model,
     };
   };
 
@@ -1240,6 +1281,16 @@
 
   const getActionItems = () => {
     if (!currentAnalysis?.success || currentAnalysis?.stale) return [];
+    const model = currentAnalysis.reportModel || buildReportModel({
+      focus: currentAnalysis.focus || currentAnalysis.summary?.executiveFinding || 'Add a table first.',
+      why: currentAnalysis.why || 'It is spending money, but this table does not show enough results yet.',
+      nextBest: currentAnalysis.nextBest || currentAnalysis.nextSteps?.[1] || currentAnalysis.nextSteps?.[0] || 'Keep the clearer performer running as it is.',
+      nextSteps: currentAnalysis.nextSteps || [],
+      keySignals: Array.isArray(currentAnalysis.summary?.keySignals) ? currentAnalysis.summary.keySignals : [],
+      sourcesReviewed: Array.isArray(currentAnalysis.platforms) ? currentAnalysis.platforms : [currentAnalysis.platform || 'Local only'],
+      caveat: currentAnalysis.reviewConfidence || 'visible only',
+      reportLevel: currentAnalysis.reviewLevel || 'visible only',
+    });
     if (Array.isArray(currentAnalysis.actions) && currentAnalysis.actions.length) {
       return currentAnalysis.actions.slice(0, 3).map((item, index) => ({
         id: String(item.id || `action-${index}`),
@@ -1250,10 +1301,10 @@
     }
     const compact = (value) => String(value || '').replace(/\s+/g, ' ').trim();
     const items = [];
-    const first = compact(currentAnalysis.focus || currentAnalysis.summary?.executiveFinding || 'Add a table first.');
-    const why = compact(currentAnalysis.why || 'It is spending money, but this table does not show enough results yet.');
-    const second = compact(currentAnalysis.nextBest || currentAnalysis.nextSteps?.[1] || currentAnalysis.nextSteps?.[0] || 'Keep the clearer performer running as it is.');
-    const third = compact(currentAnalysis.nextSteps?.[2] || currentAnalysis.summary?.attention?.[2] || 'Read the full report for the details.');
+    const first = compact(model.firstAction || currentAnalysis.focus || currentAnalysis.summary?.executiveFinding || 'Add a table first.');
+    const why = compact(model.why || currentAnalysis.why || 'It is spending money, but this table does not show enough results yet.');
+    const second = compact(model.upNext || currentAnalysis.nextBest || currentAnalysis.nextSteps?.[1] || currentAnalysis.nextSteps?.[0] || 'Keep the clearer performer running as it is.');
+    const third = compact(model.actionQueue?.[2] || currentAnalysis.nextSteps?.[2] || currentAnalysis.summary?.attention?.[2] || 'Read the full report for the details.');
     const pushItem = (id, label, text, help = '') => {
       if (!text) return;
       if (items.some((item) => item.text === text)) return;
@@ -1284,20 +1335,18 @@
     const unsupported = !panelState.supported;
 
     const ready = Boolean(currentAnalysis?.success && !currentAnalysis?.stale && !unsupported);
-    nextStepsCard.hidden = !ready;
-    if (!ready) {
-      checklist.innerHTML = '';
-      if (burrow) burrow.innerHTML = '';
-      checklist.hidden = true;
-      completion.hidden = true;
-      badge.hidden = true;
-      if (focusDone) focusDone.hidden = true;
-      if (focusWhyToggle) focusWhyToggle.hidden = true;
-      return;
-    }
+    nextStepsCard.hidden = true;
+    checklist.innerHTML = '';
+    if (burrow) burrow.innerHTML = '';
+    checklist.hidden = true;
+    completion.hidden = true;
+    badge.hidden = true;
+    if (focusDone) focusDone.hidden = !ready;
+    if (focusWhyToggle) focusWhyToggle.hidden = !ready;
+    if (!ready) return;
 
     syncActionChecklistState();
-    const { items, active, done, current, upNext } = getActionQueueState();
+    const { current, upNext } = getActionQueueState();
 
     if (focusText) focusText.textContent = current ? current.text : 'You’re done for now.';
     if (focusWhy) {
@@ -1328,35 +1377,9 @@
       focusWhyToggle.textContent = actionChecklistState.whyOpen ? 'Hide why' : 'Why?';
     }
 
-    const renderItem = (item, completed = false) => `
-      <div class="action-item${completed ? ' is-done' : ''}" data-action-id="${escapeHtml(item.id)}">
-        <div>
-          ${completed
-            ? `<p class="action-text action-text--done">✓ ${escapeHtml(item.label)} — done</p>`
-            : `<div class="action-label"><span class="chip chip--neutral">${escapeHtml(item.label)}</span></div>
-               <p class="action-text">${escapeHtml(item.text)}</p>
-               ${item.help ? `<p class="action-help">${escapeHtml(item.help)}</p>` : ''}`}
-        </div>
-        <button class="action-done-button${completed ? ' is-done' : ''}" type="button" data-action-done="${escapeHtml(item.id)}">${completed ? 'Undo' : 'Done'}</button>
-      </div>`;
-
-    const groups = [];
-    if (done.length) {
-      groups.push(`<div class="action-group">${done.map((item) => renderItem(item, true)).join('')}</div>`);
-    }
-    checklist.innerHTML = groups.join('');
     if (burrow) {
-      burrow.innerHTML = items.map((item) => `
-        <div class="action-burrow-item${actionChecklistState.doneIds.has(item.id) ? ' is-done' : ''}">
-          <strong>${escapeHtml(actionChecklistState.doneIds.has(item.id) ? `✓ Done: ${item.label}` : item.label)}</strong>
-          <p>${escapeHtml(item.text)}${item.help ? ` — ${escapeHtml(item.help)}` : ''}</p>
-        </div>
-      `).join('');
+      burrow.innerHTML = '';
     }
-    checklist.hidden = done.length === 0;
-    completion.hidden = active.length !== 0;
-    badge.hidden = false;
-    badge.textContent = active.length ? `${active.length} left` : 'Complete';
   };
 
   const toggleActionDone = (id) => {
@@ -1413,13 +1436,20 @@
 
   const buildPrintableReportHtml = () => {
     if (!currentAnalysis || !currentAnalysis.success) return '';
-    const summary = currentAnalysis.summary || EMPTY_ANALYSIS.summary;
     const decision = deriveDecisionCard(currentAnalysis);
-    const platforms = Array.isArray(currentAnalysis.platforms) && currentAnalysis.platforms.length
-      ? currentAnalysis.platforms.join(', ')
-      : (currentAnalysis.platform || '—');
-    const keySignals = Array.isArray(summary.keySignals) ? summary.keySignals.slice(0, 5) : [];
-    const nextBest = decision.nextBest || currentAnalysis.nextBest || (currentAnalysis.nextSteps || [])[1] || (currentAnalysis.nextSteps || [])[0] || '—';
+    const model = currentAnalysis.reportModel || decision.reportModel || buildReportModel({
+      focus: decision.fixFirst || currentAnalysis.focus || currentAnalysis.summary?.executiveFinding || '—',
+      why: decision.why || currentAnalysis.why || currentAnalysis.summary?.attention?.[0] || '—',
+      nextBest: decision.nextBest || currentAnalysis.nextBest || (currentAnalysis.nextSteps || [])[1] || (currentAnalysis.nextSteps || [])[0] || '—',
+      nextSteps: currentAnalysis.nextSteps || [],
+      keySignals: Array.isArray(currentAnalysis.summary?.keySignals) ? currentAnalysis.summary.keySignals : [],
+      sourcesReviewed: Array.isArray(currentAnalysis.platforms) ? currentAnalysis.platforms : [currentAnalysis.platform || '—'],
+      caveat: currentAnalysis.reviewConfidence || 'visible only',
+      reportLevel: currentAnalysis.reviewLevel || (currentAnalysis.mode === 'bundle' ? 'spot check' : 'visible only'),
+    });
+    const platforms = Array.isArray(model.sourcesReviewed) && model.sourcesReviewed.length ? model.sourcesReviewed.join(', ') : (currentAnalysis.platform || '—');
+    const keySignals = Array.isArray(model.keySignals) ? model.keySignals.slice(0, 5) : [];
+    const nextBest = model.upNext || decision.nextBest || currentAnalysis.nextBest || (currentAnalysis.nextSteps || [])[1] || (currentAnalysis.nextSteps || [])[0] || '—';
     const workspaceState = workspaceConnection.saved ? 'saved' : (workspaceConnection.token ? 'connected' : 'not connected');
     const title = `gnomeo-review-${formatLocalDateStamp(new Date())}`;
     return `<!doctype html>
@@ -1459,8 +1489,8 @@
     </div>
 
     <div class="answer">
-      <p>${escapeHtml(currentAnalysis.focus || summary.executiveFinding || '—')}</p>
-      <div class="why">Why: ${escapeHtml(currentAnalysis.why || summary.attention?.[0] || '—')}</div>
+      <p>${escapeHtml(model.firstAction || '—')}</p>
+      <div class="why">Why: ${escapeHtml(model.why || '—')}</div>
     </div>
 
     <div class="section">
@@ -1479,7 +1509,7 @@
       <h2>Sources</h2>
       <div class="kv">
         <div><span>Platforms</span><strong>${escapeHtml(platforms)}</strong></div>
-        <div><span>Review level</span><strong>${escapeHtml(currentAnalysis.reviewLevel || (currentAnalysis.mode === 'bundle' ? 'spot check' : 'visible only'))}</strong></div>
+        <div><span>Review level</span><strong>${escapeHtml(model.reportLevel || currentAnalysis.reviewLevel || (currentAnalysis.mode === 'bundle' ? 'spot check' : 'visible only'))}</strong></div>
         <div><span>Workspace</span><strong>${escapeHtml(workspaceState)}</strong></div>
       </div>
     </div>
@@ -1493,7 +1523,7 @@
 
     <div class="section">
       <h2>Caveat</h2>
-      <p style="margin:0;font-size:12px;line-height:1.45;">${escapeHtml(currentAnalysis.reviewConfidence || 'visible only')} · visible tables only.</p>
+      <p style="margin:0;font-size:12px;line-height:1.45;">${escapeHtml(model.caveat || currentAnalysis.reviewConfidence || 'visible only')} · visible tables only.</p>
     </div>
 
     <div class="fine">No raw rows, screenshots, or private workspace token.</div>
@@ -1659,9 +1689,20 @@
     const reportSummary = $('reportSummary');
     const downloadButton = $('downloadAnalysis');
     const readFullReportButton = $('readFullReportReport');
-    const createWorkspaceReportButton = $('createWorkspaceReport');
+    const analysisActions = $('analysisActions');
+    const workspaceActionButton = $('workspaceAction');
     const analyseNowButton = $('analyseNow');
     const decision = deriveDecisionCard(currentAnalysis);
+    const reportModel = currentAnalysis.reportModel || decision.reportModel || buildReportModel({
+      focus: decision.fixFirst || currentAnalysis.focus || summary.executiveFinding || EMPTY_ANALYSIS.summary.executiveFinding,
+      why: decision.why || currentAnalysis.why || summary.attention?.[0] || 'It is spending money, but not showing enough results yet.',
+      nextBest: decision.nextBest || currentAnalysis.nextBest || currentAnalysis.nextSteps?.[1] || currentAnalysis.nextSteps?.[0] || '',
+      nextSteps: currentAnalysis.nextSteps || [],
+      keySignals: Array.isArray(summary.keySignals) ? summary.keySignals : [],
+      sourcesReviewed: Array.isArray(currentAnalysis.platforms) ? currentAnalysis.platforms : [currentAnalysis.platform || 'Local only'],
+      caveat: currentAnalysis.reviewConfidence || 'visible only',
+      reportLevel: currentAnalysis.reviewLevel || (currentAnalysis.mode === 'bundle' ? 'spot check' : 'visible only'),
+    });
     const confidenceVariant = currentAnalysis.stale ? 'warn' : (currentAnalysis.success ? 'success' : 'neutral');
     const flags = getVisibilityFlags();
     const ready = flags.hasFreshAnalysis && panelState.supported;
@@ -1711,9 +1752,10 @@
     if (focusWhy) focusWhy.hidden = true;
     renderActionChecklist();
     reviewContent.hidden = unsupported || (!currentAnalysis.success && !currentAnalysis.stale);
-    if (downloadButton) downloadButton.disabled = !currentAnalysis.success;
-    if (readFullReportButton) readFullReportButton.disabled = !currentAnalysis.success;
-    if (createWorkspaceReportButton) createWorkspaceReportButton.disabled = !currentAnalysis.success || workspaceSaving;
+    if (downloadButton) downloadButton.disabled = !ready;
+    if (readFullReportButton) readFullReportButton.disabled = !ready;
+    if (analysisActions) analysisActions.hidden = !ready;
+    if (workspaceActionButton) workspaceActionButton.hidden = !ready;
     if (reportSummary) {
       reportSummary.textContent = currentAnalysis.success
         ? 'Open for the full note.'
@@ -1732,20 +1774,20 @@
       $('visiblePreview').innerHTML = '';
       $('attentionList').innerHTML = '';
     } else if (currentAnalysis.success) {
-      focusText.textContent = decision.fixFirst || currentAnalysis.focus || summary.executiveFinding || EMPTY_ANALYSIS.summary.executiveFinding;
-      if (focusWhy) focusWhy.textContent = `Why: ${decision.why || 'It is spending money, but not showing enough results yet.'}`;
-      const betterOption = decision.nextBest || currentAnalysis.nextBest || currentAnalysis.nextSteps?.[1] || currentAnalysis.nextSteps?.[0] || '';
+      focusText.textContent = reportModel.firstAction || decision.fixFirst || currentAnalysis.focus || summary.executiveFinding || EMPTY_ANALYSIS.summary.executiveFinding;
+      if (focusWhy) focusWhy.textContent = `Why: ${reportModel.why || decision.why || 'It is spending money, but not showing enough results yet.'}`;
+      const betterOption = reportModel.upNext || decision.nextBest || currentAnalysis.nextBest || currentAnalysis.nextSteps?.[1] || currentAnalysis.nextSteps?.[0] || '';
       if ($('focusBetter')) {
         $('focusBetter').hidden = !betterOption;
-        if (betterOption) $('focusBetter').textContent = `Better option: ${betterOption}`;
+        if (betterOption) $('focusBetter').textContent = `Up next: ${betterOption}`;
       }
       if ($('focusCaveat')) {
         $('focusCaveat').hidden = false;
-        $('focusCaveat').textContent = currentAnalysis.reviewLevel === 'spot check'
+        $('focusCaveat').textContent = reportModel.reportLevel === 'spot check'
           ? 'This is a spot-check recommendation from the visible table data.'
           : 'Based on the visible rows, not a full account audit.';
       }
-      setChipText(focusConfidence, decision.caveat || 'visible only', confidenceVariant);
+      setChipText(focusConfidence, reportModel.caveat || decision.caveat || 'visible only', confidenceVariant);
       $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 5), 'No visible signals found yet.');
       $('visiblePreview').innerHTML = renderPreview(currentAnalysis.previewRows);
       $('attentionList').innerHTML = renderLines(summary.attention.slice(0, 3), 'No attention notes yet.');
@@ -1803,10 +1845,12 @@
     const reviewLevel = capture.reviewLevel || matrix.reviewLevel || 'visible only';
     const reviewConfidence = capture.reviewConfidence || matrix.confidence || 'visible only';
 
+    const budgetTest = budgetTestSuggestion({ from: watchItem, to: efficientPerformer, multiPlatform: false });
     const focus = watchItem
-      ? (efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
-        ? `Test moving a small amount of budget away from ${rowLabel(watchItem)} before spending more there.`
-        : `Do not add more budget to ${rowLabel(watchItem)} yet.`)
+      ? (budgetTest?.text
+        || (efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
+          ? `Test moving a small amount of budget away from ${rowLabel(watchItem)} into ${rowLabel(efficientPerformer)}.`
+          : `Do not add more budget to ${rowLabel(watchItem)} yet.`))
       : 'The rows are still too limited.';
 
     const why = watchItem
@@ -1814,7 +1858,7 @@
       : 'The rows are still too limited.';
 
     const nextBest = efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
-      ? `${rowLabel(efficientPerformer)} looks safer to keep running.`
+      ? `${rowLabel(efficientPerformer)} looks safer to keep running while you review ${rowLabel(watchItem)}.`
       : 'Keep the clearer performer running as it is.';
 
     const nextSteps = [
@@ -1855,6 +1899,18 @@
       ? ['This is a visible-page spot check.', `${rowLabel(lowDataItem)} should be treated as low confidence.`]
       : ['This is a visible-page spot check.'];
 
+    const reportModel = buildReportModel({
+      focus,
+      why,
+      nextBest,
+      nextSteps,
+      keySignals,
+      sourcesReviewed: [capture.platform],
+      caveat: reviewConfidence,
+      budgetTest,
+      reportLevel: reviewLevel,
+    });
+
     return {
       mode: 'single',
       success: true,
@@ -1886,6 +1942,7 @@
       },
       sources: [capture],
       platforms: [capture.platform],
+      reportModel,
     };
   };
 
@@ -1928,9 +1985,10 @@
     if (lowDataItem) keySignals.push({ label: 'Not enough data yet', title: rowLabel(lowDataItem), details: lowDataItem.visibleDataNote });
     keySignals.push({ label: 'Review level', title: reviewLevel, details: 'visible only' });
 
+    const budgetTest = budgetTestSuggestion({ from: watchItem, to: efficientPerformer, multiPlatform });
     const topFinding = watchItem
       ? (efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference
-        ? `Test moving a small amount of budget away from ${rowLabel(watchItem)} before spending more there.${efficientPerformer ? ` ${rowLabel(efficientPerformer)} looks safer to keep running.` : ''}`
+        ? (budgetTest?.text || `Test moving a small amount of budget away from ${rowLabel(watchItem)} before spending more there.${efficientPerformer ? ` ${rowLabel(efficientPerformer)} looks safer to keep running.` : ''}`)
         : `Do not add more budget to ${rowLabel(watchItem)} yet.`)
       : 'The rows are still too limited.';
 
@@ -1941,7 +1999,7 @@
     const attention = [
       watchItem ? (efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference ? `Test moving a small amount away from ${rowLabel(watchItem)}.` : `Hold budget on ${rowLabel(watchItem)} for now.`) : 'Do not add more budget to the highest-spend row yet.',
       efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
-        ? `${rowLabel(efficientPerformer)} looks safer to keep running.`
+        ? `${rowLabel(efficientPerformer)} looks safer to keep running while you review ${rowLabel(watchItem)}.`
         : 'Keep the clearer performer running as it is.',
       platformActionHint(watchItem?.platform || highestSpend?.platform || efficientPerformer?.platform, watchItem?.label || highestSpend?.label || efficientPerformer?.label || ''),
     ];
@@ -1962,6 +2020,18 @@
     const comparison = lowDataItem
       ? ['This is a visible-page spot check.', `${rowLabel(lowDataItem)} should be treated as low confidence.`]
       : ['This is a visible-page spot check.'];
+
+    const reportModel = buildReportModel({
+      focus: topFinding,
+      why,
+      nextBest: nextSteps[1] || nextSteps[0] || '',
+      nextSteps,
+      keySignals,
+      sourcesReviewed: orderedCaptures.map((capture) => capture.platform),
+      caveat: reviewConfidence,
+      budgetTest,
+      reportLevel: reviewLevel,
+    });
 
     return {
       mode: 'bundle',
@@ -1994,6 +2064,7 @@
       },
       sources: orderedCaptures,
       platforms,
+      reportModel,
     };
   };
 
@@ -2118,7 +2189,6 @@
     const clearCapturedTablesButton = $('clearCapturedTables');
     const downloadAnalysisButton = $('downloadAnalysis');
     const readFullReportReportButton = $('readFullReportReport');
-    const createWorkspaceReportButton = $('createWorkspaceReport');
     const readFullReportButton = $('readFullReport');
     const printPdfFromDoneButton = $('printPdfFromDone');
     const saveToWorkspaceFromDoneButton = $('saveToWorkspaceFromDone');
@@ -2192,7 +2262,6 @@
     clearCapturedTablesButton?.addEventListener('click', clearCapturedTables);
     downloadAnalysisButton?.addEventListener('click', downloadAnalysis);
     readFullReportReportButton?.addEventListener('click', openFullReport);
-    createWorkspaceReportButton?.addEventListener('click', createVisibleTableReport);
     readFullReportButton?.addEventListener('click', openFullReport);
     printPdfFromDoneButton?.addEventListener('click', downloadAnalysis);
     saveToWorkspaceFromDoneButton?.addEventListener('click', saveFromCompletion);
