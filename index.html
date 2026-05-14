@@ -1,1020 +1,572 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gnomeo — Know what deserves attention in your ad spend</title>
-    <meta name="description" content="Gnomeo helps you review visible campaign tables in Chrome, save useful spot checks to a private workspace, and compare over time." />
-
-    
-    <!-- SEO -->
-    <link rel="canonical" href="https://www.gnomeo.nl/" />
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="Gnomeo — Know what deserves attention in your ad spend" />
-    <meta property="og:description" content="Gnomeo helps you review visible campaign tables in Chrome, save useful spot checks to a private workspace, and compare over time." />
-    <meta property="og:url" content="https://www.gnomeo.nl/" />
-    <meta property="og:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Gnomeo — Know what deserves attention in your ad spend" />
-    <meta name="twitter:description" content="Gnomeo helps you review visible campaign tables in Chrome, save useful spot checks to a private workspace, and compare over time." />
-    <meta name="twitter:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
-    <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Organization",
-      "name": "Gnomeo",
-      "url": "https://www.gnomeo.nl/",
-      "logo": "https://www.gnomeo.nl/gnomeo-logo.png?v=3"
-    },
-    {
-      "@type": "WebSite",
-      "name": "Gnomeo",
-      "url": "https://www.gnomeo.nl/",
-      "publisher": {
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gnomeo — Find the first thing to fix in your ad spend.</title>
+  <meta name="description" content="Gnomeo is a Chrome-first review layer for Google Ads, Meta Ads, and LinkedIn. Feed visible campaign tables, get a plain-English first fix, then save useful reviews to your private workspace." />
+  <link rel="canonical" href="https://www.gnomeo.nl/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Gnomeo — Find the first thing to fix in your ad spend." />
+  <meta property="og:description" content="Feed visible campaign tables in Chrome, get a plain-English first fix, then save useful reviews to your private workspace." />
+  <meta property="og:url" content="https://www.gnomeo.nl/" />
+  <meta property="og:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Gnomeo — Find the first thing to fix in your ad spend." />
+  <meta name="twitter:description" content="Feed visible campaign tables in Chrome, get a plain-English first fix, then save useful reviews to your private workspace." />
+  <meta name="twitter:image" content="https://www.gnomeo.nl/gnomeo-logo.png?v=3" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
         "@type": "Organization",
-        "name": "Gnomeo"
+        "name": "Gnomeo",
+        "url": "https://www.gnomeo.nl/",
+        "logo": "https://www.gnomeo.nl/gnomeo-logo.png?v=3"
+      },
+      {
+        "@type": "WebSite",
+        "name": "Gnomeo",
+        "url": "https://www.gnomeo.nl/",
+        "publisher": {
+          "@type": "Organization",
+          "name": "Gnomeo"
+        }
       }
+    ]
+  }
+  </script>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --surface: rgba(255, 255, 255, 0.92);
+      --surface-strong: #ffffff;
+      --text: #0f172a;
+      --muted: #5b6474;
+      --line: rgba(15, 23, 42, 0.10);
+      --accent: #0f172a;
+      --accent-soft: #1d4ed8;
+      --good: #166534;
+      --shadow: 0 20px 55px rgba(15, 23, 42, 0.08);
+      color-scheme: light;
     }
-  ]
-}
-    </script>
-    <!-- /SEO -->
-<style>
-      :root {
-        --bg: #f6f7fb;
-        --surface: #ffffff;
-        --surface-soft: rgba(255, 255, 255, 0.78);
-        --text: #0f172a;
-        --muted: #5b6474;
-        --line: #e6e8ef;
-        --accent: #0f172a;
-        --accent-soft: #1d4ed8;
-        --shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
-        color-scheme: light;
-      }
 
-      * { box-sizing: border-box; }
-      html { scroll-behavior: smooth; }
-      body {
-        margin: 0;
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        color: var(--text);
-        background:
-          radial-gradient(circle at top, rgba(29, 78, 216, 0.08), transparent 34%),
-          linear-gradient(180deg, #f8fafc 0%, #ffffff 36%, #f7f8fb 100%);
-        line-height: 1.5;
-      }
-
-      a { color: inherit; }
-
-      .wrap {
-        max-width: 1160px;
-        margin: 0 auto;
-        padding: 18px 20px 32px;
-      }
-
-      .site-nav {
-        position: sticky;
-        top: 0;
-        z-index: 20;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        padding: 16px 18px;
-        margin: 0 -8px 18px;
-        border: 1px solid rgba(230, 232, 239, 0.85);
-        border-radius: 20px;
-        background: rgba(255, 255, 255, 0.78);
-        backdrop-filter: blur(14px);
-        box-shadow: 0 8px 30px rgba(15, 23, 42, 0.05);
-      }
-
-      .brand {
-        display: inline-flex;
-        align-items: center;
-        text-decoration: none;
-        min-width: 0;
-      }
-
-      .brand-name {
-        font-weight: 700;
-        letter-spacing: -0.05em;
-        font-size: 1.04rem;
-        white-space: nowrap;
-      }
-
-      .nav-cta {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 42px;
-        padding: 0 16px;
-        border-radius: 999px;
-        text-decoration: none;
-        border: 1px solid #d7dbe3;
-        background: #0f172a;
-        color: #fff;
-        font-size: 14px;
-        font-weight: 650;
-        transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
-      }
-      .nav-cta:hover {
-        transform: translateY(-1px);
-        background: #111c31;
-        border-color: #cfd6e3;
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
-      }
-
-      .mini-links {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin: -2px 4px 4px;
-        font-size: 13px;
-        color: var(--muted);
-      }
-      .mini-links a {
-        text-decoration: none;
-        padding: 4px 8px;
-        border-radius: 999px;
-        border: 1px solid transparent;
-      }
-      .mini-links a:hover { color: var(--accent-soft); border-color: var(--line); background: rgba(255,255,255,0.65); }
-
-      .hero {
-        max-width: 920px;
-        margin: 0 auto;
-        padding: clamp(44px, 5vw, 72px) 0 24px;
-        text-align: center;
-      }
-
-      .hero-logo {
-        display: block;
-        width: clamp(300px, 36vw, 360px);
-        max-width: 72vw;
-        height: auto;
-        object-fit: contain;
-        margin: 0 auto 28px;
-      }
-
-      .eyebrow {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        border-radius: 999px;
-        border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.88);
-        color: var(--accent-soft);
-        font-size: 13px;
-        font-weight: 650;
-        margin-bottom: 18px;
-      }
-
-      h1 {
-        margin: 0;
-        font-size: clamp(2.7rem, 7vw, 5.2rem);
-        line-height: 0.94;
-        letter-spacing: -0.065em;
-      }
-
-      .subhead {
-        max-width: 760px;
-        margin: 16px auto 0;
-        font-size: clamp(1.05rem, 2vw, 1.2rem);
-        color: var(--muted);
-      }
-
-      .cta-row {
-        display: flex;
-        justify-content: center;
-        gap: 12px;
-        margin-top: 22px;
-        flex-wrap: wrap;
-      }
-
-      .button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 52px;
-        padding: 0 20px;
-        border: 0;
-        border-radius: 14px;
-        background: var(--accent);
-        color: #fff;
-        font-weight: 700;
-        font-size: 15px;
-        text-decoration: none;
-        cursor: pointer;
-        transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
-        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.14);
-      }
-      .button:hover { background: #111c31; transform: translateY(-1px); }
-      .button:focus-visible { outline: 3px solid rgba(29, 78, 216, 0.25); outline-offset: 3px; }
-
-      .ghost {
-        background: #fff;
-        color: var(--text);
-        border: 1px solid var(--line);
-        box-shadow: none;
-      }
-      .ghost:hover { background: #f9fafb; }
-
-      .trust {
-        text-align: center;
-        color: var(--muted);
-        font-size: 14px;
-        margin-top: 18px;
-        max-width: 760px;
-        margin-left: auto;
-        margin-right: auto;
-        line-height: 1.45;
-      }
-
-      section {
-        padding: 36px 0;
-      }
-
-      .section-head {
-        text-align: center;
-        margin-bottom: 14px;
-      }
-
-      .section-head h2 {
-        margin: 0;
-        font-size: clamp(1.5rem, 3vw, 2.2rem);
-        letter-spacing: -0.04em;
-      }
-
-      .section-head p {
-        margin: 10px auto 0;
-        color: var(--muted);
-        max-width: 720px;
-      }
-
-      .grid-4,
-      .grid-3,
-      .grid-2 {
-        display: grid;
-        gap: 16px;
-      }
-      .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
-      .card {
-        background: var(--surface);
-        border: 1px solid var(--line);
-        border-radius: 24px;
-        padding: 22px;
-        box-shadow: var(--shadow);
-      }
-
-      .card h3 {
-        margin: 0 0 8px;
-        font-size: 1.02rem;
-      }
-
-      .card p {
-        margin: 0;
-        color: var(--muted);
-      }
-
-      .ordered {
-        counter-reset: step;
-      }
-      .ordered .card {
-        position: relative;
-        padding-top: 52px;
-      }
-      .ordered .card::before {
-        counter-increment: step;
-        content: counter(step);
-        position: absolute;
-        top: 20px;
-        left: 20px;
-        width: 30px;
-        height: 30px;
-        border-radius: 999px;
-        background: #eef4ff;
-        color: #1d4ed8;
-        display: grid;
-        place-items: center;
-        font-size: 13px;
-        font-weight: 700;
-      }
-
-      .offer {
-        background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
-      }
-
-      .offer strong {
-        display: inline-block;
-        font-size: 1.05rem;
-        margin-bottom: 8px;
-      }
-
-      .report-preview {
-        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-      }
-
-      .report-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin: 0 0 16px;
-      }
-
-      .report-pill {
-        display: inline-flex;
-        align-items: center;
-        padding: 8px 12px;
-        border-radius: 999px;
-        border: 1px solid var(--line);
-        background: #fff;
-        color: var(--muted);
-        font-size: 13px;
-        font-weight: 600;
-      }
-
-      .preview-grid {
-        display: grid;
-        gap: 12px;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      }
-
-      .preview-intro {
-        display: grid;
-        gap: 14px;
-        padding: 16px 18px;
-        margin-bottom: 18px;
-        border: 1px solid var(--line);
-        border-radius: 18px;
-        background: #fff;
-      }
-
-      .preview-intro h3 {
-        margin: 0 0 6px;
-        font-size: 1.02rem;
-        letter-spacing: -0.03em;
-      }
-
-      .preview-intro p {
-        margin: 0;
-        color: var(--muted);
-        font-size: 14px;
-      }
-
-      .preview-trust {
-        padding-top: 12px;
-        border-top: 1px solid var(--line);
-        color: var(--text) !important;
-        font-size: 13px !important;
-      }
-
-      .preview-card {
-        padding: 16px;
-        border-radius: 18px;
-        border: 1px solid var(--line);
-        background: #fff;
-        box-shadow: none;
-      }
-
-      .preview-card strong {
-        display: block;
-        margin: 8px 0 6px;
-        font-size: 1rem;
-        letter-spacing: -0.02em;
-      }
-
-      .preview-card p {
-        font-size: 14px;
-        color: var(--muted);
-      }
-
-      .preview-tag {
-        display: inline-flex;
-        align-items: center;
-        padding: 5px 10px;
-        border-radius: 999px;
-        font-size: 12px;
-        font-weight: 800;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-      }
-
-      .preview-tag.cut { background: #fef2f2; color: #b91c1c; }
-      .preview-tag.scale { background: #ecfdf5; color: #047857; }
-      .preview-tag.hold { background: #eff6ff; color: #1d4ed8; }
-      .preview-tag.test { background: #f5f3ff; color: #6d28d9; }
-
-      .preview-note {
-        margin-top: 14px;
-        color: var(--muted);
-        font-size: 13px;
-      }
-
-      .discover-strip {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 18px;
-        flex-wrap: wrap;
-        margin-top: 6px;
-        background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
-      }
-      .discover-strip strong {
-        display: block;
-        margin-bottom: 6px;
-        font-size: 1.05rem;
-      }
-      .discover-strip p {
-        margin: 0;
-        color: var(--muted);
-      }
-      .discover-links {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        max-width: 540px;
-      }
-      .discover-links a {
-        display: inline-flex;
-        align-items: center;
-        min-height: 34px;
-        padding: 0 12px;
-        border-radius: 999px;
-        border: 1px solid var(--line);
-        background: #fff;
-        color: var(--text);
-        text-decoration: none;
-        font-size: 13px;
-        box-shadow: none;
-      }
-      .discover-links a:hover { border-color: #cfd6e3; color: var(--accent-soft); }
-
-      .decision-card {
-        border-color: rgba(37, 99, 235, 0.14);
-        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
-      }
-
-      .decision-label {
-        display: inline-flex;
-        align-items: center;
-        padding: 5px 10px;
-        border-radius: 999px;
-        background: #eff6ff;
-        color: #2563eb;
-        font-size: 12px;
-        font-weight: 800;
-        letter-spacing: 0.08em;
-        margin-bottom: 10px;
-      }
-
-      .method-box {
-        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-      }
-
-      .example-list {
-        margin: 0;
-        padding-left: 18px;
-      }
-
-      .example-list li {
-        color: var(--text);
-      }
-
-      .bullets {
-        margin: 0;
-        padding-left: 18px;
-        color: var(--muted);
-      }
-      .bullets li + li { margin-top: 10px; }
-
-      form {
-        display: grid;
-        gap: 14px;
-      }
-
-      .form-actions .button:not(.ghost) {
-        flex: 1 1 240px;
-      }
-      .form-actions .button.ghost {
-        flex: 0 1 220px;
-      }
-
-      .form-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: clamp(20px, 3vw, 32px);
-        align-items: start;
-      }
-
-      .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      label {
-        display: grid;
-        gap: 8px;
-        font-size: 14px;
-        color: var(--muted);
-        text-align: left;
-      }
-
-      input[type="email"],
-      input[type="file"] {
-        width: 100%;
-        min-height: 88px;
-        border: 1px solid var(--line);
-        border-radius: 22px;
-        padding: 22px 24px;
-        background: #fff;
-        color: var(--text);
-        font: inherit;
-        transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
-      }
-      input[type="email"]::placeholder {
-        color: #94a3b8;
-      }
-      input[type="email"]:focus,
-      input[type="file"]:focus {
-        outline: none;
-        border-color: #93c5fd;
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-      }
-      input[type="file"] {
-        padding: 18px 18px;
-        background: #fff;
-      }
-      input[type="file"]::file-selector-button {
-        margin-right: 14px;
-        border: 0;
-        border-radius: 14px;
-        padding: 12px 16px;
-        background: #0f172a;
-        color: #fff;
-        font: inherit;
-        font-weight: 700;
-        cursor: pointer;
-      }
-      input[type="file"]::file-selector-button:hover {
-        background: #111c31;
-      }
-
-      .form-actions {
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-        align-items: center;
-        margin-top: 4px;
-      }
-
-      .helper {
-        margin: -2px 0 0;
-        color: var(--muted);
-        font-size: 13px;
-      }
-
-      .inline-note {
-        margin-top: 16px;
-        padding-top: 16px;
-        border-top: 1px solid var(--line);
-      }
-
-      .inline-note h3 {
-        margin: 0 0 8px;
-        font-size: 1rem;
-        letter-spacing: -0.03em;
-      }
-
-      .success {
-        display: none;
-        padding: 14px 16px;
-        border-radius: 14px;
-        background: #ecfdf5;
-        color: #065f46;
-        border: 1px solid #a7f3d0;
-        font-size: 14px;
-      }
-
-      footer {
-        padding: 32px 0 8px;
-        color: var(--muted);
-        font-size: 14px;
-      }
-
-      .footer-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 18px;
-        padding: 18px 0 6px;
-        border-top: 1px solid var(--line);
-        margin-top: 8px;
-      }
-      .footer-group strong {
-        display: block;
-        margin-bottom: 10px;
-        font-size: 13px;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: var(--text);
-      }
-      .footer-links {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-      .footer-links a {
-        text-decoration: none;
-        color: var(--muted);
-        padding: 4px 0;
-      }
-      .footer-links a:hover { color: var(--accent-soft); }
-
-      .footer-brand {
-        display: inline-flex;
-        align-items: center;
-        margin-bottom: 10px;
-        font-weight: 700;
-        letter-spacing: -0.05em;
-      }
-
-      .footer-note {
-        margin: 0;
-      }
-
-      @media (max-width: 920px) {
-        .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .grid-3,
-        .grid-2,
-        .form-grid { grid-template-columns: 1fr; }
-      }
-
-      @media (max-width: 640px) {
-        .wrap { padding-inline: 14px; }
-        .site-nav {
-          padding: 14px 14px;
-          border-radius: 18px;
-          margin-inline: 0;
-        }
-        .brand-name { font-size: 0.98rem; }
-        .nav-cta { min-height: 38px; padding-inline: 14px; font-size: 13px; }
-
-        .hero {
-          padding-top: 64px;
-          text-align: center;
-        }
-        .hero-logo {
-          width: clamp(220px, 62vw, 280px);
-          max-width: 72vw;
-          margin-bottom: 24px;
-        }
-        .cta-row { justify-content: center; }
-        .trust { text-align: center; }
-        .grid-4 { grid-template-columns: 1fr; }
-        .preview-grid { grid-template-columns: 1fr; }
-        .discover-strip { display: grid; }
-        .discover-links { max-width: none; }
-        .footer-grid { grid-template-columns: 1fr; }
-        .mini-links { justify-content: center; }
-      }
-    </style>
-  </head>
-  <body>
-    <div class="wrap">
-
-      <header class="site-nav">
-        <a class="brand" href="#top" aria-label="Gnomeo.nl home">
-          <span class="brand-name">Gnomeo.nl</span>
-        </a>
-        <a class="nav-cta" href="/checkout.html">Request access</a>
-      </header>
-      <div class="mini-links" aria-label="Secondary navigation">
-        <a href="/guides/">Guides</a>
-        <span aria-hidden="true">•</span>
-        <a href="/examples/">Examples</a>
-        <span aria-hidden="true">•</span>
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, rgba(29, 78, 216, 0.10), transparent 30%),
+        linear-gradient(180deg, #f8fafc 0%, #ffffff 34%, #f6f7fb 100%);
+      line-height: 1.55;
+    }
+
+    a { color: inherit; }
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 18px 20px 30px;
+    }
+
+    .site-nav {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 16px;
+      margin: 0 -8px 18px;
+      border: 1px solid rgba(230, 232, 239, 0.88);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.80);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.05);
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      min-width: 0;
+    }
+    .brand img {
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      object-fit: cover;
+    }
+    .brand-name {
+      font-weight: 750;
+      letter-spacing: -0.05em;
+      font-size: 1.02rem;
+      white-space: nowrap;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .nav-links a {
+      text-decoration: none;
+      padding: 4px 8px;
+      border-radius: 999px;
+    }
+    .nav-links a:hover { background: rgba(255,255,255,0.72); }
+
+    .nav-cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 16px;
+      border-radius: 999px;
+      text-decoration: none;
+      border: 1px solid #d7dbe3;
+      background: #0f172a;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+    }
+    .nav-cta:hover { transform: translateY(-1px); background: #111c31; }
+
+    .hero {
+      padding: clamp(44px, 5vw, 72px) 0 28px;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+      gap: 22px;
+      align-items: center;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.88);
+      color: var(--accent-soft);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2.8rem, 6.5vw, 5.2rem);
+      line-height: 0.95;
+      letter-spacing: -0.07em;
+      max-width: 11ch;
+    }
+
+    .subhead {
+      max-width: 720px;
+      margin: 16px 0 0;
+      font-size: clamp(1.06rem, 1.9vw, 1.18rem);
+      color: var(--muted);
+    }
+
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 52px;
+      padding: 0 20px;
+      border-radius: 14px;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 750;
+      border: 1px solid #d7dbe3;
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.14);
+    }
+    .button:hover { background: #111c31; }
+    .button.secondary {
+      background: #fff;
+      color: var(--text);
+      box-shadow: none;
+    }
+    .button.secondary:hover { background: #f8fafc; }
+
+    .trust-line {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 740px;
+    }
+
+    .split-card {
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    .split-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .split-panel {
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.96) 100%);
+      padding: 16px;
+      min-height: 248px;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+    .split-panel.workspace {
+      background: linear-gradient(180deg, rgba(248,251,255,0.98) 0%, rgba(240,245,255,0.96) 100%);
+    }
+    .split-label {
+      display: inline-flex;
+      width: fit-content;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+    .split-title {
+      margin: 0;
+      font-size: 1.12rem;
+      letter-spacing: -0.03em;
+    }
+    .split-copy {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .split-note {
+      margin: auto 0 0;
+      padding-top: 12px;
+      border-top: 1px solid rgba(15, 23, 42, 0.08);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .split-bridge {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+    }
+
+    section { padding: 34px 0; }
+    .section-head {
+      margin-bottom: 14px;
+      text-align: center;
+    }
+    .section-head h2 {
+      margin: 0;
+      font-size: clamp(1.5rem, 3vw, 2.2rem);
+      letter-spacing: -0.04em;
+    }
+    .section-head p {
+      margin: 10px auto 0;
+      max-width: 720px;
+      color: var(--muted);
+    }
+
+    .cards-4, .cards-3, .cards-2 {
+      display: grid;
+      gap: 16px;
+    }
+    .cards-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .cards-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .cards-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: var(--surface-strong);
+      box-shadow: var(--shadow);
+      padding: 22px;
+    }
+    .card h3, .card h2 { margin: 0 0 10px; letter-spacing: -0.03em; }
+    .card p { margin: 0; color: var(--muted); }
+    .card ul {
+      margin: 12px 0 0;
+      padding-left: 18px;
+      color: var(--text);
+    }
+    .card li + li { margin-top: 8px; }
+
+    .ordered {
+      counter-reset: step;
+    }
+    .ordered .card {
+      position: relative;
+      padding-top: 50px;
+    }
+    .ordered .card::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      background: #eef4ff;
+      color: #1d4ed8;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .memory-card {
+      display: grid;
+      gap: 10px;
+    }
+
+    .trust-card {
+      display: grid;
+      gap: 10px;
+    }
+    .trust-bullets {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--text);
+    }
+    .trust-bullets li + li { margin-top: 8px; }
+
+    .pricing-note {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: #fff;
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+    }
+    .pricing-note p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 760px;
+    }
+
+    .cta-band {
+      border-radius: 28px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(247,250,255,0.98) 100%);
+      box-shadow: var(--shadow);
+      padding: 26px 24px;
+      text-align: center;
+    }
+    .cta-band h2 {
+      margin: 0;
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      letter-spacing: -0.04em;
+    }
+    .cta-band p {
+      margin: 10px auto 0;
+      max-width: 680px;
+      color: var(--muted);
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 18px 2px 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .footer a { text-decoration: none; }
+    .footer-links { display: flex; flex-wrap: wrap; gap: 10px; }
+
+    @media (max-width: 960px) {
+      .hero-grid, .split-grid, .cards-2, .cards-3, .cards-4 { grid-template-columns: 1fr; }
+      h1 { max-width: 100%; }
+    }
+    @media (max-width: 640px) {
+      .wrap { padding-inline: 14px; }
+      .site-nav { margin-inline: 0; padding: 12px 14px; border-radius: 18px; }
+      .hero { padding-top: 52px; }
+      .split-card, .card, .cta-band { border-radius: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-nav">
+      <a class="brand" href="/">
+        <img src="/gnomeo-logo.png?v=3" alt="" aria-hidden="true" />
+        <span class="brand-name">Gnomeo.nl</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#how-it-works">How it works</a>
+        <a href="#memory">Workspace</a>
         <a href="/pricing.html">Pricing</a>
-        <span aria-hidden="true">•</span>
-        <a href="/workspace.html">Workspace</a>
-        <span aria-hidden="true">•</span>
-        <a href="/privacy.html">Privacy</a>
-      </div>
+      </nav>
+      <a class="nav-cta" href="/checkout.html">Request Chrome beta</a>
+    </header>
 
-      <main id="top">
-        <section class="hero">
-          <img class="hero-logo" src="/gnomeo-logo.png?v=3" alt="Gnomeo logo" />
-          <h1>Know what deserves attention in your ad spend.</h1>
-          <p class="subhead">Review in Chrome. Save useful spot checks to a private workspace. Compare what changes next time.</p>
-          <div class="cta-row">
-            <a class="button" href="/checkout.html">Request access</a>
-            <a class="button ghost" href="#surfaces">See the surfaces</a>
-          </div>
-          <div class="trust">User-triggered reviews only. No background activity, no screenshots by default, and no ad-platform APIs or OAuth yet. Private beta access is manual for now.</div>
-        </section>
-
-        <section id="surfaces">
-          <div class="section-head">
-            <h2>Two surfaces, one review layer</h2>
-            <p>Review in Chrome, save useful spot checks to your private workspace, then compare what changes next time.</p>
-          </div>
-          <div class="grid-4">
-            <div class="card">
-              <h3>Chrome extension</h3>
-              <p>Review the visible campaign table when you choose. No background capture.</p>
-            </div>
-            <div class="card">
-              <h3>Private workspace</h3>
-              <p>Save useful reviews here so Gnomeo remembers them and compares over time.</p>
-            </div>
-            <div class="card">
-              <h3>What it helps with</h3>
-              <p>What changed, what still needs attention, what looks unusual, and what to review first.</p>
-            </div>
-            <div class="card">
-              <h3>Who it’s for</h3>
-              <p>Founder-led businesses, small teams, solo marketers, ecommerce operators, and fractional marketers.</p>
-            </div>
-          </div>
-        </section>
-
-        <section id="how-it-works">
-          <div class="section-head">
-            <h2>How it works</h2>
-          </div>
-          <div class="card method-box">
-            <p>Review in Chrome, save what matters to your private workspace, and let Gnomeo compare the next review against the last one.</p>
-          </div>
-        </section>
-
-        <section class="card discover-strip" aria-labelledby="learn-more-title">
+    <main>
+      <section class="hero">
+        <div class="hero-grid">
           <div>
-            <div class="section-head" style="text-align:left; margin-bottom:10px;">
-              <h2 id="learn-more-title" style="font-size:1.45rem;">Learn how Gnomeo reviews visible tables and exports</h2>
-              <p>Built for noisy Google Ads, Meta Ads, and LinkedIn review work — with calm, signal-aware summaries.</p>
+            <div class="eyebrow">Chrome-first ad review</div>
+            <h1>Find the first thing to fix in your ad spend.</h1>
+            <p class="subhead">Gnomeo is a Chrome-first review layer for Google Ads, Meta Ads, and LinkedIn. Feed it visible campaign tables, get a plain-English first fix, then save useful reviews to your private workspace.</p>
+            <div class="cta-row">
+              <a class="button" href="/checkout.html">Request Chrome beta</a>
+              <a class="button secondary" href="#how-it-works">See how it works</a>
+              <a class="button secondary" href="/pricing.html">View planned pricing</a>
             </div>
+            <p class="trust-line">Visible tables only. Nothing runs in the background. Save to workspace only when you choose. No ad-platform API connection needed to start.</p>
           </div>
-          <div class="discover-links">
-            <a href="/guides/how-to-analyze-meta-ads-exports.html">How to analyze Meta Ads exports</a>
-            <a href="/guides/how-to-identify-wasted-ad-spend.html">How to identify wasted ad spend</a>
-            <a href="/guides/what-is-thin-signal-in-ad-analysis.html">What is thin signal?</a>
-            <a href="/examples/ecommerce-skincare-account-audit.html">Sample ecommerce audit</a>
-          </div>
-        </section>
 
-        <section>
-          <div class="card report-preview">
-            <div class="preview-intro">
-              <div>
-                <h3>Built for messy reviews</h3>
-                <p>Review in Chrome, save useful spot checks to your private workspace, then use the portal for saved history, recurring memory, and deeper CSV uploads when you need them.</p>
+          <div class="split-card" aria-label="Product split">
+            <div class="split-grid">
+              <div class="split-panel">
+                <span class="split-label">Chrome extension</span>
+                <h2 class="split-title">Add visible ad tables while you work.</h2>
+                <p class="split-copy">Gnomeo gives the first fix.</p>
+                <p class="split-note">Feed Gnomeo.</p>
               </div>
-              <p class="preview-trust">Independent review layer — no platform incentives, no automated campaign changes, and no background activity.</p>
-            </div>
-            <div class="section-head" style="text-align:left; margin-bottom:12px;">
-              <h2 style="font-size:1.45rem;">Example decisions from a sample ecommerce account</h2>
-              <p style="font-size:13px; margin-top:4px;">Based on sample Google Ads and Meta Ads exports</p>
-            </div>
-            <div class="report-meta">
-              <span class="report-pill">UK skincare ecommerce brand</span>
-              <span class="report-pill">Monthly ad spend: £57,300.00</span>
-              <span class="report-pill">Current ROAS: ~1.19x</span>
-              <span class="report-pill">Estimated wasted spend: £14,325.00</span>
-            </div>
-            <div class="preview-grid">
-              <article class="preview-card">
-                <span class="preview-tag cut">Reduce waste</span>
-                <strong>Reduce £2,400.00 from Meta Prospecting Broad UK → move budget into Google Brand Search</strong>
-                <p>Estimated impact: £3,735.00–£6,225.00</p>
-              </article>
-              <article class="preview-card">
-                <span class="preview-tag scale">Scale winner</span>
-                <strong>Increase Brand Search | Exact by £1,200.00</strong>
-                <p>Current spend: £12,000.00 · Estimated impact: £696.99–£1,161.64</p>
-              </article>
-              <article class="preview-card">
-                <span class="preview-tag scale">Scale winner</span>
-                <strong>Increase Meta Retargeting | Warm Visitors by £600.00</strong>
-                <p>Current spend: £6,000.00 · Estimated impact: £397.21–£662.02</p>
-              </article>
-              <article class="preview-card">
-                <span class="preview-tag hold">Watch</span>
-                <strong>Keep New Collection Launch under review before increasing budget when signal is thin</strong>
-                <p>Sample data only — conservative calls stay cautious when the gap is small.</p>
-              </article>
-              <article class="preview-card">
-                <span class="preview-tag test">Controlled test</span>
-                <strong>Run a controlled test on Non-Brand Search | Core when CPA/ROAS is unclear</strong>
-                <p>Mixed signals need a test, not a bigger bet.</p>
-              </article>
-            </div>
-            <p class="preview-note">Sample data only. Real exports can be more conservative when signal quality is thin.</p>
-          </div>
-        </section>
-
-        <section id="contact">
-          <div class="section-head">
-            <h2>Join the beta</h2>
-          </div>
-          <div class="grid-4 ordered" style="margin-bottom: 18px;">
-            <div class="card"><h3>Tell us what you want reviewed</h3><p>Share the platforms, account shape, and the kind of attention you need.</p></div>
-            <div class="card"><h3>We review fit manually</h3><p>Founder-led businesses, small teams, solo marketers, and fractional marketers first.</p></div>
-            <div class="card"><h3>We send setup details</h3><p>If it’s a fit, we send private workspace access and the next steps.</p></div>
-            <div class="card"><h3>Then you can review</h3><p>Review in Chrome, save useful spot checks, and compare over time in your workspace.</p></div>
-          </div>
-          <div class="card" style="max-width: 820px; margin: 0 auto;">
-            <form id="lead-form" novalidate>
-              <div class="form-grid">
-                <div class="form-group">
-                  <label for="csv-file">Tell us what you want reviewed</label>
-                  <input type="file" id="csv-file" name="csv-file" accept=".csv,text/csv" multiple required />
-                  <span class="helper">Optional for beta context. Free snapshot: up to 2 Google Ads or Meta Ads CSVs, under 3 MB each. Raw uploads are deleted after processing.</span>
-                </div>
-                <div class="form-group">
-                  <label for="email">Where should we send setup details?</label>
-                  <input type="email" id="email" name="email" autocomplete="email" placeholder="you@company.com" required />
-                  <span class="helper">We’ll only use your email for beta access and setup.</span>
-                </div>
+              <div class="split-panel workspace">
+                <span class="split-label">Private workspace</span>
+                <h2 class="split-title">Save the review.</h2>
+                <p class="split-copy">Build memory over time.</p>
+                <p class="split-note">Burrow deeper when you need evidence.</p>
               </div>
-              <div class="form-actions">
-                <button class="button" type="submit">Join beta</button>
-                <a class="button ghost" href="/example_campaign_template.csv" download>Download example template</a>
-              </div>
-              <p class="helper">No payment is taken here. We’ll confirm pricing before billing is enabled.</p>
-              <p class="helper">If your data isn’t usable, we’ll tell you — not guess.</p>
-              <div class="inline-note">
-                <h3>What you’ll get</h3>
-                <ul class="bullets">
-                  <li>Private portal access</li>
-                  <li>Saved reviews and recurring memory</li>
-                  <li>Clear next steps, written in plain English</li>
-                </ul>
-              </div>
-              <div class="success" id="success-message">
-                Thanks — we’ve got your request.
-                <br /><br />
-                If the fit looks right, we’ll send setup details and private portal access.
-                <br /><br />
-                The real value comes from recurring review history and seeing what deserves attention next.
-              </div>
-            </form>
-          </div>
-        </section>
-      </main>
-
-      <footer>
-        <div class="footer-brand">
-          <strong>Gnomeo.nl</strong>
-        </div>
-        <div class="footer-grid">
-          <div class="footer-group">
-            <strong>Guides</strong>
-            <div class="footer-links">
-              <a href="/guides/how-to-analyze-meta-ads-exports.html">Meta Ads exports</a>
-              <a href="/guides/how-to-analyze-google-ads-performance.html">Google Ads performance</a>
-              <a href="/guides/how-to-identify-wasted-ad-spend.html">Wasted ad spend</a>
-              <a href="/guides/what-is-thin-signal-in-ad-analysis.html">Thin signal</a>
-              <a href="/pricing.html">Pricing</a>
-              <a href="/workspace.html">Workspace</a>
             </div>
-          </div>
-          <div class="footer-group">
-            <strong>Examples</strong>
-            <div class="footer-links">
-              <a href="/examples/ecommerce-skincare-account-audit.html">Ecommerce skincare audit</a>
-              <a href="/examples/high-spend-ecommerce-budget-review.html">High-spend ecommerce review</a>
-              <a href="/">Home</a>
-              <a href="/pricing.html">Pricing</a>
-              <a href="/workspace.html">Workspace</a>
-            </div>
+            <p class="split-bridge">The extension gives the first fix. The workspace remembers the pattern.</p>
           </div>
         </div>
-        <p class="footer-note">© 2026 Gnomeo.nl</p>
-        <p class="footer-links"><a href="/pricing.html">Pricing</a> • <a href="/workspace.html">Workspace</a> • <a href="/privacy.html">Privacy</a> • <a href="/data-handling.html">Data handling</a> • <a href="/data-retention.html">Retention</a> • <a href="/security.html">Security</a> • <a href="/ai-policy.html">AI policy</a></p>
-      </footer>
-    </div>
+      </section>
 
-    <script>
-      const form = document.getElementById('lead-form');
-      const csvFile = document.getElementById('csv-file');
-      const email = document.getElementById('email');
-      const success = document.getElementById('success-message');
+      <section id="how-it-works">
+        <div class="section-head">
+          <h2>How it works</h2>
+          <p>Simple enough for founders. Useful enough for review work that actually matters.</p>
+        </div>
+        <div class="cards-4 ordered">
+          <article class="card">
+            <h3>Feed Gnomeo a campaign table</h3>
+            <p>Open Google Ads, Meta Ads, or LinkedIn. Add the visible table from the page you’re on.</p>
+          </article>
+          <article class="card">
+            <h3>Get the first fix</h3>
+            <p>Gnomeo tells you what to check first in plain English, without clutter.</p>
+          </article>
+          <article class="card">
+            <h3>Burrow deeper for evidence</h3>
+            <p>Open the report view when you want the signals, notes, and supporting detail.</p>
+          </article>
+          <article class="card">
+            <h3>Save to workspace for memory</h3>
+            <p>Keep useful reviews so the next one starts with context, history, and a pattern.</p>
+          </article>
+        </div>
+      </section>
 
-      const track = (eventName, payload = {}) => {
-        // Lightweight tracking for now; wire this into analytics/event capture later.
-        console.log(`[track] ${eventName}`, {
-          ...payload,
-          timestamp: new Date().toISOString(),
-        });
-      };
+      <section id="memory">
+        <div class="section-head">
+          <h2>Workspace memory</h2>
+          <p>The extension gives the first fix. The workspace remembers the pattern.</p>
+        </div>
+        <div class="cards-2">
+          <article class="card memory-card">
+            <h3>What the workspace keeps</h3>
+            <p>Saved spot checks, review history, recurring memory, and the notes that matter next time.</p>
+            <ul>
+              <li>Saved reviews</li>
+              <li>Comparison against previous reviews</li>
+              <li>What changed next time</li>
+            </ul>
+          </article>
+          <article class="card memory-card">
+            <h3>What it is not</h3>
+            <p>Not a noisy analytics bundle. Not a place for always-on tracking.</p>
+            <ul>
+              <li>No always-on monitoring</li>
+              <li>No automatic sync of ad accounts</li>
+              <li>No extra clutter before you need it</li>
+            </ul>
+          </article>
+        </div>
+      </section>
 
-      document.querySelectorAll('a[href="#contact"]').forEach((cta) => {
-        cta.addEventListener('click', () => {
-          track('free_analysis_cta_click', {
-            text: cta.textContent.trim(),
-          });
-        });
-      });
+      <section>
+        <div class="section-head">
+          <h2>Trust and privacy</h2>
+          <p>Compact and explicit, because control matters.</p>
+        </div>
+        <div class="card trust-card">
+          <ul class="trust-bullets">
+            <li>User-triggered only</li>
+            <li>Visible tables only</li>
+            <li>Nothing runs in the background</li>
+            <li>No screenshots by default</li>
+            <li>No ad-platform API connection needed to start</li>
+            <li>Save to workspace only when you choose</li>
+            <li>Private workspace links</li>
+          </ul>
+        </div>
+      </section>
 
-      csvFile?.addEventListener('change', () => {
-        const files = Array.from(csvFile.files || []);
-        if (!files.length) return;
+      <section>
+        <div class="pricing-note">
+          <div>
+            <strong>Planned beta pricing starts with free spot checks and paid workspace memory.</strong>
+            <p>Billing is not live yet — request access and we’ll confirm details before anything is charged.</p>
+          </div>
+          <a class="button secondary" href="/pricing.html">View pricing</a>
+        </div>
+      </section>
 
-        track('free_analysis_csv_selected', {
-          fileNames: files.map((file) => file.name),
-          fileCount: files.length,
-        });
-      });
+      <section>
+        <div class="cta-band">
+          <h2>Want to try the Chrome beta?</h2>
+          <p>Request Chrome beta and tell us which ad platforms you want Gnomeo to review first.</p>
+          <div class="cta-row" style="justify-content:center; margin-top:18px;">
+            <a class="button" href="/checkout.html">Request Chrome beta</a>
+            <a class="button secondary" href="/privacy.html">Read privacy notes</a>
+          </div>
+        </div>
+      </section>
+    </main>
 
-      form?.addEventListener('submit', (event) => {
-        event.preventDefault();
-
-        const files = Array.from(csvFile?.files || []);
-        const emailValue = email?.value.trim();
-
-        if (!files.length) {
-          track('free_analysis_validation_error', {
-            reason: 'missing_csv',
-            email: emailValue || '',
-          });
-          alert('Please upload one or more CSV files.');
-          return;
-        }
-
-        if (!emailValue) {
-          track('free_analysis_validation_error', {
-            reason: 'missing_email',
-            fileNames: files.map((file) => file.name),
-          });
-          alert('Please add your email address.');
-          return;
-        }
-
-        const timestamp = new Date().toISOString();
-        const payload = new FormData();
-        payload.append('email', emailValue);
-        payload.append('filename', files[0].name);
-        payload.append('timestamp', timestamp);
-        files.forEach((file) => {
-          payload.append('csv-file', file, file.name);
-        });
-
-        fetch('/api/submit', {
-          method: 'POST',
-          body: payload,
-        })
-          .then(async (response) => {
-            const raw = await response.text();
-            let data = null;
-
-            try {
-              data = raw ? JSON.parse(raw) : null;
-            } catch {
-              data = null;
-            }
-
-            if (!response.ok || data?.success === false) {
-              const step = data?.step || `http-${response.status}`;
-              const error = data?.error || raw || 'Unknown backend error';
-              throw new Error(`step=${step}; error=${error}`);
-            }
-
-            console.log('Free Analysis Option A submission', payload);
-            track('free_analysis_form_submitted_successfully', {
-              email: emailValue,
-              fileNames: files.map((file) => file.name),
-              fileCount: files.length,
-            });
-
-            success.style.display = 'block';
-            success.style.background = '#ecfdf5';
-            success.style.color = '#065f46';
-            success.style.borderColor = '#a7f3d0';
-            success.textContent = "We’ve received your data. You’ll receive your report shortly.";
-            success.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          })
-          .catch((error) => {
-            success.style.display = 'block';
-            success.style.background = '#fef2f2';
-            success.style.color = '#991b1b';
-            success.style.borderColor = '#fecaca';
-            const message = String(error || 'step=unknown; error=Unknown error');
-            const match = /step=([^;]+);\s*error=(.*)$/.exec(message);
-            success.textContent = match
-              ? `Submission failed at ${match[1]}: ${match[2]}`
-              : `Submission failed: ${message}`;
-            success.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          });
-      });
-    </script>
-    <script defer src="/_vercel/insights/script.js"></script>
-  </body>
+    <footer class="footer">
+      <div>© 2026 Gnomeo.nl — Chrome-first review for ad spend.</div>
+      <div class="footer-links"><a href="/pricing.html">Pricing</a><a href="/workspace.html">Workspace</a><a href="/portal.html">Portal</a><a href="/privacy.html">Privacy</a><a href="/data-handling.html">Data handling</a><a href="/security.html">Security</a><a href="/ai-policy.html">AI policy</a></div>
+    </footer>
+  </div>
+</body>
 </html>
