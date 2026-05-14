@@ -1177,9 +1177,11 @@
     const renderItem = (item, completed = false) => `
       <div class="action-item${completed ? ' is-done' : ''}" data-action-id="${escapeHtml(item.id)}">
         <div>
-          <div class="action-label"><span class="chip ${completed ? 'chip--success' : 'chip--neutral'}">${escapeHtml(item.label)}</span></div>
-          <p class="action-text">${escapeHtml(item.text)}</p>
-          ${item.help ? `<p class="action-help">Why: ${escapeHtml(item.help)}</p>` : ''}
+          ${completed
+            ? `<p class="action-text action-text--done">✓ ${escapeHtml(item.label)} — done</p>`
+            : `<div class="action-label"><span class="chip chip--neutral">${escapeHtml(item.label)}</span></div>
+               <p class="action-text">${escapeHtml(item.text)}</p>
+               ${item.help ? `<p class="action-help">${escapeHtml(item.help)}</p>` : ''}`}
         </div>
         <button class="action-done-button${completed ? ' is-done' : ''}" type="button" data-action-done="${escapeHtml(item.id)}">${completed ? 'Undo' : 'Done'}</button>
       </div>`;
@@ -1548,6 +1550,8 @@
     if (unsupported) {
       focusText.textContent = 'Open a campaign table to unleash Gnomeo.';
       if (focusWhy) focusWhy.textContent = 'Go to Google Ads, Meta Ads, or LinkedIn Campaign Manager. Use the Campaigns table, then click Add table.';
+      if ($('focusBetter')) $('focusBetter').hidden = true;
+      if ($('focusCaveat')) $('focusCaveat').hidden = true;
       setChipText(focusConfidence, 'Open a supported page', 'neutral');
       $('keySignals').innerHTML = '';
       $('visiblePreview').innerHTML = '';
@@ -1555,6 +1559,17 @@
     } else if (currentAnalysis.success) {
       focusText.textContent = decision.fixFirst || currentAnalysis.focus || summary.executiveFinding || EMPTY_ANALYSIS.summary.executiveFinding;
       if (focusWhy) focusWhy.textContent = `Why: ${decision.why || 'It is spending money, but not showing enough results yet.'}`;
+      const betterOption = decision.nextBest || currentAnalysis.nextBest || currentAnalysis.nextSteps?.[1] || currentAnalysis.nextSteps?.[0] || '';
+      if ($('focusBetter')) {
+        $('focusBetter').hidden = !betterOption;
+        if (betterOption) $('focusBetter').textContent = `Better option: ${betterOption}`;
+      }
+      if ($('focusCaveat')) {
+        $('focusCaveat').hidden = false;
+        $('focusCaveat').textContent = currentAnalysis.reviewLevel === 'spot check'
+          ? 'This is a spot-check recommendation from the visible table data.'
+          : 'Based on the visible rows, not a full account audit.';
+      }
       setChipText(focusConfidence, decision.caveat || 'visible only', confidenceVariant);
       $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 5), 'No visible signals found yet.');
       $('visiblePreview').innerHTML = renderPreview(currentAnalysis.previewRows);
@@ -1562,6 +1577,8 @@
     } else if (currentAnalysis.stale) {
       focusText.textContent = 'Analyse to find the first thing to check.';
       if (focusWhy) focusWhy.textContent = 'The tables changed.';
+      if ($('focusBetter')) $('focusBetter').hidden = true;
+      if ($('focusCaveat')) $('focusCaveat').hidden = true;
       setChipText(focusConfidence, 'Needs analysis', 'warn');
       $('keySignals').innerHTML = '';
       $('visiblePreview').innerHTML = '';
@@ -1571,6 +1588,8 @@
       if (focusWhy) focusWhy.textContent = unsupported
         ? 'Go to Google Ads, Meta Ads, or LinkedIn Campaign Manager. Use the Campaigns table, then click Add table.'
         : 'Then I’ll explain why.';
+      if ($('focusBetter')) $('focusBetter').hidden = true;
+      if ($('focusCaveat')) $('focusCaveat').hidden = true;
       setChipText(focusConfidence, unsupported ? 'Open a supported page' : 'hungry', 'neutral');
       $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 5), 'No visible signals found yet.');
       $('visiblePreview').innerHTML = renderPreview(currentAnalysis.previewRows);
@@ -1610,15 +1629,17 @@
     const reviewConfidence = capture.reviewConfidence || matrix.confidence || 'visible only';
 
     const focus = watchItem
-      ? `Do not add more budget to ${rowLabel(watchItem)} yet.`
+      ? (efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
+        ? `Consider testing a small move away from ${rowLabel(watchItem)} before spending more there.`
+        : `Hold budget on ${rowLabel(watchItem)} for now.`)
       : 'The rows are still too limited.';
 
     const why = watchItem
-      ? `${rowLabel(watchItem)} is spending money, but this table does not show enough results yet.`
+      ? `${rowLabel(watchItem)} is using budget, but this table does not show enough results yet.`
       : 'The rows are still too limited.';
 
     const nextBest = efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
-      ? `Keep ${rowLabel(efficientPerformer)} running as it is.`
+      ? `${rowLabel(efficientPerformer)} looks safer to keep running.`
       : 'Keep the clearer performer running as it is.';
 
     const nextSteps = [
@@ -1733,17 +1754,19 @@
     keySignals.push({ label: 'Review level', title: reviewLevel, details: 'visible only' });
 
     const topFinding = watchItem
-      ? `Do not add more budget to ${rowLabel(watchItem)} yet.${efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference ? ` ${rowLabel(efficientPerformer)} looks safer to keep running.` : ''}`
+      ? (efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference
+        ? `Consider testing a small move away from ${rowLabel(watchItem)} before spending more there.${efficientPerformer ? ` ${rowLabel(efficientPerformer)} looks safer to keep running.` : ''}`
+        : `Hold budget on ${rowLabel(watchItem)} for now.`)
       : 'The rows are still too limited.';
 
     const why = watchItem
-      ? `${rowLabel(watchItem)} is spending money, but this table does not show enough results yet.`
+      ? `${rowLabel(watchItem)} is using budget, but this table does not show enough results yet.`
       : 'The rows are still too limited.';
 
     const attention = [
-      watchItem ? `Do not add more budget to ${rowLabel(watchItem)} yet.` : 'Do not add more budget to the highest-spend row yet.',
+      watchItem ? (efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference ? `Consider testing a small move away from ${rowLabel(watchItem)}.` : `Hold budget on ${rowLabel(watchItem)} for now.`) : 'Do not add more budget to the highest-spend row yet.',
       efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
-        ? `Keep ${rowLabel(efficientPerformer)} running as it is.`
+        ? `${rowLabel(efficientPerformer)} looks safer to keep running.`
         : 'Keep the clearer performer running as it is.',
       platformActionHint(watchItem?.platform || highestSpend?.platform || efficientPerformer?.platform, watchItem?.label || highestSpend?.label || efficientPerformer?.label || ''),
     ];
@@ -1755,7 +1778,7 @@
     const nextSteps = [
       topFinding,
       efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
-        ? `Keep ${rowLabel(efficientPerformer)} running as it is.`
+        ? `${rowLabel(efficientPerformer)} looks safer to keep running.`
         : 'Keep the clearer performer running as it is.',
       platformActionHint(watchItem?.platform || highestSpend?.platform || efficientPerformer?.platform, watchItem?.label || highestSpend?.label || efficientPerformer?.label || ''),
     ];
