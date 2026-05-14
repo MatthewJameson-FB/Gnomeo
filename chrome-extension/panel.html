@@ -12,7 +12,7 @@
       <header class="panel-header">
         <div class="brand-stack">
           <div class="brand-row">
-            <span class="brand-mark" aria-hidden="true">G</span>
+            <img class="brand-mark brand-mark-image" src="gnomeo-mark.svg" alt="" aria-hidden="true" />
             <span class="brand-name">Gnomeo</span>
           </div>
           <h1>What needs attention?</h1>
@@ -36,7 +36,7 @@
 
       <section class="focus-card" id="focusCard" hidden>
         <div class="card-head compact-head">
-          <span class="card-label">Start here</span>
+          <span class="card-label">Do this now</span>
           <span class="chip chip--neutral" id="focusConfidence">visible only</span>
         </div>
         <p class="focus-text" id="focusText">Feed me a campaign table to start.</p>
@@ -45,9 +45,17 @@
 
       <section class="next-steps-card" id="nextStepsCard" hidden>
         <div class="card-head compact-head">
-          <span class="card-label">Next</span>
+          <span class="card-label">Actions</span>
+          <span class="chip chip--success" id="actionListBadge" hidden>Ready</span>
         </div>
-        <p class="next-step-text" id="nextStepsText"></p>
+        <div class="action-checklist" id="actionChecklist"></div>
+        <div class="action-complete" id="actionComplete" hidden>
+          <p class="action-complete-text">You’re done for now.</p>
+          <div class="action-complete-links">
+            <button id="readFullReport" class="secondary-button" type="button">Read full report</button>
+            <button id="saveToWorkspaceFromDone" class="text-button" type="button">Save to workspace</button>
+          </div>
+        </div>
       </section>
 
       <section class="composer">
@@ -128,7 +136,7 @@
                 <pre id="fullReportText">Add a table.</pre>
               </div>
               <div class="report-actions">
-                <button id="downloadAnalysis" class="secondary-button" type="button" disabled>Print / PDF</button>
+                <button id="downloadAnalysis" class="secondary-button" type="button" disabled>Print / save PDF</button>
               </div>
               <details class="debug-card" id="debugCard" hidden>
                 <summary>

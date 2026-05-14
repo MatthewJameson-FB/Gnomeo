@@ -51,6 +51,10 @@
   let workspaceSaving = false;
   let workspacePromptOpen = false;
   let activeRefreshTimer = null;
+  let actionChecklistState = {
+    signature: '',
+    doneIds: new Set(),
+  };
 
   const currentPageDebug = {
     host: '',
@@ -347,6 +351,8 @@
     const inlineLinks = $('workspaceInlineLinks');
     const input = $('workspaceLinkInput');
     const statusLine = $('workspaceStatusLine');
+    const actionComplete = $('actionComplete');
+    const checklistComplete = Boolean(actionComplete && !actionComplete.hidden);
 
     if (!flags.hasFreshAnalysis && workspacePromptOpen) workspacePromptOpen = false;
 
@@ -380,7 +386,7 @@
       statusLine.hidden = !promptOpen;
     }
     if (workspaceAction) {
-      workspaceAction.hidden = !flags.canShowWorkspace || promptOpen || connected;
+      workspaceAction.hidden = !flags.canShowWorkspace || promptOpen || connected || checklistComplete;
       workspaceAction.textContent = 'Save to workspace';
       workspaceAction.disabled = workspaceSaving;
     }
@@ -946,16 +952,18 @@
     const name = displayPlatformName(platform);
     const value = String(label || '').toLowerCase();
     const googleShopping = /shopping|pmax|performance max|feed|product/.test(value);
+    const googleDisplay = /display|discovery/.test(value);
 
     if (name === 'Google Ads') {
-      if (googleShopping) return 'For Google Shopping / PMax, keep it running for now and check the product feed and tracking.';
-      return 'For Google Search, check the search terms, keywords, and landing page.';
+      if (googleShopping) return 'Keep Google Shopping / PMax running as it is. Check the product feed and tracking.';
+      if (googleDisplay) return 'Keep Display / Discovery running as it is. Check the landing page and tracking.';
+      return 'Review the search terms, keywords, and landing page before changing spend.';
     }
     if (name === 'Meta Ads') {
-      return 'For Meta, check the audience, creative, offer, and landing page.';
+      return 'Review the audience, creative, offer, and landing page before changing spend.';
     }
     if (name === 'LinkedIn Campaign Manager') {
-      return 'For LinkedIn, check the audience, offer, lead form, and landing page.';
+      return 'Review the audience, offer, lead form, and landing page before changing spend.';
     }
     if (name === 'Local test page') return 'For local fixtures, compare the visible rows and try another supported page if needed.';
     return 'Check the audience, offer, landing page, and tracking.';
@@ -1033,7 +1041,7 @@
     const alsoProtect = currentAnalysis.nextBest || currentAnalysis.nextSteps?.[1] || currentAnalysis.nextSteps?.[0] || '';
     const lines = [
       '# Gnomeo',
-      `Start here: ${currentAnalysis.focus || summary.executiveFinding || '—'}`,
+      `Do this now: ${currentAnalysis.focus || summary.executiveFinding || '—'}`,
       `Why: ${currentAnalysis.why || summary.attention?.[0] || '—'}`,
       ...(alsoProtect ? [`Also protect: ${alsoProtect}`] : []),
       '',
@@ -1072,6 +1080,9 @@
     const nextBest = firstSentence(nextBestRaw).replace(/^Keep\s+/i, 'Keep ');
     const evidence = Array.isArray(summary.keySignals) ? summary.keySignals.slice(0, 3).map((item) => compact([item.label, item.title, item.details].filter(Boolean).join(' — '))) : [];
     const platforms = Array.isArray(analysis?.platforms) ? analysis.platforms : [analysis?.platform || 'Local only'];
+    const caveat = analysis?.stale
+      ? 'Needs analysis'
+      : (analysis?.reviewLevel === 'spot check' ? 'Spot check' : 'Ready');
     return {
       fixFirst,
       why,
@@ -1079,8 +1090,130 @@
       evidence,
       reviewLevel: analysis?.reviewLevel || (analysis?.mode === 'bundle' ? 'spot check' : 'visible only'),
       platforms,
-      caveat: analysis?.reviewConfidence || 'visible only',
+      caveat,
     };
+  };
+
+  const currentActionSignature = () => [
+    buildBundleSignature(capturedTables),
+    currentAnalysis?.mode || '',
+    currentAnalysis?.success ? '1' : '0',
+    currentAnalysis?.stale ? '1' : '0',
+    currentAnalysis?.focus || '',
+    currentAnalysis?.why || '',
+    currentAnalysis?.nextBest || '',
+    ...(Array.isArray(currentAnalysis?.nextSteps) ? currentAnalysis.nextSteps : []),
+  ].join('||');
+
+  const syncActionChecklistState = () => {
+    const signature = currentActionSignature();
+    if (actionChecklistState.signature !== signature) {
+      actionChecklistState = {
+        signature,
+        doneIds: new Set(),
+      };
+    }
+  };
+
+  const getActionItems = () => {
+    if (!currentAnalysis?.success || currentAnalysis?.stale) return [];
+    if (Array.isArray(currentAnalysis.actions) && currentAnalysis.actions.length) {
+      return currentAnalysis.actions.slice(0, 3).map((item, index) => ({
+        id: String(item.id || `action-${index}`),
+        label: String(item.label || `Action ${index + 1}`),
+        text: String(item.text || '').trim(),
+        help: String(item.help || '').trim(),
+      })).filter((item) => item.text);
+    }
+    const compact = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+    const items = [];
+    const first = compact(currentAnalysis.focus || currentAnalysis.summary?.executiveFinding || 'Add a table first.');
+    const why = compact(currentAnalysis.why || 'It is spending money, but this table does not show enough results yet.');
+    const second = compact(currentAnalysis.nextBest || currentAnalysis.nextSteps?.[1] || currentAnalysis.nextSteps?.[0] || 'Keep the clearer performer running as it is.');
+    const third = compact(currentAnalysis.nextSteps?.[2] || currentAnalysis.summary?.attention?.[2] || 'Read the full report for the details.');
+    const pushItem = (id, label, text, help = '') => {
+      if (!text) return;
+      if (items.some((item) => item.text === text)) return;
+      items.push({ id, label, text, help });
+    };
+    pushItem('do-now', 'Do this now', first, why);
+    pushItem('then', 'Then do this', second, 'Keep the next-best row steady while you review the first one.');
+    pushItem('after', 'After that', third, 'Use the full report if you want more detail.');
+    return items.slice(0, 3);
+  };
+
+  const renderActionChecklist = () => {
+    const checklist = $('actionChecklist');
+    const completion = $('actionComplete');
+    const badge = $('actionListBadge');
+    const nextStepsCard = $('nextStepsCard');
+    if (!checklist || !completion || !badge || !nextStepsCard) return;
+
+    const ready = Boolean(currentAnalysis?.success && !currentAnalysis?.stale);
+    nextStepsCard.hidden = !ready;
+    if (!ready) {
+      checklist.innerHTML = '';
+      completion.hidden = true;
+      badge.hidden = true;
+      return;
+    }
+
+    syncActionChecklistState();
+    const items = getActionItems();
+    const active = items.filter((item) => !actionChecklistState.doneIds.has(item.id));
+    const done = items.filter((item) => actionChecklistState.doneIds.has(item.id));
+
+    const renderItem = (item, completed = false) => `
+      <div class="action-item${completed ? ' is-done' : ''}" data-action-id="${escapeHtml(item.id)}">
+        <div>
+          <div class="action-label"><span class="chip ${completed ? 'chip--success' : 'chip--neutral'}">${escapeHtml(item.label)}</span></div>
+          <p class="action-text">${escapeHtml(item.text)}</p>
+          ${item.help ? `<p class="action-help">Why: ${escapeHtml(item.help)}</p>` : ''}
+        </div>
+        <button class="action-done-button${completed ? ' is-done' : ''}" type="button" data-action-done="${escapeHtml(item.id)}">${completed ? 'Undo' : 'Done'}</button>
+      </div>`;
+
+    const groups = [];
+    if (active.length) {
+      groups.push(`<div class="action-group">${active.map((item) => renderItem(item, false)).join('')}</div>`);
+    }
+    if (done.length) {
+      groups.push(`<div class="action-group">${done.map((item) => renderItem(item, true)).join('')}</div>`);
+    }
+    checklist.innerHTML = groups.join('') || '<div class="action-item"><div><p class="action-text">No more actions.</p></div></div>';
+    completion.hidden = active.length !== 0;
+    badge.hidden = false;
+    badge.textContent = active.length ? 'Ready' : 'Complete';
+  };
+
+  const toggleActionDone = (id) => {
+    syncActionChecklistState();
+    if (actionChecklistState.doneIds.has(id)) {
+      actionChecklistState.doneIds.delete(id);
+    } else {
+      actionChecklistState.doneIds.add(id);
+    }
+    renderActionChecklist();
+    renderWorkspaceSection();
+  };
+
+  const openFullReport = () => {
+    const details = $('detailsCard');
+    if (details) details.open = true;
+    details?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const saveFromCompletion = async () => {
+    const action = derivePrimaryActionState();
+    if (action.mode === 'save') {
+      await saveReviewToWorkspace();
+      return;
+    }
+    if (action.mode === 'prompt') {
+      triggerPrimaryAction();
+      return;
+    }
+    await saveReviewToWorkspace();
   };
 
   const downloadAnalysis = () => {
@@ -1206,7 +1339,7 @@
 
     if (addVisibleTableButton) {
       addVisibleTableButton.textContent = 'Update table';
-      addVisibleTableButton.hidden = true;
+      addVisibleTableButton.hidden = capturedTables.length === 0;
       addVisibleTableButton.disabled = !panelState.canAddTable || Boolean(pendingRequestId);
     }
     if (primaryActionButton) {
@@ -1333,8 +1466,6 @@
     const focusText = $('focusText');
     const focusWhy = $('focusWhy');
     const focusConfidence = $('focusConfidence');
-    const nextStepsCard = $('nextStepsCard');
-    const nextStepsText = $('nextStepsText');
     const reviewContent = $('reviewContent');
     const panelState = derivePanelState();
     const reportText = $('fullReportText');
@@ -1342,7 +1473,7 @@
     const downloadButton = $('downloadAnalysis');
     const analyseNowButton = $('analyseNow');
     const decision = deriveDecisionCard(currentAnalysis);
-    const confidenceVariant = currentAnalysis.stale ? 'warn' : (currentAnalysis.success ? 'info' : 'neutral');
+    const confidenceVariant = currentAnalysis.stale ? 'warn' : (currentAnalysis.success ? 'success' : 'neutral');
     const flags = getVisibilityFlags();
     const ready = flags.hasFreshAnalysis;
 
@@ -1384,7 +1515,7 @@
     focusCard.classList.toggle('is-stale', currentAnalysis.stale);
     focusCard.classList.toggle('is-empty', !ready && !currentAnalysis.stale);
     focusCard.hidden = false;
-    nextStepsCard.hidden = !flags.hasNextBest;
+    renderActionChecklist();
     reviewContent.hidden = !currentAnalysis.success && !currentAnalysis.stale;
     if (downloadButton) downloadButton.disabled = !currentAnalysis.success;
     if (reportSummary) {
@@ -1402,7 +1533,6 @@
       $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 5), 'No visible signals found yet.');
       $('visiblePreview').innerHTML = renderPreview(currentAnalysis.previewRows);
       $('attentionList').innerHTML = renderLines(summary.attention.slice(0, 3), 'No attention notes yet.');
-      if (nextStepsText) nextStepsText.textContent = `Next: ${decision.nextBest || 'Keep the clearer performer running for now.'}`;
     } else if (currentAnalysis.stale) {
       focusText.textContent = 'Analyse to find the first thing to check.';
       if (focusWhy) focusWhy.textContent = 'The tables changed.';
@@ -1410,7 +1540,6 @@
       $('keySignals').innerHTML = '';
       $('visiblePreview').innerHTML = '';
       $('attentionList').innerHTML = '';
-      if (nextStepsText) nextStepsText.textContent = 'Analyse to refresh the next step.';
     } else {
       focusText.textContent = 'Feed me a campaign table to start.';
       if (focusWhy) focusWhy.textContent = 'Then I’ll explain why.';
@@ -1418,7 +1547,6 @@
       $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 5), 'No visible signals found yet.');
       $('visiblePreview').innerHTML = renderPreview(currentAnalysis.previewRows);
       $('attentionList').innerHTML = renderLines(summary.attention.slice(0, 3), 'No attention notes yet.');
-      if (nextStepsText) nextStepsText.textContent = 'Add a table first.';
     }
     renderWorkspaceSection();
   };
@@ -1454,19 +1582,19 @@
     const reviewConfidence = capture.reviewConfidence || matrix.confidence || 'visible only';
 
     const focus = watchItem
-      ? `Check ${rowLabel(watchItem)} before spending more there.`
+      ? `Do not add more budget to ${rowLabel(watchItem)} yet.`
       : 'The rows are still too limited.';
 
     const why = watchItem
-      ? `${rowLabel(watchItem)} is spending money, but the table does not show enough results yet.`
+      ? `${rowLabel(watchItem)} is spending money, but this table does not show enough results yet.`
       : 'The rows are still too limited.';
 
     const nextBest = efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
-      ? `Keep ${rowLabel(efficientPerformer)} running for now.`
-      : 'Keep the clearer performer running for now.';
+      ? `Keep ${rowLabel(efficientPerformer)} running as it is.`
+      : 'Keep the clearer performer running as it is.';
 
     const nextSteps = [
-      watchItem ? `Check ${rowLabel(watchItem)} before spending more there.` : 'Check the highest-spend row before spending more there.',
+      focus,
       nextBest,
       platformAdvice(capture.platform, watchItem?.label || highestSpend?.label || ''),
     ];
@@ -1492,7 +1620,7 @@
     keySignals.push({ label: 'Review level', title: reviewLevel, details: 'visible only' });
 
     const attention = [
-      watchItem ? `Check ${rowLabel(watchItem)} before spending more there.` : 'Check the highest-spend row first.',
+      focus,
       lowDataItem && lowDataItem.rowReference !== watchItem?.rowReference
         ? `${rowLabel(lowDataItem)} does not have enough data yet.`
         : (efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference ? `Keep ${rowLabel(efficientPerformer)} running for now.` : 'Keep the clearer performer running for now.'),
@@ -1519,6 +1647,11 @@
       fixFirst: nextSteps[0] || focus,
       why,
       nextBest: nextSteps[1] || nextSteps[0] || '',
+      actions: [
+        { id: 'do-now', label: 'Do this now', text: focus, help: why },
+        { id: 'then', label: 'Then do this', text: nextBest, help: 'Keep the next-best row steady while you review the first one.' },
+        { id: 'after', label: 'After that', text: platformAdvice(capture.platform, watchItem?.label || highestSpend?.label || ''), help: 'Use the full report if you want more detail.' },
+      ],
       evidence: keySignals.slice(0, 3),
       summary: {
         executiveFinding: focus,
@@ -1572,18 +1705,18 @@
     keySignals.push({ label: 'Review level', title: reviewLevel, details: 'visible only' });
 
     const topFinding = watchItem
-      ? `Check ${rowLabel(watchItem)} before spending more there.${efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference ? ` ${rowLabel(efficientPerformer)} looks safer to keep running.` : ''}`
+      ? `Do not add more budget to ${rowLabel(watchItem)} yet.${efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference ? ` ${rowLabel(efficientPerformer)} looks safer to keep running.` : ''}`
       : 'The rows are still too limited.';
 
     const why = watchItem
-      ? `${rowLabel(watchItem)} is spending money, but the table does not show enough results yet.`
+      ? `${rowLabel(watchItem)} is spending money, but this table does not show enough results yet.`
       : 'The rows are still too limited.';
 
     const attention = [
-      watchItem ? `Check ${rowLabel(watchItem)} before spending more there.` : 'Check the highest-spend row before spending more there.',
+      watchItem ? `Do not add more budget to ${rowLabel(watchItem)} yet.` : 'Do not add more budget to the highest-spend row yet.',
       efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
-        ? `Keep ${rowLabel(efficientPerformer)} running for now.`
-        : 'Keep the clearer performer running for now.',
+        ? `Keep ${rowLabel(efficientPerformer)} running as it is.`
+        : 'Keep the clearer performer running as it is.',
       platformActionHint(watchItem?.platform || highestSpend?.platform || efficientPerformer?.platform, watchItem?.label || highestSpend?.label || efficientPerformer?.label || ''),
     ];
 
@@ -1592,10 +1725,10 @@
     }
 
     const nextSteps = [
-      watchItem ? `Check ${rowLabel(watchItem)} before spending more there.` : 'Check the highest-spend row before spending more there.',
+      topFinding,
       efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
-        ? `Keep ${rowLabel(efficientPerformer)} running for now.`
-        : 'Keep the clearer performer running for now.',
+        ? `Keep ${rowLabel(efficientPerformer)} running as it is.`
+        : 'Keep the clearer performer running as it is.',
       platformActionHint(watchItem?.platform || highestSpend?.platform || efficientPerformer?.platform, watchItem?.label || highestSpend?.label || efficientPerformer?.label || ''),
     ];
 
@@ -1620,6 +1753,11 @@
       fixFirst: nextSteps[0] || topFinding,
       why,
       nextBest: nextSteps[1] || nextSteps[0] || '',
+      actions: [
+        { id: 'do-now', label: 'Do this now', text: topFinding, help: why },
+        { id: 'then', label: 'Then do this', text: nextSteps[1] || nextSteps[0] || '', help: 'Keep the next-best row steady while you review the first one.' },
+        { id: 'after', label: 'After that', text: nextSteps[2] || '', help: 'Use the full report if you want more detail.' },
+      ].filter((item) => item.text),
       evidence: keySignals.slice(0, 3),
       summary: {
         executiveFinding: topFinding,
@@ -1751,6 +1889,9 @@
     const analyseNowButton = $('analyseNow');
     const clearCapturedTablesButton = $('clearCapturedTables');
     const downloadAnalysisButton = $('downloadAnalysis');
+    const readFullReportButton = $('readFullReport');
+    const saveToWorkspaceFromDoneButton = $('saveToWorkspaceFromDone');
+    const actionChecklist = $('actionChecklist');
     const workspaceConnectButton = $('workspaceConnect');
     const workspaceCancelConnectButton = $('workspaceCancelConnect');
     const workspaceChangeButton = $('workspaceChange');
@@ -1813,6 +1954,13 @@
     analyseNowButton?.addEventListener('click', analyseNow);
     clearCapturedTablesButton?.addEventListener('click', clearCapturedTables);
     downloadAnalysisButton?.addEventListener('click', downloadAnalysis);
+    readFullReportButton?.addEventListener('click', openFullReport);
+    saveToWorkspaceFromDoneButton?.addEventListener('click', saveFromCompletion);
+    actionChecklist?.addEventListener('click', (event) => {
+      const button = event.target.closest?.('[data-action-done]');
+      if (!button) return;
+      toggleActionDone(button.getAttribute('data-action-done'));
+    });
     workspaceConnectButton?.addEventListener('click', connectWorkspaceFromInput);
     workspaceCancelConnectButton?.addEventListener('click', () => {
       workspacePromptOpen = false;
