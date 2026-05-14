@@ -25,6 +25,7 @@ Principles:
 4. Extension previews up to 5 rows.
 5. Extension shows concise analyst summary in a persistent side panel.
 6. User may optionally save the derived review to the private workspace via a token-scoped endpoint.
+7. User may optionally create a richer workspace report from the same visible rows via the token-scoped report path.
 
 ## Extraction principles
 - use DOM/table extraction, not screenshots
@@ -95,6 +96,7 @@ Columns like:
 - Session state lives in `chrome.storage.session`.
 - Optional workspace connection lives in `chrome.storage.local`.
 - Only the user-triggered save action sends a compact derived review to the private workspace.
+- Only the user-triggered report action sends visible rows to the workspace report generator.
 - No background capture.
 - No screenshots.
 - No raw rows, raw HTML, or screenshots in saved workspace data.

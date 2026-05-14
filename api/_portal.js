@@ -742,6 +742,105 @@ const runReportGenerator = async ({ files = [] } = {}) => {
   };
 };
 
+const csvEscape = (value) => {
+  const text = String(value ?? '');
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
+
+const numericValue = (value) => {
+  const text = String(value ?? '').trim();
+  if (!text) return null;
+  const cleaned = text.replace(/[,\s]/g, '').replace(/^[£€$]/, '').replace(/[£€$]$/, '');
+  const number = Number(cleaned.replace(/%$/, '').replace(/x$/, ''));
+  return Number.isFinite(number) ? number : null;
+};
+
+const currencyText = (value) => {
+  const text = String(value ?? '').trim();
+  if (!text) return '';
+  const numeric = numericValue(text);
+  return numeric === null ? text : new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 2 }).format(numeric);
+};
+
+const integerText = (value) => {
+  const text = String(value ?? '').trim();
+  if (!text) return '';
+  const numeric = numericValue(text);
+  return numeric === null ? text : String(Math.round(numeric));
+};
+
+const percentText = (value) => {
+  const text = String(value ?? '').trim();
+  if (!text) return '';
+  if (/%$/.test(text)) return text;
+  const numeric = numericValue(text);
+  if (numeric === null) return text;
+  const pct = numeric <= 1 ? numeric * 100 : numeric;
+  return `${pct.toFixed(pct < 10 ? 1 : 0)}%`;
+};
+
+const slugFilePart = (value) => String(value || '')
+  .trim()
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '') || 'table';
+
+const buildExtensionVisibleTableFiles = (payload = {}) => {
+  const tables = Array.isArray(payload.visible_tables) ? payload.visible_tables.slice(0, 6) : [];
+  const files = [];
+  let limited = tables.length < (Array.isArray(payload.visible_tables) ? payload.visible_tables.length : 0);
+  for (const [index, table] of tables.entries()) {
+    const platform = cleanDisplayLabel(table?.platform || 'Unknown') || 'Unknown';
+    const rows = Array.isArray(table?.rows) ? table.rows.slice(0, 80) : [];
+    if (Array.isArray(table?.rows) && table.rows.length > 80) limited = true;
+    if (!rows.length) continue;
+    const columns = [
+      'Campaign name',
+      'Segment label',
+      'Platform',
+      'Amount spent',
+      'Clicks',
+      'Impressions',
+      'Conversions',
+      'Revenue / value',
+      'ROAS',
+      'CPA / cost per result',
+      'CPC',
+      'CTR',
+      'Visible data note',
+    ];
+    const normalizedRows = rows.map((row) => ({
+      'Campaign name': cleanDisplayLabel(row?.label || row?.campaign_name || row?.campaignName || row?.name || '') || 'Row',
+      'Segment label': cleanDisplayLabel(row?.row_reference || row?.rowReference || row?.segment_label || row?.segmentLabel || row?.label || '') || '',
+      'Platform': platform,
+      'Amount spent': currencyText(row?.spend),
+      'Clicks': integerText(row?.clicks),
+      'Impressions': integerText(row?.impressions),
+      'Conversions': integerText(row?.result_value ?? row?.conversions),
+      'Revenue / value': currencyText(row?.revenue),
+      'ROAS': numericValue(row?.roas) === null ? String(row?.roas ?? '').trim() : `${numericValue(row.roas).toFixed(2)}x`,
+      'CPA / cost per result': currencyText(row?.cpa),
+      'CPC': currencyText(row?.cpc),
+      'CTR': percentText(row?.ctr),
+      'Visible data note': cleanDisplayLabel(row?.visible_data_note || row?.visibleDataNote || ''),
+    }));
+    const text = [
+      columns.join(','),
+      ...normalizedRows.map((row) => columns.map((column) => csvEscape(row[column])).join(',')),
+    ].join('\n');
+    files.push({
+      filename: `chrome-visible-table-${slugFilePart(platform)}-${index + 1}.csv`,
+      contentType: 'text/csv',
+      text,
+    });
+  }
+  return {
+    files,
+    platforms: [...new Set(files.map((file) => detectSourcePlatform({ filename: file.filename, text: file.text })))] ,
+    caveat: limited ? 'Visible rows only — limited to the Chrome tables you added.' : 'Visible rows only — user-triggered Chrome save.',
+  };
+};
+
 const getPortalTokenFromRequest = (req, body = {}) => {
   const fromBody = String(body.token || body.portal_token || '').trim();
   if (fromBody) return fromBody;
@@ -801,6 +900,7 @@ module.exports = {
   detectSourcePlatforms,
   safePortalReview,
   runReportGenerator,
+  buildExtensionVisibleTableFiles,
   getPortalTokenFromRequest,
   getWorkspaceByPortalToken,
   logUsageEvent,

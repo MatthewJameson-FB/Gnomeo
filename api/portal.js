@@ -14,6 +14,7 @@ const {
   buildWorkspaceMemoryUpdate,
   workspaceMemoryFromWorkspace,
   detectSourcePlatforms,
+  buildExtensionVisibleTableFiles,
   runReportGenerator,
   buildComparisonSummary,
 } = require('./_portal');
@@ -496,6 +497,7 @@ module.exports = async (req, res) => {
     }
 
     const extensionPayload = body && typeof body === 'object' ? body : {};
+    const reportMode = normalize(extensionPayload.report_mode || extensionPayload.reportMode || 'save_spot_check');
     const reviewLevel = normalize(extensionPayload.review_level || extensionPayload.reviewLevel || 'one_page_spot_check');
     const prettyLevel = reviewLevel === 'cross_platform_spot_check' ? 'Cross-platform spot check' : 'One-page spot check';
     const platformList = normalizeStringArray(extensionPayload.platforms || [], { limit: 6, max: 64 });
@@ -512,6 +514,11 @@ module.exports = async (req, res) => {
       captured_at: clampText(table?.captured_at || '', 32) || new Date().toISOString(),
       top_derived_signals: normalizeStringArray(table?.top_derived_signals || [], { limit: 3, max: 160 }),
     })) : [];
+
+    const extensionFiles = reportMode === 'create_visible_table_report'
+      ? buildExtensionVisibleTableFiles(extensionPayload)
+      : { files: [] };
+    const useVisibleTableReport = reportMode === 'create_visible_table_report' && Array.isArray(extensionFiles.files) && extensionFiles.files.length > 0;
 
     const currentSummary = {
       title: 'Gnomeo Review',
@@ -544,19 +551,75 @@ module.exports = async (req, res) => {
       })),
     });
 
-    const reportMarkdown = buildExtensionReviewMarkdown({
-      payload: {
-        ...extensionPayload,
-        review_level: reviewLevel,
-        generated_at: new Date().toISOString(),
-        expected_impact: extensionPayload.expected_impact || 'Keeps the workspace memory anchored to the review you chose to save.',
-        confidence_note: extensionPayload.confidence_note || 'Visible rows only · user-triggered extension save',
-      },
-      tables: tableSummaries,
-    });
-    const parsedReport = parseReportMarkdown(reportMarkdown);
+    let parsedReport = null;
+    let reportMarkdown = '';
+    let reportTitle = 'Gnomeo Review';
+    let generatedReport = null;
+    if (useVisibleTableReport) {
+      generatedReport = await runReportGenerator({ files: extensionFiles.files });
+      reportTitle = 'Chrome visible-table report';
+      reportMarkdown = [
+        `# ${reportTitle}`,
+        '',
+        'Visible rows only · generated from tables added in Chrome.',
+        '',
+        generatedReport.markdown,
+      ].join('\n');
+      parsedReport = parseReportMarkdown(reportMarkdown);
+    } else {
+      reportMarkdown = buildExtensionReviewMarkdown({
+        payload: {
+          ...extensionPayload,
+          review_level: reviewLevel,
+          generated_at: new Date().toISOString(),
+          expected_impact: extensionPayload.expected_impact || 'Keeps the workspace memory anchored to the review you chose to save.',
+          confidence_note: extensionPayload.confidence_note || 'Visible rows only · user-triggered extension save',
+        },
+        tables: tableSummaries,
+      });
+      parsedReport = parseReportMarkdown(reportMarkdown);
+    }
     const reportRunId = generateId();
     const now = new Date().toISOString();
+    const sourceFilenames = useVisibleTableReport
+      ? (generatedReport.source_filenames || extensionFiles.files.map((file) => file.filename))
+      : ['chrome-extension'];
+    const sourcePlatforms = useVisibleTableReport
+      ? (platformList.length ? platformList : (generatedReport.source_platforms || extensionFiles.platforms || []))
+      : platformList;
+    const rowCount = useVisibleTableReport
+      ? (generatedReport.row_count || tableSummaries.reduce((sum, table) => sum + (Number(table.rows_detected) || 0), 0))
+      : tableSummaries.reduce((sum, table) => sum + (Number(table.rows_detected) || 0), 0);
+    const inputBytes = useVisibleTableReport
+      ? (generatedReport.input_bytes || 0)
+      : Number(extensionPayload.input_bytes || 0) || null;
+    const summary = useVisibleTableReport && generatedReport
+      ? {
+          ...parsedReport,
+          title: reportTitle,
+          review_source: 'chrome_extension',
+          review_depth: 'visible_table_review',
+          visible_rows_note: extensionFiles.caveat,
+          metrics: generatedReport.metrics || parsedReport.metrics || {},
+          key_decisions: parsedReport.key_decisions || currentSummary.key_decisions,
+          key_insights: parsedReport.key_insights || currentSummary.key_insights,
+          confidence_and_limitations: parsedReport.confidence_and_limitations || currentSummary.confidence_and_limitations,
+          next_review_focus: parsedReport.next_review_focus || nextSteps,
+        }
+      : {
+          ...parsedReport,
+          title: reportTitle,
+          review_source: 'chrome_extension',
+          review_depth: 'visible_table_review',
+          visible_rows_note: extensionPayload.visible_rows_note || 'Visible rows only · user-triggered extension save',
+          metrics: {
+            campaign_names: sourcePlatforms,
+          },
+          key_decisions: parsedReport.key_decisions || currentSummary.key_decisions,
+          key_insights: parsedReport.key_insights || currentSummary.key_insights,
+          confidence_and_limitations: parsedReport.confidence_and_limitations || currentSummary.confidence_and_limitations,
+          next_review_focus: parsedReport.next_review_focus || nextSteps,
+        };
 
     let savedRun = null;
     try {
@@ -564,38 +627,47 @@ module.exports = async (req, res) => {
         id: reportRunId,
         workspace_id: workspace.id,
         status: 'completed',
-        report_title: parsedReport.title || 'Gnomeo Review',
+        report_title: reportTitle || 'Gnomeo Review',
         report_markdown: reportMarkdown,
         report_content: reportMarkdown,
-        source_count: tableSummaries.length || 1,
-        source_platforms: platformList,
-        platforms: platformList,
-        source_filenames: ['chrome-extension'],
-        sources: tableSummaries.map((table) => ({
+        source_count: useVisibleTableReport ? (extensionFiles.files.length || 1) : (tableSummaries.length || 1),
+        source_platforms: sourcePlatforms,
+        platforms: sourcePlatforms,
+        source_filenames: sourceFilenames,
+        sources: useVisibleTableReport
+          ? extensionFiles.files.map((file, index) => ({
+              filename: file.filename,
+              platform: sourcePlatforms[index] || platformList[index] || null,
+              review_depth: 'visible_table_review',
+              visible_rows_only: true,
+            }))
+          : tableSummaries.map((table) => ({
           platform: table.platform,
           rows_detected: table.rows_detected,
           metric_columns: table.metric_columns,
           captured_at: table.captured_at,
           top_derived_signals: table.top_derived_signals,
         })),
-        row_count: tableSummaries.reduce((sum, table) => sum + (Number(table.rows_detected) || 0), 0),
-        input_bytes: Number(extensionPayload.input_bytes || 0) || null,
+        row_count: rowCount,
+        input_bytes: inputBytes,
         summary: {
-          title: parsedReport.title || 'Gnomeo Review',
+          title: reportTitle || 'Gnomeo Review',
           review_source: 'chrome_extension',
+          review_depth: 'visible_table_review',
           review_level: prettyLevel,
-          platforms: platformList,
+          platforms: sourcePlatforms,
           fix_first: currentSummary.fix_first,
           why,
           next_best: currentSummary.next_best,
           evidence: currentSummary.evidence,
           metrics: {
-            campaign_names: platformList,
+            campaign_names: sourcePlatforms,
           },
           key_decisions: parsedReport.key_decisions || currentSummary.key_decisions,
           key_insights: parsedReport.key_insights || currentSummary.key_insights,
           confidence_and_limitations: parsedReport.confidence_and_limitations || currentSummary.confidence_and_limitations,
           next_review_focus: parsedReport.next_review_focus || nextSteps,
+          visible_rows_note: extensionFiles.caveat || extensionPayload.visible_rows_note || 'Visible rows only · user-triggered extension save',
         },
         comparison_summary: comparisonSummary,
         top_priorities: parsedReport.key_decisions || currentSummary.key_decisions,
@@ -608,9 +680,12 @@ module.exports = async (req, res) => {
         metadata: {
           generated_by: 'chrome_extension',
           review_level: reviewLevel,
-          source_count: tableSummaries.length || 1,
-          platform_count: platformList.length,
+          review_source: 'chrome_extension',
+          review_depth: 'visible_table_review',
+          source_count: useVisibleTableReport ? (extensionFiles.files.length || 1) : (tableSummaries.length || 1),
+          platform_count: sourcePlatforms.length,
           visible_rows_only: true,
+          report_mode: reportMode,
         },
         created_at: now,
       });
@@ -632,8 +707,8 @@ module.exports = async (req, res) => {
         ...buildWorkspaceMemoryUpdate({
           workspace,
           parsedReport,
-          detectedPlatforms: platformList,
-          sourceFilenames: ['chrome-extension'],
+          detectedPlatforms: sourcePlatforms,
+          sourceFilenames: sourceFilenames,
           reportRun: savedRun || { created_at: now, report_title: parsedReport.title || 'Gnomeo Review', row_count: tableSummaries.reduce((sum, table) => sum + (Number(table.rows_detected) || 0), 0) },
           currentMemory: workspace,
           comparison: comparisonSummary,
@@ -655,12 +730,12 @@ module.exports = async (req, res) => {
       workspace_id: workspace.id,
       event_type: 'portal_extension_review_saved',
       plan: workspace.plan,
-      metadata: {
-        workspace_name: workspace.workspace_name,
-        review_level: reviewLevel,
-        platform_count: platformList.length,
-        source_count: tableSummaries.length || 1,
-      },
+        metadata: {
+          workspace_name: workspace.workspace_name,
+          review_level: reviewLevel,
+          platform_count: sourcePlatforms.length,
+          source_count: tableSummaries.length || 1,
+        },
     });
     await updatePortalTokenUse(workspace.id);
 

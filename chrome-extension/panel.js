@@ -29,6 +29,7 @@
   let currentAnalysis = EMPTY_ANALYSIS;
   const STORAGE_KEY = 'gnomeo-captured-tables';
   const ANALYSIS_META_KEY = 'gnomeo-analysis-meta';
+  const VISIBLE_TABLE_ANALYSIS_KEY = 'gnomeo-visible-table-analysis';
   const WORKSPACE_KEY = 'gnomeo-workspace-connection';
   const sessionStorageApi = globalThis.chrome?.storage?.session || null;
   const localStorageApi = globalThis.chrome?.storage?.local || null;
@@ -50,6 +51,7 @@
   };
   let workspaceSaving = false;
   let workspacePromptOpen = false;
+  let workspacePendingSaveMode = '';
   let activeRefreshTimer = null;
   let actionChecklistState = {
     signature: '',
@@ -442,6 +444,11 @@
       setWorkspaceStatus(verified.workspaceName ? `Workspace ready · ${verified.workspaceName}` : 'Workspace ready.');
       renderWorkspaceSection();
       setStatus('Workspace ready.');
+      if (workspacePendingSaveMode && currentAnalysis.success) {
+        const pendingMode = workspacePendingSaveMode;
+        workspacePendingSaveMode = '';
+        await saveReviewToWorkspace(pendingMode);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error || 'Workspace connection failed');
       setWorkspaceError(message);
@@ -452,6 +459,7 @@
   const disconnectWorkspace = async () => {
     await clearWorkspaceConnection();
     workspacePromptOpen = false;
+    workspacePendingSaveMode = '';
     setWorkspaceStatus('Want deeper memory?');
     setWorkspaceError('');
     renderWorkspaceSection();
@@ -463,8 +471,34 @@
     const level = currentAnalysis.mode === 'bundle' ? 'cross_platform_spot_check' : 'one_page_spot_check';
     const summary = currentAnalysis.summary || EMPTY_ANALYSIS.summary;
     const tables = Array.isArray(currentAnalysis.sources) ? currentAnalysis.sources : [];
+    const visibleTables = tables.map((capture, index) => {
+      const rawRows = Array.isArray(capture?.decisionMatrix?.rows)
+        ? capture.decisionMatrix.rows
+        : (Array.isArray(capture?.visibleRows) ? capture.visibleRows : (Array.isArray(capture?.rows) ? capture.rows : []));
+      const rows = rawRows.slice(0, 80).map((row) => ({
+        label: String(row?.label || row?.title || row?.campaign_name || row?.campaignName || row?.name || '').trim(),
+        row_reference: String(row?.rowReference || row?.row_reference || row?.reference || '').trim(),
+        spend: row?.spend ?? row?.amountSpent ?? row?.amount_spent ?? '',
+        clicks: row?.clicks ?? '',
+        impressions: row?.impressions ?? '',
+        result_value: row?.resultValue ?? row?.result_value ?? row?.conversions ?? '',
+        revenue: row?.revenue ?? row?.value ?? '',
+        roas: row?.roas ?? '',
+        cpa: row?.cpa ?? row?.costPerResult ?? '',
+        cpc: row?.cpc ?? '',
+        ctr: row?.ctr ?? '',
+        visible_data_note: String(row?.visibleDataNote || row?.visible_data_note || '').trim(),
+      }));
+      return {
+        platform: capture.platform || 'Unknown',
+        label: capture.snapshot?.watchLabel || capture.snapshot?.spendLabel || capture.platform || `Table ${index + 1}`,
+        metric_columns: Array.isArray(capture.metricColumns) ? capture.metricColumns.slice(0, 10) : [],
+        rows,
+      };
+    });
     return {
       source: 'chrome_extension',
+      report_mode: 'save_spot_check',
       review_level: level,
       platforms: Array.isArray(decision.platforms) ? decision.platforms.slice(0, 6) : [currentAnalysis.platform || 'Unknown'],
       top_finding: decision.fixFirst || currentAnalysis.focus || summary.executiveFinding || 'Visible only.',
@@ -500,23 +534,29 @@
       expected_impact: decision.fixFirst || summary.executiveFinding || 'Keeps the memory useful.',
       generated_at: new Date().toISOString(),
       report_markdown: buildReportMarkdown(),
+      visible_tables: visibleTables,
     };
   };
 
-  const saveReviewToWorkspace = async () => {
+  const saveReviewToWorkspace = async (mode = 'save_spot_check') => {
     if (!currentAnalysis.success || !workspaceConnection.token || workspaceSaving) return;
     workspaceSaving = true;
     setWorkspaceError('');
     renderWorkspaceSection();
-    setStatus('Saving review to workspace…');
+    setStatus(mode === 'create_visible_table_report' ? 'Creating workspace report…' : 'Saving review to workspace…');
     try {
+      const payload = buildExtensionReviewPayload();
+      payload.report_mode = mode;
+      if (mode === 'create_visible_table_report') {
+        payload.visible_rows_note = 'Visible rows only · Chrome visible-table report.';
+      }
       const response = await fetch(workspaceApiUrl('/api/portal?action=extension-review'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-portal-token': workspaceConnection.token,
         },
-        body: JSON.stringify(buildExtensionReviewPayload()),
+        body: JSON.stringify(payload),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data?.success || !data?.saved) {
@@ -532,7 +572,7 @@
       await persistWorkspaceConnection();
       renderWorkspaceSection();
       setWorkspaceStatus(data.workspace_name ? `Workspace ready · ${data.workspace_name}` : 'Workspace ready.');
-      setStatus('Saved to workspace.');
+      setStatus(mode === 'create_visible_table_report' ? 'Workspace report created.' : 'Saved to workspace.');
       setWorkspaceError('');
       if (data.portal_url || data.workspace_url) {
         const link = $('openWorkspaceLink');
@@ -543,12 +583,30 @@
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error || 'Could not save this review right now.');
-      setWorkspaceError(`Could not save. Download instead. ${message}`.trim());
-      setStatus('Could not save. Download instead.');
+      setWorkspaceError((mode === 'create_visible_table_report' ? 'Could not create report. Download/print instead. ' : 'Could not save. Download instead. ') + message);
+      setStatus(mode === 'create_visible_table_report' ? 'Could not create report. Download/print instead.' : 'Could not save. Download instead.');
     } finally {
       workspaceSaving = false;
       renderWorkspaceSection();
     }
+  };
+
+  const createVisibleTableReport = async () => {
+    if (!currentAnalysis.success) return;
+    if (!workspaceConnection.token) {
+      workspacePendingSaveMode = 'create_visible_table_report';
+      workspacePromptOpen = true;
+      setWorkspaceStatus('Add your private workspace link first.');
+      setWorkspaceError('');
+      renderWorkspaceSection();
+      const input = $('workspaceLinkInput');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+      return;
+    }
+    await saveReviewToWorkspace('create_visible_table_report');
   };
 
   const triggerPrimaryAction = async () => {
@@ -566,6 +624,7 @@
       return;
     }
     workspacePromptOpen = true;
+    workspacePendingSaveMode = '';
     setWorkspaceError('');
     renderWorkspaceSection();
     const input = $('workspaceLinkInput');
@@ -584,6 +643,7 @@
       return;
     }
     workspacePromptOpen = true;
+    workspacePendingSaveMode = '';
     setWorkspaceError('');
     renderWorkspaceSection();
     const input = $('workspaceLinkInput');
@@ -735,6 +795,41 @@
   const persistCapturedTables = async () => {
     const result = await storageSet(STORAGE_KEY, capturedTables);
     if (result?.ok === false) throw new Error(result.error || 'Storage write failed');
+  };
+
+  const buildVisibleTableSessionAnalysis = (analysis) => {
+    if (!analysis || !analysis.success) return null;
+    const sources = Array.isArray(analysis.sources) ? analysis.sources.slice(0, 6).map((capture) => ({
+      platform: capture.platform || 'Unknown',
+      capturedAt: capture.capturedAt || Date.now(),
+      rowsDetected: capture.rowsDetected || 0,
+      metricColumns: Array.isArray(capture.metricColumns) ? capture.metricColumns.slice(0, 10) : [],
+      snapshot: capture.snapshot || {},
+      summary: capture.summary || {},
+      decisionMatrix: capture.decisionMatrix ? {
+        ...capture.decisionMatrix,
+        rows: Array.isArray(capture.decisionMatrix.rows) ? capture.decisionMatrix.rows.slice(0, 80) : [],
+      } : null,
+    })) : [];
+    return {
+      ...analysis,
+      sources,
+    };
+  };
+
+  const persistVisibleTableSessionAnalysis = async (analysis) => {
+    const payload = buildVisibleTableSessionAnalysis(analysis);
+    if (!payload) {
+      await storageRemove(VISIBLE_TABLE_ANALYSIS_KEY);
+      return;
+    }
+    const result = await storageSet(VISIBLE_TABLE_ANALYSIS_KEY, payload);
+    if (result?.ok === false) throw new Error(result.error || 'Storage write failed');
+  };
+
+  const loadVisibleTableSessionAnalysis = async () => {
+    const stored = await storageGet(VISIBLE_TABLE_ANALYSIS_KEY);
+    return stored && typeof stored === 'object' ? stored : null;
   };
 
   const upsertCapturedTable = (capture) => {
@@ -1274,6 +1369,7 @@
     }
     renderActionChecklist();
     renderWorkspaceSection();
+    persistVisibleTableSessionAnalysis(currentAnalysis).catch(() => {});
   };
 
   const toggleCurrentWhy = () => {
@@ -1563,6 +1659,7 @@
     const reportSummary = $('reportSummary');
     const downloadButton = $('downloadAnalysis');
     const readFullReportButton = $('readFullReportReport');
+    const createWorkspaceReportButton = $('createWorkspaceReport');
     const analyseNowButton = $('analyseNow');
     const decision = deriveDecisionCard(currentAnalysis);
     const confidenceVariant = currentAnalysis.stale ? 'warn' : (currentAnalysis.success ? 'success' : 'neutral');
@@ -1616,6 +1713,7 @@
     reviewContent.hidden = unsupported || (!currentAnalysis.success && !currentAnalysis.stale);
     if (downloadButton) downloadButton.disabled = !currentAnalysis.success;
     if (readFullReportButton) readFullReportButton.disabled = !currentAnalysis.success;
+    if (createWorkspaceReportButton) createWorkspaceReportButton.disabled = !currentAnalysis.success || workspaceSaving;
     if (reportSummary) {
       reportSummary.textContent = currentAnalysis.success
         ? 'Open for the full note.'
@@ -2000,6 +2098,7 @@
     capturedTables = [];
     analysisMeta = { lastAnalysedSignature: '', analysedAt: 0 };
     workspacePromptOpen = false;
+    workspacePendingSaveMode = '';
     setAnalysis(EMPTY_ANALYSIS);
     renderCapturedTables();
     renderDebugState();
@@ -2008,6 +2107,7 @@
     setStatus('0 sources · hungry');
     await storageRemove(STORAGE_KEY);
     await storageRemove(ANALYSIS_META_KEY);
+    await storageRemove(VISIBLE_TABLE_ANALYSIS_KEY);
   };
 
   const boot = async () => {
@@ -2018,6 +2118,7 @@
     const clearCapturedTablesButton = $('clearCapturedTables');
     const downloadAnalysisButton = $('downloadAnalysis');
     const readFullReportReportButton = $('readFullReportReport');
+    const createWorkspaceReportButton = $('createWorkspaceReport');
     const readFullReportButton = $('readFullReport');
     const printPdfFromDoneButton = $('printPdfFromDone');
     const saveToWorkspaceFromDoneButton = $('saveToWorkspaceFromDone');
@@ -2032,6 +2133,7 @@
 
     await loadCapturedTables();
     await loadAnalysisMeta();
+    const storedVisibleAnalysis = await loadVisibleTableSessionAnalysis();
     await loadWorkspaceConnection();
     if (workspaceConnection.token) {
       try {
@@ -2053,6 +2155,9 @@
     renderCapturedTables();
     if (capturedTables.length && buildBundleSignature(capturedTables) === analysisMeta.lastAnalysedSignature) {
       setAnalysis(capturedTables.length === 1 ? buildSingleReview(capturedTables[0]) : buildBundleReview(capturedTables));
+      refreshBundleDebugState();
+    } else if (!capturedTables.length && storedVisibleAnalysis?.success) {
+      setAnalysis(storedVisibleAnalysis);
       refreshBundleDebugState();
     } else if (capturedTables.length) {
       setAnalysis(makeStaleAnalysis());
@@ -2087,6 +2192,7 @@
     clearCapturedTablesButton?.addEventListener('click', clearCapturedTables);
     downloadAnalysisButton?.addEventListener('click', downloadAnalysis);
     readFullReportReportButton?.addEventListener('click', openFullReport);
+    createWorkspaceReportButton?.addEventListener('click', createVisibleTableReport);
     readFullReportButton?.addEventListener('click', openFullReport);
     printPdfFromDoneButton?.addEventListener('click', downloadAnalysis);
     saveToWorkspaceFromDoneButton?.addEventListener('click', saveFromCompletion);
@@ -2103,12 +2209,14 @@
     workspaceConnectButton?.addEventListener('click', connectWorkspaceFromInput);
     workspaceCancelConnectButton?.addEventListener('click', () => {
       workspacePromptOpen = false;
+      workspacePendingSaveMode = '';
       setWorkspaceError('');
       renderWorkspaceSection();
     });
     workspaceActionButton?.addEventListener('click', triggerWorkspaceMiniAction);
     workspaceChangeMiniButton?.addEventListener('click', () => {
       workspacePromptOpen = true;
+      workspacePendingSaveMode = '';
       setWorkspaceError('');
       renderWorkspaceSection();
       const input = $('workspaceLinkInput');
@@ -2119,6 +2227,7 @@
     });
     workspaceChangeButton?.addEventListener('click', async () => {
       workspacePromptOpen = true;
+      workspacePendingSaveMode = '';
       workspaceConnection = normalizeWorkspaceState({
         rawInput: workspaceConnection.rawInput || workspaceConnection.portalUrl || '',
         token: '',

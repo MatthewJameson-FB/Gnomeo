@@ -376,6 +376,15 @@
 
     const badge = (label) => `<span class="pill">${escapeHtml(label)}</span>`;
 
+    const displayPlatformList = (platforms) => Array.isArray(platforms) ? platforms.map((value) => String(value || '').replace(/_/g, ' ').trim()).filter(Boolean).join(' + ') : '';
+
+    const reviewSourceLabel = (item) => {
+      const source = String(item?.summary?.review_source || item?.metadata?.review_source || '').toLowerCase();
+      const depth = String(item?.summary?.review_depth || item?.metadata?.review_depth || '').toLowerCase();
+      if (source === 'chrome_extension' || depth === 'visible_table_review') return 'Chrome visible-table report';
+      return '';
+    };
+
     const renderLineItems = (items, emptyLabel) => {
       if (!items || !items.length) return `<div class="empty-state">${escapeHtml(emptyLabel)}</div>`;
       return items.map((item) => `<div class="row-item"><div><strong>${escapeHtml(item.title || item.label || item)}</strong>${item.details ? `<p>${escapeHtml(item.details)}</p>` : ''}</div>${item.badge ? `<span class="status">${escapeHtml(item.badge)}</span>` : ''}</div>`).join('');
@@ -390,7 +399,9 @@
         seen.add(key);
         return true;
       }).map((item) => {
-        const source = Array.isArray(item.source_platforms) && item.source_platforms.length ? item.source_platforms.join(' + ') : (item.source_count ? `${item.source_count} file(s)` : 'Saved review');
+        const reviewLabel = reviewSourceLabel(item);
+        const sourcePlatforms = Array.isArray(item.source_platforms) && item.source_platforms.length ? displayPlatformList(item.source_platforms) : '';
+        const source = reviewLabel ? `${reviewLabel}${sourcePlatforms ? ` · ${sourcePlatforms}` : ''}` : (sourcePlatforms || (item.source_count ? `${item.source_count} file(s)` : 'Saved review'));
         const isLatest = item.id === latestId;
         return `
           <div class="row-item">
@@ -723,8 +734,10 @@
         ? [
             badge('Latest finding'),
             badge(formatDate(latest.created_at)),
-            latest.source_platforms?.length ? badge(latest.source_platforms.join(' + ')) : null,
+            reviewSourceLabel(latest) ? badge(reviewSourceLabel(latest)) : null,
+            latest.source_platforms?.length ? badge(displayPlatformList(latest.source_platforms)) : null,
             spendAnalysed ? badge(`Spend analysed: ${typeof spendAnalysed === 'number' ? formatCurrency(spendAnalysed) : spendAnalysed}`) : (rowCount ? badge(`Rows analysed: ${Number(rowCount).toLocaleString()}`) : null),
+            reviewSourceLabel(latest) ? badge('Visible rows only') : null,
           ].filter(Boolean).join('')
         : (!hasWorkspace
           ? badge(stateLabel)

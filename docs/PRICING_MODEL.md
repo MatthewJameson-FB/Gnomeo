@@ -23,12 +23,14 @@ Do not imply live checkout until payment is actually added.
 - CSV paste/upload
 - one workspace/account
 - comparison against previous reviews
+- Chrome visible-table reports
 
 ## Pro — £39/month
 - 250 reviews per month
 - multiple workspaces/accounts
 - cross-platform review memory
 - export/share report later
+- deeper visible-table comparison
 
 ## Agency
 - later only

@@ -57,6 +57,7 @@ Secondary but important.
 - deeper CSV paste/upload
 - comparison against previous reviews
 - receives token-scoped extension saves for the same workspace
+- receives Chrome visible-table reports that are not full account audits
 
 ### Public site
 - explains the product
