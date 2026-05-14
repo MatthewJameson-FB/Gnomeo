@@ -1213,7 +1213,9 @@
   const openFullReport = () => {
     const details = $('detailsCard');
     if (details) details.open = true;
+    const report = $('fullReportText');
     details?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    report?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
   const saveFromCompletion = async () => {
@@ -1488,6 +1490,7 @@
     const reportText = $('fullReportText');
     const reportSummary = $('reportSummary');
     const downloadButton = $('downloadAnalysis');
+    const readFullReportButton = $('readFullReportReport');
     const analyseNowButton = $('analyseNow');
     const decision = deriveDecisionCard(currentAnalysis);
     const confidenceVariant = currentAnalysis.stale ? 'warn' : (currentAnalysis.success ? 'success' : 'neutral');
@@ -1539,6 +1542,7 @@
     renderActionChecklist();
     reviewContent.hidden = unsupported || (!currentAnalysis.success && !currentAnalysis.stale);
     if (downloadButton) downloadButton.disabled = !currentAnalysis.success;
+    if (readFullReportButton) readFullReportButton.disabled = !currentAnalysis.success;
     if (reportSummary) {
       reportSummary.textContent = currentAnalysis.success
         ? 'Open for the full note.'
@@ -1630,7 +1634,7 @@
 
     const focus = watchItem
       ? (efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
-        ? `Consider testing a small move away from ${rowLabel(watchItem)} before spending more there.`
+        ? `Test moving a small amount of budget away from ${rowLabel(watchItem)} before spending more there.`
         : `Hold budget on ${rowLabel(watchItem)} for now.`)
       : 'The rows are still too limited.';
 
@@ -1755,7 +1759,7 @@
 
     const topFinding = watchItem
       ? (efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference
-        ? `Consider testing a small move away from ${rowLabel(watchItem)} before spending more there.${efficientPerformer ? ` ${rowLabel(efficientPerformer)} looks safer to keep running.` : ''}`
+        ? `Test moving a small amount of budget away from ${rowLabel(watchItem)} before spending more there.${efficientPerformer ? ` ${rowLabel(efficientPerformer)} looks safer to keep running.` : ''}`
         : `Hold budget on ${rowLabel(watchItem)} for now.`)
       : 'The rows are still too limited.';
 
@@ -1764,7 +1768,7 @@
       : 'The rows are still too limited.';
 
     const attention = [
-      watchItem ? (efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference ? `Consider testing a small move away from ${rowLabel(watchItem)}.` : `Hold budget on ${rowLabel(watchItem)} for now.`) : 'Do not add more budget to the highest-spend row yet.',
+      watchItem ? (efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference ? `Test moving a small amount away from ${rowLabel(watchItem)}.` : `Hold budget on ${rowLabel(watchItem)} for now.`) : 'Do not add more budget to the highest-spend row yet.',
       efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
         ? `${rowLabel(efficientPerformer)} looks safer to keep running.`
         : 'Keep the clearer performer running as it is.',
@@ -1940,7 +1944,9 @@
     const analyseNowButton = $('analyseNow');
     const clearCapturedTablesButton = $('clearCapturedTables');
     const downloadAnalysisButton = $('downloadAnalysis');
+    const readFullReportReportButton = $('readFullReportReport');
     const readFullReportButton = $('readFullReport');
+    const printPdfFromDoneButton = $('printPdfFromDone');
     const saveToWorkspaceFromDoneButton = $('saveToWorkspaceFromDone');
     const actionChecklist = $('actionChecklist');
     const workspaceConnectButton = $('workspaceConnect');
@@ -2005,7 +2011,9 @@
     analyseNowButton?.addEventListener('click', analyseNow);
     clearCapturedTablesButton?.addEventListener('click', clearCapturedTables);
     downloadAnalysisButton?.addEventListener('click', downloadAnalysis);
+    readFullReportReportButton?.addEventListener('click', openFullReport);
     readFullReportButton?.addEventListener('click', openFullReport);
+    printPdfFromDoneButton?.addEventListener('click', downloadAnalysis);
     saveToWorkspaceFromDoneButton?.addEventListener('click', saveFromCompletion);
     actionChecklist?.addEventListener('click', (event) => {
       const button = event.target.closest?.('[data-action-done]');
