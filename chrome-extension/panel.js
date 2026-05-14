@@ -884,7 +884,7 @@
       return { label: 'Add table', mode: 'add' };
     }
     if (!currentCaptureAdded) {
-      return { label: 'Add/update', mode: 'add' };
+      return { label: 'Add table', mode: 'add' };
     }
     if (!analysisFresh || currentAnalysis.stale || !currentAnalysis.success || !analysedBefore) {
       return { label: 'Analyse', mode: 'analyse' };
@@ -945,25 +945,16 @@
   const platformActionHint = (platform, label = '') => {
     const name = displayPlatformName(platform);
     const value = String(label || '').toLowerCase();
-    const googleSearch = /search|brand search|generic search|competitor|keyword/.test(value);
     const googleShopping = /shopping|pmax|performance max|feed|product/.test(value);
-    const metaRetargeting = /retarget|remarket|existing customer/.test(value);
-    const metaProspecting = /prospecting|broad audience|lookalike|advantage\+/.test(value);
-    const linkedInLeadGen = /lead gen|lead generation|lead form|company|job|abm/.test(value);
-    const linkedInAwareness = /brand awareness|awareness|traffic/.test(value);
 
     if (name === 'Google Ads') {
-      if (googleShopping) return 'For Google Shopping/PMax, check product/feed quality and value tracking.';
-      if (googleSearch) return 'For Google Search, check search terms, keywords, and the landing page.';
-      return 'For Google, check the query, landing page, and value tracking.';
+      if (googleShopping) return 'For Google Shopping / PMax, keep it running for now and check the product feed and tracking.';
+      return 'For Google Search, check the search terms, keywords, and landing page.';
     }
     if (name === 'Meta Ads') {
-      if (metaRetargeting) return 'For Meta retargeting, check the audience, creative, offer, and landing page.';
-      if (metaProspecting) return 'For Meta prospecting, check the audience, creative, offer, and landing page.';
       return 'For Meta, check the audience, creative, offer, and landing page.';
     }
     if (name === 'LinkedIn Campaign Manager') {
-      if (linkedInLeadGen || linkedInAwareness) return 'For LinkedIn, check the audience, offer, lead form, and landing page.';
       return 'For LinkedIn, check the audience, offer, lead form, and landing page.';
     }
     if (name === 'Local test page') return 'For local fixtures, compare the visible rows and try another supported page if needed.';
@@ -1042,7 +1033,7 @@
     const alsoProtect = currentAnalysis.nextBest || currentAnalysis.nextSteps?.[1] || currentAnalysis.nextSteps?.[0] || '';
     const lines = [
       '# Gnomeo',
-      `First fix: ${currentAnalysis.focus || summary.executiveFinding || '—'}`,
+      `Start here: ${currentAnalysis.focus || summary.executiveFinding || '—'}`,
       `Why: ${currentAnalysis.why || summary.attention?.[0] || '—'}`,
       ...(alsoProtect ? [`Also protect: ${alsoProtect}`] : []),
       '',
@@ -1073,11 +1064,11 @@
     const summary = analysis?.summary || EMPTY_ANALYSIS.summary;
     const compact = (value) => String(value || '').replace(/\s+/g, ' ').trim();
     const firstSentence = (value) => compact(String(value || '').split(/(?<=[.!?])\s+/)[0] || value);
-    const firstCandidate = analysis?.fixFirst || (Array.isArray(analysis?.nextSteps) && analysis.nextSteps[0]) || analysis?.focus || summary.executiveFinding || 'Add a table to get your first recommendation.';
+    const firstCandidate = analysis?.fixFirst || (Array.isArray(analysis?.nextSteps) && analysis.nextSteps[0]) || analysis?.focus || summary.executiveFinding || 'Add a table to get your first answer.';
     const fixFirst = compact(firstCandidate).replace(/^Start with\s+/i, '').replace(/^Check\s+/i, 'Check ').replace(/^Review\s+/i, 'Review ');
     const whySource = analysis?.why || (Array.isArray(summary.attention) && summary.attention[0]) || (Array.isArray(summary.comparison) && summary.comparison[0]) || (Array.isArray(summary.keySignals) && summary.keySignals[0]?.details) || '';
     const why = firstSentence(whySource || 'It carries spend but shows weaker results than the other reviewed tables.');
-    const nextBestRaw = analysis?.nextBest || (Array.isArray(analysis?.nextSteps) && analysis.nextSteps[1]) || (Array.isArray(analysis?.nextSteps) && analysis.nextSteps[0]) || 'Keep the strongest performer protected while it stays efficient.';
+    const nextBestRaw = analysis?.nextBest || (Array.isArray(analysis?.nextSteps) && analysis.nextSteps[1]) || (Array.isArray(analysis?.nextSteps) && analysis.nextSteps[0]) || 'Keep the clearest performer running for now.';
     const nextBest = firstSentence(nextBestRaw).replace(/^Keep\s+/i, 'Keep ');
     const evidence = Array.isArray(summary.keySignals) ? summary.keySignals.slice(0, 3).map((item) => compact([item.label, item.title, item.details].filter(Boolean).join(' — '))) : [];
     const platforms = Array.isArray(analysis?.platforms) ? analysis.platforms : [analysis?.platform || 'Local only'];
@@ -1214,8 +1205,8 @@
     const primaryActionState = derivePrimaryActionState();
 
     if (addVisibleTableButton) {
-      addVisibleTableButton.textContent = 'Add/update';
-      addVisibleTableButton.hidden = capturedTables.length === 0;
+      addVisibleTableButton.textContent = 'Update table';
+      addVisibleTableButton.hidden = true;
       addVisibleTableButton.disabled = !panelState.canAddTable || Boolean(pendingRequestId);
     }
     if (primaryActionButton) {
@@ -1406,14 +1397,14 @@
     }
     if (currentAnalysis.success) {
       focusText.textContent = decision.fixFirst || currentAnalysis.focus || summary.executiveFinding || EMPTY_ANALYSIS.summary.executiveFinding;
-      if (focusWhy) focusWhy.textContent = `Why: ${decision.why || 'It spends, but the result signal is weaker.'}`;
+      if (focusWhy) focusWhy.textContent = `Why: ${decision.why || 'It is spending money, but not showing enough results yet.'}`;
       setChipText(focusConfidence, decision.caveat || 'visible only', confidenceVariant);
       $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 5), 'No visible signals found yet.');
       $('visiblePreview').innerHTML = renderPreview(currentAnalysis.previewRows);
       $('attentionList').innerHTML = renderLines(summary.attention.slice(0, 3), 'No attention notes yet.');
-      if (nextStepsText) nextStepsText.textContent = `Next: ${decision.nextBest || 'Keep the clearer performer protected.'}`;
+      if (nextStepsText) nextStepsText.textContent = `Next: ${decision.nextBest || 'Keep the clearer performer running for now.'}`;
     } else if (currentAnalysis.stale) {
-      focusText.textContent = 'Analyse to find the first fix.';
+      focusText.textContent = 'Analyse to find the first thing to check.';
       if (focusWhy) focusWhy.textContent = 'The tables changed.';
       setChipText(focusConfidence, 'Needs analysis', 'warn');
       $('keySignals').innerHTML = '';
@@ -1422,7 +1413,7 @@
       if (nextStepsText) nextStepsText.textContent = 'Analyse to refresh the next step.';
     } else {
       focusText.textContent = 'Feed me a campaign table to start.';
-      if (focusWhy) focusWhy.textContent = 'Then I’ll tell you the first fix.';
+      if (focusWhy) focusWhy.textContent = 'Then I’ll explain why.';
       setChipText(focusConfidence, 'hungry', 'neutral');
       $('keySignals').innerHTML = renderLines(summary.keySignals.slice(0, 5), 'No visible signals found yet.');
       $('visiblePreview').innerHTML = renderPreview(currentAnalysis.previewRows);
@@ -1463,14 +1454,20 @@
     const reviewConfidence = capture.reviewConfidence || matrix.confidence || 'visible only';
 
     const focus = watchItem
-      ? `Check ${rowLabel(watchItem)} before adding budget.`
+      ? `Check ${rowLabel(watchItem)} before spending more there.`
       : 'The rows are still too limited.';
 
+    const why = watchItem
+      ? `${rowLabel(watchItem)} is spending money, but the table does not show enough results yet.`
+      : 'The rows are still too limited.';
+
+    const nextBest = efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
+      ? `Keep ${rowLabel(efficientPerformer)} running for now.`
+      : 'Keep the clearer performer running for now.';
+
     const nextSteps = [
-      watchItem ? `Check ${rowLabel(watchItem)} before adding budget.` : 'Check the highest-spend row before adding budget.',
-      efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
-        ? `Keep ${rowLabel(efficientPerformer)} protected for now.`
-        : 'Keep the clearer performer protected for now.',
+      watchItem ? `Check ${rowLabel(watchItem)} before spending more there.` : 'Check the highest-spend row before spending more there.',
+      nextBest,
       platformAdvice(capture.platform, watchItem?.label || highestSpend?.label || ''),
     ];
 
@@ -1479,26 +1476,26 @@
       keySignals.push({ label: 'Highest spend', title: rowLabel(highestSpend), details: Number.isFinite(highestSpend.spend) ? `${formatNumber(highestSpend.spend, 2)} spent` : 'Highest spend' });
     }
     if (strongestResult) {
-      keySignals.push({ label: 'Strongest result signal', title: rowLabel(strongestResult), details: Number.isFinite(strongestResult.resultValue) ? `${formatNumber(strongestResult.resultValue)} ${strongestResult.resultLabel}` : 'Strongest visible result signal' });
+      keySignals.push({ label: 'Strongest result', title: rowLabel(strongestResult), details: Number.isFinite(strongestResult.resultValue) ? `${formatNumber(strongestResult.resultValue)} ${strongestResult.resultLabel}` : 'Strongest visible result' });
     }
     if (efficientPerformer) {
-      keySignals.push({ label: 'Best efficiency signal', title: rowLabel(efficientPerformer), details: Number.isFinite(efficientPerformer.efficiencyScore) ? `${formatNumber(efficientPerformer.efficiencyScore, 2)} ${efficientPerformer.roas ? 'ROAS' : 'result per spend'}` : 'Best visible efficiency signal' });
+      keySignals.push({ label: 'Best-looking use of money', title: rowLabel(efficientPerformer), details: Number.isFinite(efficientPerformer.efficiencyScore) ? `${formatNumber(efficientPerformer.efficiencyScore, 2)} results compared with money spent` : 'Best-looking use of money' });
     }
     if (watchItem) {
-      keySignals.push({ label: 'Main watch item', title: rowLabel(watchItem), details: Number.isFinite(watchItem.spend)
-        ? `${formatNumber(watchItem.spend, 2)} spent · ${Number.isFinite(watchItem.resultValue) ? `${formatNumber(watchItem.resultValue)} ${watchItem.resultLabel}` : 'weak results'}`
-        : 'Meaningful spend · weak results' });
+      keySignals.push({ label: 'Needs checking', title: rowLabel(watchItem), details: Number.isFinite(watchItem.spend)
+        ? `${formatNumber(watchItem.spend, 2)} spent · ${Number.isFinite(watchItem.resultValue) ? `${formatNumber(watchItem.resultValue)} ${watchItem.resultLabel}` : 'not enough results yet'}`
+        : 'Meaningful spend · not enough results yet' });
     }
     if (lowDataItem) {
-      keySignals.push({ label: 'Low data', title: rowLabel(lowDataItem), details: lowDataItem.visibleDataNote });
+      keySignals.push({ label: 'Not enough data yet', title: rowLabel(lowDataItem), details: lowDataItem.visibleDataNote });
     }
     keySignals.push({ label: 'Review level', title: reviewLevel, details: 'visible only' });
 
     const attention = [
-      watchItem ? `${rowLabel(watchItem)} is the main watch item.` : 'Check the highest-spend row first.',
+      watchItem ? `Check ${rowLabel(watchItem)} before spending more there.` : 'Check the highest-spend row first.',
       lowDataItem && lowDataItem.rowReference !== watchItem?.rowReference
-        ? `${rowLabel(lowDataItem)} is still low confidence.`
-        : (efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference ? `Keep ${rowLabel(efficientPerformer)} protected.` : 'Keep the clearer performer protected.'),
+        ? `${rowLabel(lowDataItem)} does not have enough data yet.`
+        : (efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference ? `Keep ${rowLabel(efficientPerformer)} running for now.` : 'Keep the clearer performer running for now.'),
       platformAdvice(capture.platform, watchItem?.label || highestSpend?.label || ''),
     ];
 
@@ -1520,7 +1517,7 @@
       focus,
       nextSteps,
       fixFirst: nextSteps[0] || focus,
-      why: summary.attention?.[0] || summary.comparison?.[0] || summary.keySignals?.[0]?.details || '',
+      why,
       nextBest: nextSteps[1] || nextSteps[0] || '',
       evidence: keySignals.slice(0, 3),
       summary: {
@@ -1568,33 +1565,37 @@
 
     const keySignals = [];
     if (highestSpend) keySignals.push({ label: 'Highest spend', title: rowLabel(highestSpend), details: `${shortPlatformName(highestSpend.platform)} · ${formatNumber(highestSpend.spend, 2)} spent` });
-    if (strongestResult) keySignals.push({ label: 'Strongest result signal', title: rowLabel(strongestResult), details: Number.isFinite(strongestResult.resultValue) ? `${formatNumber(strongestResult.resultValue)} ${strongestResult.resultLabel}` : 'Strongest visible result signal' });
-    if (efficientPerformer) keySignals.push({ label: 'Best efficiency signal', title: rowLabel(efficientPerformer), details: Number.isFinite(efficientPerformer.efficiencyScore) ? `${formatNumber(efficientPerformer.efficiencyScore, 2)} ${efficientPerformer.roas ? 'ROAS' : 'result per spend'}` : 'Best visible efficiency signal' });
-    if (watchItem) keySignals.push({ label: 'Main watch item', title: rowLabel(watchItem), details: `${shortPlatformName(watchItem.platform)} · ${Number.isFinite(watchItem.spend) ? `${formatNumber(watchItem.spend, 2)} spent` : 'meaningful spend'}${Number.isFinite(watchItem.resultValue) ? ` · ${formatNumber(watchItem.resultValue)} ${watchItem.resultLabel}` : ' · weak results'}` });
-    if (lowDataItem) keySignals.push({ label: 'Low data', title: rowLabel(lowDataItem), details: lowDataItem.visibleDataNote });
+    if (strongestResult) keySignals.push({ label: 'Strongest result', title: rowLabel(strongestResult), details: Number.isFinite(strongestResult.resultValue) ? `${formatNumber(strongestResult.resultValue)} ${strongestResult.resultLabel}` : 'Strongest visible result' });
+    if (efficientPerformer) keySignals.push({ label: 'Best-looking use of money', title: rowLabel(efficientPerformer), details: Number.isFinite(efficientPerformer.efficiencyScore) ? `${formatNumber(efficientPerformer.efficiencyScore, 2)} results compared with money spent` : 'Best-looking use of money' });
+    if (watchItem) keySignals.push({ label: 'Needs checking', title: rowLabel(watchItem), details: `${shortPlatformName(watchItem.platform)} · ${Number.isFinite(watchItem.spend) ? `${formatNumber(watchItem.spend, 2)} spent` : 'meaningful spend'}${Number.isFinite(watchItem.resultValue) ? ` · ${formatNumber(watchItem.resultValue)} ${watchItem.resultLabel}` : ' · not enough results yet'}` });
+    if (lowDataItem) keySignals.push({ label: 'Not enough data yet', title: rowLabel(lowDataItem), details: lowDataItem.visibleDataNote });
     keySignals.push({ label: 'Review level', title: reviewLevel, details: 'visible only' });
 
     const topFinding = watchItem
-      ? `Check ${rowLabel(watchItem)} first.${efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference ? ` ${rowLabel(efficientPerformer)} looks safer to protect.` : ''}`
+      ? `Check ${rowLabel(watchItem)} before spending more there.${efficientPerformer && efficientPerformer.rowReference !== watchItem.rowReference ? ` ${rowLabel(efficientPerformer)} looks safer to keep running.` : ''}`
+      : 'The rows are still too limited.';
+
+    const why = watchItem
+      ? `${rowLabel(watchItem)} is spending money, but the table does not show enough results yet.`
       : 'The rows are still too limited.';
 
     const attention = [
-      watchItem ? `Check ${rowLabel(watchItem)} before adding budget.` : 'Check the highest-spend row before adding budget.',
+      watchItem ? `Check ${rowLabel(watchItem)} before spending more there.` : 'Check the highest-spend row before spending more there.',
       efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
-        ? `Keep ${rowLabel(efficientPerformer)} protected.`
-        : 'Keep the clearer performer protected.',
+        ? `Keep ${rowLabel(efficientPerformer)} running for now.`
+        : 'Keep the clearer performer running for now.',
       platformActionHint(watchItem?.platform || highestSpend?.platform || efficientPerformer?.platform, watchItem?.label || highestSpend?.label || efficientPerformer?.label || ''),
     ];
 
     if (lowDataItem && lowDataItem.rowReference !== watchItem?.rowReference) {
-      attention.splice(1, 0, `Treat ${rowLabel(lowDataItem)} as low confidence. Do not overreact until the visible volume improves.`);
+      attention.splice(1, 0, `Treat ${rowLabel(lowDataItem)} as not enough data yet. Do not overreact until the visible volume improves.`);
     }
 
     const nextSteps = [
-      watchItem ? `Check ${rowLabel(watchItem)} before adding budget.` : 'Check the highest-spend row before adding budget.',
+      watchItem ? `Check ${rowLabel(watchItem)} before spending more there.` : 'Check the highest-spend row before spending more there.',
       efficientPerformer && efficientPerformer.rowReference !== watchItem?.rowReference
-        ? `Keep ${rowLabel(efficientPerformer)} protected.`
-        : 'Keep the clearer performer protected.',
+        ? `Keep ${rowLabel(efficientPerformer)} running for now.`
+        : 'Keep the clearer performer running for now.',
       platformActionHint(watchItem?.platform || highestSpend?.platform || efficientPerformer?.platform, watchItem?.label || highestSpend?.label || efficientPerformer?.label || ''),
     ];
 
@@ -1617,7 +1618,7 @@
       focus: topFinding,
       nextSteps,
       fixFirst: nextSteps[0] || topFinding,
-      why: summary.attention?.[0] || summary.comparison?.[0] || summary.keySignals?.[0]?.details || '',
+      why,
       nextBest: nextSteps[1] || nextSteps[0] || '',
       evidence: keySignals.slice(0, 3),
       summary: {
@@ -1643,7 +1644,7 @@
 
     const result = await requestTableReview();
     pendingRequestId = null;
-    $('addVisibleTable').textContent = 'Add table';
+    $('addVisibleTable').textContent = 'Update table';
     $('addVisibleTable').disabled = false;
 
     if (!result.ok) {
@@ -1736,7 +1737,7 @@
     setAnalysis(EMPTY_ANALYSIS);
     renderCapturedTables();
     renderDebugState();
-    $('addVisibleTable').textContent = 'Add table';
+    $('addVisibleTable').textContent = 'Update table';
     $('addVisibleTable').disabled = false;
     setStatus('0 sources · hungry');
     await storageRemove(STORAGE_KEY);
